@@ -166,7 +166,7 @@ double precision::     xwatermeth(51), tempgrad(51), xwater(nwater*9), gradwater
 logical::             gradt
 
 ereal=0.0d0
-grad(:)=0.0d0
+if (gradt) grad(:)=0.0d0
 do i=1, nwater
    xwatermeth(:)=0.0d0
    do j=1, waterdof+1
@@ -177,15 +177,17 @@ do i=1, nwater
    xwatermeth(25:51)= x(nwater*(waterdof+1)*3 + 1: nwater*(waterdof+1)*3 + methanedof*3)/autoang
    call wmrb(xwatermeth, tempgrad, ewatermeth, gradt)
    ereal= ereal+ ewatermeth*autokcal
-   do j=1, waterdof+1
-      do k=1, 3
-         grad(3*((waterdof+1)*(i-1) + j -1) +k)= grad(3*((waterdof+1)*(i-1) + j -1) +k)&
-              +tempgrad(3*(j-1) + k)*autokcal/autoang
+   if (gradt) then
+      do j=1, waterdof+1
+         do k=1, 3
+            grad(3*((waterdof+1)*(i-1) + j -1) +k)= grad(3*((waterdof+1)*(i-1) + j -1) +k)&
+                 +tempgrad(3*(j-1) + k)*autokcal/autoang
+         end do
       end do
-   end do
-   grad(nwater*(waterdof+1)*3 + 1: nwater*(waterdof+1)*3 + methanedof*3)= &
-        grad(nwater*(waterdof+1)*3 + 1: nwater*(waterdof+1)*3 + methanedof*3)+&
-        tempgrad(25:51)*autokcal/autoang
+      grad(nwater*(waterdof+1)*3 + 1: nwater*(waterdof+1)*3 + methanedof*3)= &
+           grad(nwater*(waterdof+1)*3 + 1: nwater*(waterdof+1)*3 + methanedof*3)+&
+           tempgrad(25:51)*autokcal/autoang
+   end if
    do k=1,3
       xwater(3*(3*(i-1)+1 -1) + k)= x(3*((waterdof+1)*(i-1) + 8 -1) +k)
       xwater(3*(3*(i-1)+2 -1) + k)= x(3*((waterdof+1)*(i-1) + 1 -1) +k)
