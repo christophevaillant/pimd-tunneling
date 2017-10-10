@@ -10,6 +10,9 @@ module mcmod_mass
   private :: Partition
 contains
   !---------------------------------------------------------------------
+  subroutine V_init()
+    return
+  end subroutine V_init
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
   subroutine detJ(xtilde, etasquared)

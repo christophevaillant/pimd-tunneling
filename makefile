@@ -1,3 +1,4 @@
+###################################################################################
 #Define all the compilers and their options
 FC= ifort
 MPIFC= mpif90
@@ -8,17 +9,8 @@ INCLUDE= -I${MKLROOT}/include
 BUILDDIR= ../build
 OBJDIR= ../build/objects
 
+###################################################################################
 #List the object files and their dependencies
-
-$(OBJDIR)/%.o: %.f
-	$(FC) -c $(FFLAGS) $< -o $@
-
-$(OBJDIR)/%.o: %.f90
-	$(FC) -c $(FFLAGS) $< -o $@
-
-$(OBJDIR)/pimd_par.o: pimd_par.f90
-	$(MPIFC) -c $(FFLAGS) $< -o $@
-
 #Define some variables with common files
 COMFILES= $(OBJDIR)/blas.o $(OBJDIR)/linpack.o $(OBJDIR)/timer.o \
 	$(OBJDIR)/lbfgsb.o $(OBJDIR)/nr_fft.o \
@@ -30,6 +22,14 @@ COMFILES= $(OBJDIR)/blas.o $(OBJDIR)/linpack.o $(OBJDIR)/timer.o \
 #Malonaldehyde:
 MALONFILES= $(OBJDIR)/pes_malonaldehyde.o $(OBJDIR)/mcmod_malon.o
 
+#Malonaldehyde Wang:
+# $(OBJDIR)/mcmod_wmalon.o: mcmod_wmalon.f90
+# 	$(FC) -c $(FFLAGS) $(WMALONFLAGS) $< -o $@
+
+WMALONFILES= $(OBJDIR)/mcmod_wmalon.o
+FFLAGS+= -O -I./mod_malon
+WMALONLIBS= -L. -lpes
+
 #Water dimer:
 WATDIMFILES= $(OBJDIR)/mcmod_waterdimer.o
 WATDIMLIBS= -L../../Water/ -lmbpol -cxxlib
@@ -37,6 +37,18 @@ WATDIMLIBS= -L../../Water/ -lmbpol -cxxlib
 #Methane Clathrate:
 CLATHFILES= $(OBJDIR)/watermethane.o $(OBJDIR)/mcmod_clathrate.o
 
+#Compilation commands for object files
+$(OBJDIR)/%.o: %.f
+	$(FC) -c $(FFLAGS) $< -o $@
+
+$(OBJDIR)/%.o: %.f90
+	$(FC) -c $(FFLAGS) $< -o $@
+
+$(OBJDIR)/pimd_par.o: pimd_par.f90
+	$(MPIFC) -c $(FFLAGS) $< -o $@
+
+
+###################################################################################
 #Rules for the final executables
 
 #1D double well potential:
@@ -56,6 +68,13 @@ pimd_malon_ser: $(MALONFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 
 rpi_malon: $(MALONFILES) $(COMFILES) $(OBJDIR)/rpi.o
 	$(FC) $(FFLAGS) $(COMFILES) $(MALONFILES) $(OBJDIR)/rpi.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+
+#Wang Malonaldehyde:
+pimd_wmalon_par: $(WMALONFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(WMALONFLAGS) $(COMFILES) $(WMALONFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@  $(WMALONLIBS) $(FLIBS_PAR)
+
+pimd_wmalon_ser: $(WMALONFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(WMALONFLAGS) $(COMFILES) $(WMALONFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(WMALONLIBS) $(FLIBS_SEQ)
 
 #Water Dimer:
 pimd_watdim_par: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/pimd_par.o

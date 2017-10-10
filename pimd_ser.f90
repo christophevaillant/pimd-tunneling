@@ -68,6 +68,7 @@ program pimd
   else if (thermostat .eq. 2) then
      write(*,*) "Running with Langevin thermostat"
   end if
+  call V_init()
   !-------------------------
   !-------------------------
   !Read in initial wells, and masses

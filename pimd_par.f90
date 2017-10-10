@@ -77,6 +77,7 @@ program pimd
   !it to other procs
   allocate(mpi_int_send(8), mpi_double_send(5))
   
+  call V_init()
   if (iproc .eq. 0) then
      read(*, nml=MCDATA)
      betan= beta/dble(n+1)
@@ -96,7 +97,6 @@ program pimd
 
      ncalcs= nintegral*nrep/nproc
      if (mod(nintegral*nrep, nproc) .ne. 0) ncalcs=ncalcs+1
-
 
   end if
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
