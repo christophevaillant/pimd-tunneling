@@ -83,7 +83,7 @@ contains
        count=count+1
        if (count .ge. rkick(1)) then
           count=0
-          if (iprint) write(*,*) 100*dble(i)/dble(NMC),0.5d0*dHdr/(betan*dble(i-imin))!dHdr/dble(i)
+          if (iprint) write(*,*) 100*dble(i)/dble(NMC),dHdr/(betan**2*dble(i-imin))!dHdr/dble(i)
           do j=1,ndim
              do k=1,natom
                 dofi=(k-1)*ndim +j
@@ -426,9 +426,9 @@ contains
     integer, optional:: iproc
 
     call system_clock(itime,irate,imax)
-    seed_normal= mod(itime,1000)
+    seed_normal= mod(itime+5*iproc,1000)
     call system_clock(itime,irate,imax)
-    seed_poisson= mod(itime,1000)
+    seed_poisson= mod(itime+5*iproc,1000)
     brng_normal = VSL_BRNG_MT19937
     brng_poisson = VSL_BRNG_MT19937
     rmethod_normal = VSL_RNG_METHOD_GAUSSIAN_ICDF
@@ -468,7 +468,7 @@ contains
        count=count+1
        if (count .ge. Noutput .and. i .gt. imin) then
           count=0
-          if (iprint) write(*,*) 100*dble(i)/dble(NMC-imin), 0.5d0*dHdr/(betan*dble(i-imin))
+          if (iprint) write(*,*) 100*dble(i)/dble(NMC-imin), dHdr/(betan**2*dble(i-imin))
        end if
        call time_step_test_pile(xprop, vprop)
        if (i.gt.imin) then
@@ -515,7 +515,7 @@ contains
        count=count+1
        if (count .ge. Noutput .and. i .gt. imin) then
           count=0
-          if (iprint) write(*,*) 100*dble(i)/dble(NMC-imin), 0.5d0*dHdr/(betan*dble(i-imin))
+          if (iprint) write(*,*) 100*dble(i)/dble(NMC-imin), dHdr/(betan**2*dble(i-imin))
        end if
        call time_step_higher(xprop, vprop)
        if (i.gt.imin) then

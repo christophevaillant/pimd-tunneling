@@ -23,12 +23,16 @@ COMFILES= $(OBJDIR)/blas.o $(OBJDIR)/linpack.o $(OBJDIR)/timer.o \
 MALONFILES= $(OBJDIR)/pes_malonaldehyde.o $(OBJDIR)/mcmod_malon.o
 
 #Malonaldehyde Wang:
-# $(OBJDIR)/mcmod_wmalon.o: mcmod_wmalon.f90
-# 	$(FC) -c $(FFLAGS) $(WMALONFLAGS) $< -o $@
-
 WMALONFILES= $(OBJDIR)/mcmod_wmalon.o
-FFLAGS+= -O -I./mod_malon
-WMALONLIBS= -L. -lpes
+pimd_wmalon_par: FFLAGS+= -O -I./mod_malon
+pimd_wmalon_ser: FFLAGS+= -O -I./mod_malon
+WMALONLIBS= -L. -lpes_malon
+
+#Formic acid dimer:
+FORMICFILES= $(OBJDIR)/mcmod_formic.o
+pimd_formic_par: FFLAGS+= -O -I./mod_formic
+pimd_formic_ser: FFLAGS+= -O -I./mod_formic
+FORMICLIBS= -L. -lpes_formic
 
 #Water dimer:
 WATDIMFILES= $(OBJDIR)/mcmod_waterdimer.o
@@ -37,6 +41,7 @@ WATDIMLIBS= -L../../Water/ -lmbpol -cxxlib
 #Methane Clathrate:
 CLATHFILES= $(OBJDIR)/watermethane.o $(OBJDIR)/mcmod_clathrate.o
 
+###################################################################################
 #Compilation commands for object files
 $(OBJDIR)/%.o: %.f
 	$(FC) -c $(FFLAGS) $< -o $@
@@ -51,6 +56,7 @@ $(OBJDIR)/pimd_par.o: pimd_par.f90
 ###################################################################################
 #Rules for the final executables
 
+################################
 #1D double well potential:
 pimd_1d_par: $(1DFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 	$(MPIFC) $(FFLAGS) $(COMFILES) $(1DFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
@@ -59,6 +65,7 @@ pimd_1d_ser: $(1DFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 	$(FC) $(FFLAGS) $(COMFILES) $(1DFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 
+################################
 #Malonaldehyde:
 pimd_malon_par: $(MALONFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 	$(MPIFC) $(FFLAGS) $(COMFILES) $(MALONFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
@@ -69,6 +76,7 @@ pimd_malon_ser: $(MALONFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 rpi_malon: $(MALONFILES) $(COMFILES) $(OBJDIR)/rpi.o
 	$(FC) $(FFLAGS) $(COMFILES) $(MALONFILES) $(OBJDIR)/rpi.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
+################################
 #Wang Malonaldehyde:
 pimd_wmalon_par: $(WMALONFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 	$(MPIFC) $(FFLAGS) $(WMALONFLAGS) $(COMFILES) $(WMALONFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@  $(WMALONLIBS) $(FLIBS_PAR)
@@ -76,6 +84,15 @@ pimd_wmalon_par: $(WMALONFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 pimd_wmalon_ser: $(WMALONFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 	$(FC) $(FFLAGS) $(WMALONFLAGS) $(COMFILES) $(WMALONFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(WMALONLIBS) $(FLIBS_SEQ)
 
+################################
+#Formic Acid Dimer
+pimd_formic_par: $(FORMICFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(FORMICFLAGS) $(COMFILES) $(FORMICFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@  $(FORMICLIBS) $(FLIBS_PAR)
+
+pimd_formic_ser: $(FORMICFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(FORMICFLAGS) $(COMFILES) $(FORMICFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FORMICLIBS) $(FLIBS_SEQ)
+
+################################
 #Water Dimer:
 pimd_watdim_par: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 	$(MPIFC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
@@ -83,6 +100,7 @@ pimd_watdim_par: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 pimd_watdim_ser: $(MALONFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 	$(FC) $(FFLAGS) $(COMFILES) $(MALONFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
+################################
 #Clathrate
 pimd_clath_par: $(CLATHFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 	$(MPIFC) $(FFLAGS) $(COMFILES) $(CLATHFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
@@ -90,6 +108,8 @@ pimd_clath_par: $(CLATHFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 pimd_clath_ser: $(CLATHFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 	$(FC) $(FFLAGS) $(COMFILES) $(CLATHFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
+###################################################################################
+#Rules for cleanup
 
 .PHONY: clean
 
