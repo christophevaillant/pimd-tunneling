@@ -34,9 +34,16 @@ pimd_formic_par: FFLAGS+= -O -I./mod_formic
 pimd_formic_ser: FFLAGS+= -O -I./mod_formic
 FORMICLIBS= -L. -lpes_formic
 
-#Water dimer:
+#Water dimer (MB-pol):
 WATDIMFILES= $(OBJDIR)/mcmod_waterdimer.o
 WATDIMLIBS= -L../../Water/ -lmbpol -cxxlib
+
+#Water dimer (HBB2):
+HBB2FILES= $(OBJDIR)/mcmod_waterdimer_hbb2.o
+pimd_hbb2_par: FFLAGS+= -O -I./mod_water
+pimd_hbb2_ser: FFLAGS+= -O -I./mod_water
+rpi_hbb2: FFLAGS+= -O -I./mod_water
+HBB2LIBS= -L. -lpes_water -lpesd_water
 
 #Methane Clathrate:
 CLATHFILES= $(OBJDIR)/watermethane.o $(OBJDIR)/mcmod_clathrate.o
@@ -93,12 +100,26 @@ pimd_formic_ser: $(FORMICFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 	$(FC) $(FFLAGS) $(FORMICFLAGS) $(COMFILES) $(FORMICFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FORMICLIBS) $(FLIBS_SEQ)
 
 ################################
-#Water Dimer:
+#Water Dimer HBB2
+pimd_hbb2_par: $(HBB2FILES) $(COMFILES) $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(HBB2FLAGS) $(COMFILES) $(HBB2FILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@  $(HBB2LIBS) $(FLIBS_PAR)
+
+pimd_hbb2_ser: $(HBB2FILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(HBB2FLAGS) $(COMFILES) $(HBB2FILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(HBB2LIBS) $(FLIBS_SEQ)
+
+rpi_hbb2: $(HBB2FILES) $(COMFILES) $(OBJDIR)/rpi.o
+	$(FC) $(FFLAGS) $(HBB2FLAGS) $(COMFILES) $(HBB2FILES) $(OBJDIR)/rpi.o -o $(BUILDDIR)/$@ $(HBB2LIBS) $(FLIBS_SEQ)
+
+################################
+#Water Dimer MB-pol
 pimd_watdim_par: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 	$(MPIFC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
 
-pimd_watdim_ser: $(MALONFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(MALONFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+pimd_watdim_ser: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+
+rpi_watdim: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/rpi.o
+	$(FC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/rpi.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
 ################################
 #Clathrate

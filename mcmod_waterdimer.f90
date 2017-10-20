@@ -2,7 +2,7 @@ module mcmod_mass
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
   double precision::               beta, betan, UMtilde
-  integer::                        n, ndim, ndof, natom, xunit
+  integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:), tst(:,:)
 
   public :: QsortC
@@ -25,7 +25,7 @@ contains
        end do
     end do
     call mbpolenergy(2, V, xtemp)
-    V= V*1.59362d-3
+    V= V*1.59362d-3 !+7.909064335674565D-003
     deallocate(xtemp)
     return
   end function V
@@ -52,96 +52,27 @@ contains
     deallocate(gradtemp, xtemp)
     return
   end subroutine Vprime
-
   !---------------------------------------------------------------------
-  function UN(x)
+  subroutine  Vdoubleprime(x,hess)
     implicit none
-    integer::            i,j,k
-    double precision, intent(in)::   x(:,:,:)
-    double precision::  UN
+    double precision::     hess(:,:,:,:), x(:,:), dummy1
+    integer::              i, j
+    double precision::     gradplus(ndim, natom), gradminus(ndim, natom)
+    double precision, parameter::  eps=1.0d-5
 
-    UN=0.0d0
-    do i=1, N-1, 1
-       UN=UN+ V(x(i,:,:))
-       do j=1, ndim
-          do k=1, natom
-             UN=UN+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
-          end do
-       end do
-    end do
-    UN=UN+ V(x(n,:,:))
-    do j=1, ndim
-       do k=1, natom
-          UN=UN+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-x(N,j,k))**2
+    do i= 1, ndim
+       do j= 1, natom
+          x(i,j)= x(i,j) + eps
+          call Vprime(x, gradplus)
+          x(i,j)= x(i,j) - 2.0d0*eps
+          call Vprime(x, gradminus)
+          x(i,j)= x(i,j) + eps
+          hess(i,j,:,:)= (gradplus(:,:)-gradminus(:,:))/(2.0d0*eps)          
        end do
     end do
     return
-  end function UN
+  end subroutine Vdoubleprime
 
-  !---------------------------------------------------------------------
-  subroutine UNprime(x, answer)
-    implicit none
-    integer::            i,j,k
-    double precision::   x(:,:,:), answer(:,:,:)
-    double precision, allocatable:: grad(:,:)
-    
-    allocate(grad(ndim,natom))
-    do i=1, N, 1
-       do j=1,ndim
-          do k=1,natom
-             if (i.eq.1) then
-                answer(1,j,k)=mass(k)*(2.0*x(1,j,k) - x(N,j,k) - x(2,j,k))/betan**2
-             else if (i.eq.N) then
-                answer(N,j,k)=mass(k)*(2.0*x(N,j,k) - x(N-1,j,k) - x(1,j,k))/betan**2
-             else
-                answer(i,j,k)= mass(k)*(2.0*x(i,j,k) - x(i-1,j,k) - x(i+1,j,k))/betan**2
-             end if
-          end do
-       end do
-       call Vprime(x(i,:,:),grad(:,:))
-       do j=1, ndim
-          do k=1, natom
-             answer(i,j,k)= answer(i,j,k)+ grad(j,k)
-          end do
-       end do
-    end do
-    deallocate(grad)
-    return
-  end subroutine UNprime
-
-  !---------------------------------------------------------------------
-  ! subroutine UNhessian(x, answer)
-  !   !TODO: implement UN hessian
-  !   implicit none
-  !   integer::            i,j,k
-  !   double precision::   x(:,:,:), answer(:,:,:,:)
-  !   double precision, allocatable:: hess(:,:)
-
-  !   answer(:,:,:,:)=0.0d0
-  !   allocate(hess(ndof,ndof))
-    
-  !   do i=2, n-1, 1
-  !      call Vdoubleprime(x(i,:,:),hess)
-  !      do j=1,ndof
-  !         answer(i,j,i,j)= 2.0*mass/betan**2 + hess(j,j)
-  !         answer(i,j,i-1,j)= -mass/betan**2 + hess(j,j)
-  !         answer(i,j,i+1,j)= -mass/betan**2 + hess(j,j)
-  !      end do
-  !   end do
-  !   call Vdoubleprime(x(1,:,:), hess)
-  !   answer(1,:,1,:)= hess(:,:)
-  !   call Vdoubleprime(x(n,:,:), hess)
-  !   answer(n,:,n,:)= hess(:,:)
-  !   do j=1,ndof
-  !      answer(1,j,1,j)= answer(1,j,1,j)+2.0*mass/betan**2
-  !      answer(1,j,2,j)= -mass/betan**2
-  !      answer(1,j,n,j)= -mass/betan**2
-  !      answer(n,j,n,j)=answer(n,j,n,j)+ 2.0*mass/betan**2
-  !      answer(n,j,n-1,j)=-mass/betan**2
-  !      answer(n,j,1,j)=-mass/betan**2
-  !   end do
-  !   return
-  ! end subroutine UNhessian
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
   function UM(x,a,b)
@@ -151,14 +82,14 @@ contains
 
     UM=0.0d0
     do i=2, N-1, 1
-       UM=UM+ V(x(i,:,:))
+       UM=UM+ V(x(i,:,:)) + 7.909252131246103d-3
        do j=1, ndim
           do k=1, natom
              UM=UM+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
           end do
        end do
     end do
-    UM=UM+ V(x(n,:,:))+ V(x(1,:,:))
+    UM=UM+ V(x(n,:,:))+ V(x(1,:,:))+ 2.0d0*7.909252131246103d-3
     do j=1, ndim
        do k=1, natom
           UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
@@ -200,6 +131,43 @@ contains
 
     return
   end subroutine UMprime
+
+  !---------------------------------------------------------------------
+  subroutine UMhessian(x, answer)
+    implicit none
+    integer::            i, j1, k1, j2, k2, idof1, idof2
+    double precision::   x(:,:,:), answer(:,:)
+    double precision, allocatable:: hess(:,:,:,:)
+
+    allocate(hess(ndim, natom, ndim, natom))
+
+    answer=0.0d0
+    do i=1, n, 1
+       hess=0.0d0
+       call Vdoubleprime(x(i,:,:), hess)
+       do j1=1,ndim
+          do k1=1,natom
+             do j2=1,ndim
+                do k2=1,natom
+                   idof1= (k1-1)*ndim + j1
+                   idof2= (k2-1)*ndim + j2
+                   answer(n*(idof1-1) + i,n*(idof2-1) + i)= hess(j1,k1,j2,k2)/sqrt(mass(k1)*mass(k2))
+                   if (idof1.eq.idof2) then
+                      answer(n*(idof1-1) + i,n*(idof1-1) + i)= &
+                           answer(n*(idof1-1) + i,n*(idof1-1) + i) +2.0d0/betan**2
+                      if (i.gt.1) answer(n*(idof1-1) + i,n*(idof1-1) + i-1)=&
+                           answer(n*(idof1-1) + i,n*(idof1-1) + i-1) -1.0d0/betan**2
+                      if (i.lt.n) answer(n*(idof1-1) + i,n*(idof1-1) + i+1)=&
+                           answer(n*(idof1-1) + i,n*(idof1-1) + i+1)-1.0d0/betan**2
+                   end if
+                end do
+             end do
+          end do
+       end do
+    end do
+    deallocate(hess)
+    return
+  end subroutine UMhessian
 
   !---------------------------------------------------------------------
   !spline algorithms
@@ -551,6 +519,43 @@ end subroutine Partition
 
     return
   end subroutine instanton
+
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  subroutine detJ(xtilde, etasquared)
+  character::                      jobz, range, uplo
+  double precision::               vl, vu, abstol
+  double precision::               xtilde(:,:,:), etasquared(:)
+  integer::                        nout, ldz, lwork, liwork, info,i
+  integer,allocatable::            isuppz(:), iwork(:)
+  double precision, allocatable::  work(:), z(:,:), H(:,:)
+  ! !get diagonal hessian
+  jobz='N'
+  range='A'
+  uplo='U'
+  abstol=1.0d-8
+  lwork= 2*totdof +1!26*totdof !
+  liwork= 1!10*totdof !
+  info=0
+  ldz=totdof
+  vl=0.0d0
+  vu=0.0d0
+  nout=0
+  allocate(isuppz(2*totdof), work(lwork), iwork(liwork), z(totdof,totdof), H(totdof,totdof))
+  H=0.0d0
+  etasquared=0.0d0
+  call UMhessian(xtilde,H)
+  ! call dsyevr(jobz, range, uplo, totdof, H, totdof, vl, vu, totdof, totdof, abstol, nout, etasquared,&
+  !      z, ldz, isuppz, work, lwork, iwork, liwork, info)
+  call dsyevd(jobz, uplo, totdof, H, totdof, etasquared,work,lwork,iwork,liwork,info)
+  ! write(*,*) info
+  ! do i=1,totdof
+  ! write(*,*) i,etasquared(i)
+  ! end do
+
+  deallocate(isuppz, work, iwork, z,H)
+  return
+  end subroutine detJ
 
   function findmiddle(x1,x2,lampath,path, splinepath)
     integer::          jmax,j

@@ -31,7 +31,7 @@ program rpi
 
   ndof=ndim*natom
   totdof= n*ndof
-
+  call V_init()
   !-------------------------
   !obtain instanton solution, x_tilde
   allocate(path(npath, ndim, natom), lampath(npath), Vpath(npath))
@@ -51,6 +51,10 @@ program rpi
   end do
   lampath(:)= lampath(:)/lampath(npath)
   close(15)
+
+  if (xunit .eq. 2) then
+     path(:,:,:) = path(:,:,:)/0.529177d0
+  end if
 
   allocate(well1(ndim,natom),well2(ndim,natom))
   well1(:,:)= path(1,:,:)
@@ -76,7 +80,7 @@ program rpi
      write(19,*) natom
      write(19,*) "Energy of minimum",i
      do j=1, natom
-        write(19,*)  label(j), (xtilde(i,k,j), k=1,ndim)
+        write(19,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim)
      end do
   end do
   close(19)
@@ -88,11 +92,11 @@ program rpi
   lndetj= 0.0d0
   zerocount=0
   do i=2,totdof
-     if (etasquared(i) .gt. 0.0d0) then
+     ! if (etasquared(i) .gt. 0.0d0) then
         lndetj= lndetj+ log(etasquared(i))
-     else
-        zerocount=zerocount+1
-     end if
+     ! else
+     !    zerocount=zerocount+1
+     ! end if
   end do
   do i=1,n
      xharm(i,:,:)= well1(:,:)
@@ -102,11 +106,12 @@ program rpi
   lndetj0= 0.0d0
   zerocount=0
   do i=1,totdof
-     if (etasquared(i) .gt. 0.0d0) then
+     ! if (etasquared(i) .gt. 0.0d0) then
+     write(*,*) i,etasquared(i)
         lndetj0= lndetj0+ log(etasquared(i))
-     else
-        zerocount=zerocount+1
-     end if
+     ! else
+     !    zerocount=zerocount+1
+     ! end if
   end do
   write(*,*) "lndetJ", lndetj, lndetj0
   !-------------------------
@@ -120,6 +125,7 @@ program rpi
   write(*,*) "phi=", phi
   write(*,*) "s_kink=", skink
   write(*,*) "theta, N*theta=",theta,theta*N
+  write(*,*) "h_ij=", theta/betan, 219475.0d0*theta/betan
   write(*,*) "RPI delta=", delta, delta*219475.0d0
 
   deallocate(xharm, etasquared, xtilde)
