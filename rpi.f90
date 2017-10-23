@@ -4,12 +4,13 @@ program rpi
   double precision, allocatable::   xtilde(:,:,:), xharm(:,:,:), H(:,:)
   double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:)
   double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:)
+  double precision, allocatable::   initpath(:,:)
   double precision::                lndetj, lndetj0, skink
   double precision::                theta,delta, phi
   integer::                         i, j,k,npath, dummy, zerocount
   character, allocatable::         label(:)
   character::                      dummylabel, dummystr(28)
-  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit
+  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, eps
 
   !-------------------------
   !Set default system parameters then read in namelist
@@ -19,6 +20,7 @@ program rpi
   natom=1
   xunit=1
   npath=0
+  eps=1d-3
 
   read(5, nml=RPIDATA)
   betan= beta/dble(n)
@@ -34,14 +36,18 @@ program rpi
   call V_init()
   !-------------------------
   !obtain instanton solution, x_tilde
-  allocate(path(npath, ndim, natom), lampath(npath), Vpath(npath))
+  allocate(initpath(ndim, natom), lampath(npath), Vpath(npath))
+  allocate(path(npath, ndim, natom))
+  path=0.0d0
   open(15, file="path.xyz")
   do i=1, npath
      read(15,*) dummy
      read(15,'(28A)') dummystr!, dummyE !'(A,G25.15)'
      do j=1, natom
-        read(15,*) dummylabel, (path(i,k,j), k=1,ndim)
+        read(15,*) dummylabel, (initpath(k,j), k=1,ndim)
      end do
+     call align_atoms(initpath, path(i,:,:))
+     ! path(i,:,:)= initpath(:,:)
      if (i.eq.1) then
         lampath(1)=0.0d0
      else
@@ -51,6 +57,21 @@ program rpi
   end do
   lampath(:)= lampath(:)/lampath(npath)
   close(15)
+  open(20, file="aligned.xyz")
+  do i=1,npath
+     write(20,*) natom
+     write(20,*) "Energy of minimum",i
+     do j=1, natom
+        if (xunit .eq. 1) then
+           write(20,*)  label(j), (path(i,k,j)*0.529177d0, k=1,ndim)
+        else
+           write(20,*)  label(j), (path(i,k,j), k=1,ndim)
+        end if
+     end do
+  end do
+  close(20)
+
+  deallocate(initpath)
 
   if (xunit .eq. 2) then
      path(:,:,:) = path(:,:,:)/0.529177d0
@@ -92,12 +113,13 @@ program rpi
   lndetj= 0.0d0
   zerocount=0
   do i=2,totdof
-     ! if (etasquared(i) .gt. 0.0d0) then
+     if (etasquared(i) .gt. 0.0d0) then
         lndetj= lndetj+ log(etasquared(i))
-     ! else
-     !    zerocount=zerocount+1
-     ! end if
+     else
+        zerocount=zerocount+1
+     end if
   end do
+  write(*,*) "Skipped ", zerocount, "states"
   do i=1,n
      xharm(i,:,:)= well1(:,:)
   end do
@@ -106,13 +128,14 @@ program rpi
   lndetj0= 0.0d0
   zerocount=0
   do i=1,totdof
-     ! if (etasquared(i) .gt. 0.0d0) then
-     write(*,*) i,etasquared(i)
+     if (etasquared(i) .gt. 0.0d0) then
+     ! write(*,*) i,etasquared(i)
         lndetj0= lndetj0+ log(etasquared(i))
-     ! else
-     !    zerocount=zerocount+1
-     ! end if
+     else
+        zerocount=zerocount+1
+     end if
   end do
+  write(*,*) "Skipped ", zerocount, "states"
   write(*,*) "lndetJ", lndetj, lndetj0
   !-------------------------
   !Put it all together and output.

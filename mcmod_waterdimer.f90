@@ -1,7 +1,7 @@
 module mcmod_mass
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
-  double precision::               beta, betan, UMtilde
+  double precision::               beta, betan, UMtilde, eps
   integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:), tst(:,:)
 
@@ -58,7 +58,6 @@ contains
     double precision::     hess(:,:,:,:), x(:,:), dummy1
     integer::              i, j
     double precision::     gradplus(ndim, natom), gradminus(ndim, natom)
-    double precision, parameter::  eps=1.0d-5
 
     do i= 1, ndim
        do j= 1, natom
@@ -169,6 +168,78 @@ contains
     return
   end subroutine UMhessian
 
+  !---------------------------------------------------------------------
+  !Align a vector of atoms
+
+  subroutine align_atoms(atomsin, atomsout)
+    implicit none
+    double precision::     atomsin(:,:), atomsout(:,:), workvec(3), atoms(ndim,natom)
+    double precision::     theta1, theta2, theta3
+    integer::              i,j,k, atom1, atom2, atom3
+
+    if (ndim .ne. 3) then
+       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
+       stop
+    end if
+
+    atom1=1
+    atom2=2
+    atom3=3
+
+    !-----------------------------------------
+    !Put atom1 at origin
+    do i=1, natom
+    atomsout(:,i)= atomsin(:,i) - atomsin(:,atom1)
+    end do
+    !-----------------------------------------
+    !Align vector between atom1 and atom2 to x axis
+    !first rotate about z-axis to align with zx plane
+    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+    theta1= atan2(workvec(2),workvec(1))
+    call rotate_atoms(atomsout, 3, theta1)
+
+    !rotate about y-axis to align with z-axis
+    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+    theta2= atan2(workvec(3), workvec(1))
+    call rotate_atoms(atomsout, 2, theta2)
+
+    !-----------------------------------------
+    !Align vector between atom1 and atom3 to xz plane
+    !rotate about x-axis
+    workvec(:)= atomsout(:,atom3) - atomsout(:,atom1)
+    theta3= -atan2(workvec(2),workvec(3))
+    call rotate_atoms(atomsout, 1, theta3)
+    
+    return
+  end subroutine align_atoms
+
+  subroutine rotate_atoms(atoms,axis,theta)
+    implicit none
+    double precision::     rotmatrix(3,3), atoms(:,:)
+    double precision::     theta
+    integer::              i, axis, j,k
+
+    if (axis.eq. 1) then
+       j=2
+       k=3
+    else if(axis.eq.2) then
+       j=1
+       k=3
+    else
+       j=1
+       k=2
+    end if
+    rotmatrix(:,:)=0.0d0
+    rotmatrix(axis,axis)=1.0d0
+    rotmatrix(j,j)= cos(theta)
+    rotmatrix(k,k)= cos(theta)
+    rotmatrix(k,j)= -sin(theta)
+    rotmatrix(j,k)= sin(theta)
+    do i=1, natom
+       atoms(:,i)= matmul(rotmatrix(:,:), atoms(:,i))
+    end do
+    return
+  end subroutine rotate_atoms
   !---------------------------------------------------------------------
   !spline algorithms
   FUNCTION assert_eq(n1,n2,n3,string)
@@ -457,7 +528,7 @@ end subroutine Partition
     integer::                        iprint, m, iflag, mp,idof
     integer::                        i, lp, count, iw, j,k, dof
     double precision::               eps, xtol, gtol, stpmin, stpmax
-    double precision::               f, xtilde(:,:,:)
+    double precision::               f, xtilde(:,:,:), xtemp(ndim,natom)
     double precision::               factr, a(:,:),b(:,:)
     double precision, allocatable::  fprime(:,:,:), work(:), fprimework(:)
     double precision, allocatable::  lb(:), ub(:), dsave(:), xwork(:)
@@ -472,10 +543,23 @@ end subroutine Partition
        do j=1,ndim
           do k=1,natom
              idof= ((k-1)*ndim + j -1)*n +i
-             lb(idof)= a(j,k)
-             ub(idof)= b(j,k)
-             nbd(idof)=0
-             ! xtilde(i,j,k)= a(j,k) + (b(j,k)-a(j,k))*dble(i-1)/dble(n-1)
+             if (k.eq. 1) then
+                lb(idof)= a(j,k)
+                ub(idof)= a(j,k)
+                nbd(idof)=2
+             else if (k.eq.2 .and. (j.eq.2 .or. j.eq.3)) then
+                lb(idof)= a(j,k)
+                ub(idof)= a(j,k)
+                nbd(idof)=2
+             else if (k .eq. 3 .and. j.eq.2) then
+                lb(idof)= a(j,k)
+                ub(idof)= a(j,k)
+                nbd(idof)=2
+             else
+                lb(idof)= a(j,k)
+                ub(idof)= b(j,k)
+                nbd(idof)=0
+             end if
           end do
        end do
     end do
@@ -498,12 +582,21 @@ end subroutine Partition
          task.eq.'START')
        ! write(*,*) f
        count=count+1
+       ! do i=1,n
+       !    xtemp(:,:)= xtilde(i,:,:)
+       !    call align_atoms(xtemp, xtilde(i,:,:))
+       ! end do
        xwork=reshape(xtilde,(/dof/))
        fprimework= reshape(fprime,(/dof/))
        call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps,work&
             ,iwork,task,iprint, csave,lsave,isave,dsave)
        if (task(1:2) .eq. 'FG') then
           xtilde= reshape(xwork,(/n,ndim,natom/))
+          ! do i=1,n
+          !    xtemp(:,:)= xtilde(i,:,:)
+          !    call align_atoms(xtemp, xtilde(i,:,:))
+          ! end do
+
           f= UM(xtilde,a,b)
           call UMprime(xtilde,a,b,fprime)
           ! write(*,*) count, f, dot_product(fprime, fprime)
