@@ -161,22 +161,22 @@ program pimd
 
      if (instapath) then
         allocate(well1(ndim,natom), well2(ndim,natom))
-        ! open(15, file="well1.dat", status="old")
-        ! open(16, file="well2.dat", status="old")
-        ! do j=1,natom
-        !    read(15,*) well1(1,j),well1(2,j),well1(3,j)
-        !    read(16,*) well2(1,j),well2(2,j),well2(3,j)
-        ! end do
-        ! close(15)
-        ! close(16)
-        !xunit=1 means bohr
-        !xunit=2 means angstroms
+        open(15, file="well1.dat", status="old")
+        open(16, file="well2.dat", status="old")
+        do j=1,natom
+           read(15,*) well1(1,j),well1(2,j),well1(3,j)
+           read(16,*) well2(1,j),well2(2,j),well2(3,j)
+        end do
+        close(15)
+        close(16)
+        ! xunit=1 means bohr
+        ! xunit=2 means angstroms
         ! if (xunit .eq. 2) then
         !    well1(:,:)= well1(:,:)/0.529177d0
         !    well2(:,:)= well2(:,:)/0.529177d0
         ! end if
-        well1(:,:)= path(1,:,:)
-        well2(:,:)= path(npath,:,:)
+        ! well1(:,:)= path(1,:,:)
+        ! well2(:,:)= path(npath,:,:)
         write(*,*) "Potential at wells:", V(well1), V(well2)
         allocate(xtilde(n, ndim, natom),splinepath(npath))
         do i=1,ndim

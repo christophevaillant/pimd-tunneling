@@ -25,7 +25,7 @@ contains
        end do
     end do
     call mbpolenergy(2, V, xtemp)
-    V= V*1.59362d-3 !+7.909064335674565D-003
+    V= V*1.59362d-3
     deallocate(xtemp)
     return
   end function V
@@ -171,47 +171,69 @@ contains
   !---------------------------------------------------------------------
   !Align a vector of atoms
 
-  subroutine align_atoms(atomsin, atomsout)
+  subroutine align_atoms(atomsvec1, atomsvec2, alpha, beta,gamma)
     implicit none
-    double precision::     atomsin(:,:), atomsout(:,:), workvec(3), atoms(ndim,natom)
-    double precision::     theta1, theta2, theta3
-    integer::              i,j,k, atom1, atom2, atom3
+    double precision::     atomsvec1(:,:), atomsvec2(:,:)
+    double precision::     workvec1(ndim), workvec2(ndim)
+    double precision::     alpha, beta, gamma, com(ndim), costheta
+    integer::              i,j,k
 
-    if (ndim .ne. 3) then
-       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
-       stop
-    end if
+    ! if (ndim .ne. 3) then
+    !    write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
+    !    stop
+    ! end if
 
-    atom1=1
-    atom2=2
-    atom3=3
+    ! !Put everything in COM frame, just in case it hasn't been done
+    ! call centreofmass(atomsvec1, com)
+    ! do i=1, natoms
+    !    atomsvec1(:,i)= atomsvec1(:,i) - com(:)
+    ! end do
+    ! call centreofmass(atomsvec2, com)
+    ! do i=1, natoms
+    !    atomsvec2(:,i)= atomsvec2(:,i) - com(:)
+    ! end do
 
-    !-----------------------------------------
-    !Put atom1 at origin
-    do i=1, natom
-    atomsout(:,i)= atomsin(:,i) - atomsin(:,atom1)
-    end do
-    !-----------------------------------------
-    !Align vector between atom1 and atom2 to x axis
-    !first rotate about z-axis to align with zx plane
-    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
-    theta1= atan2(workvec(2),workvec(1))
-    call rotate_atoms(atomsout, 3, theta1)
+    ! !Figure out gamma from O1--O2 axis (rotation about z axis)
+    ! workvec1(:)= atomsvec1(:,1) - atomsvec1(:,4)
+    ! workvec2(:)= atomsvec2(:,1) - atomsvec2(:,4)
+    ! costheta= workvec1(1)*workvec2(1) + workvec1(2)*workvec2(2)
+    ! costheta=costheta/sqrt(workvec1(1)**2 + workvec1(2)**2)
+    ! costheta=costheta/sqrt(workvec2(1)**2 + workvec2(2)**2)
+    ! gamma= acos(costheta)
 
-    !rotate about y-axis to align with z-axis
-    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
-    theta2= atan2(workvec(3), workvec(1))
-    call rotate_atoms(atomsout, 2, theta2)
+    ! call rotate_vec(workvec1, 3, -gamma)
 
-    !-----------------------------------------
-    !Align vector between atom1 and atom3 to xz plane
-    !rotate about x-axis
-    workvec(:)= atomsout(:,atom3) - atomsout(:,atom1)
-    theta3= -atan2(workvec(2),workvec(3))
-    call rotate_atoms(atomsout, 1, theta3)
+    !Figure out beta
+    
     
     return
   end subroutine align_atoms
+
+  subroutine rotate_vec(vec,axis,theta)
+    implicit none
+    double precision::     rotmatrix(3,3), vec(:)
+    double precision::     theta
+    integer::              i, axis, j,k
+
+    if (axis.eq. 1) then
+       j=2
+       k=3
+    else if(axis.eq.2) then
+       j=1
+       k=3
+    else
+       j=1
+       k=2
+    end if
+    rotmatrix(:,:)=0.0d0
+    rotmatrix(axis,axis)=1.0d0
+    rotmatrix(j,j)= cos(theta)
+    rotmatrix(k,k)= cos(theta)
+    rotmatrix(k,j)= -sin(theta)
+    rotmatrix(j,k)= sin(theta)
+    vec(:)= matmul(rotmatrix(:,:), vec(:))
+    return
+  end subroutine rotate_vec
 
   subroutine rotate_atoms(atoms,axis,theta)
     implicit none
@@ -523,13 +545,28 @@ subroutine Partition(A, marker)
 
 end subroutine Partition
 
+subroutine centreofmass(x, com)
+  implicit none
+  double precision::    x(:,:), com(:)
+  integer::             i,j
+
+  com(:)=0.0d0
+  do i=1,ndim
+     do j=1,natom
+        com(i)= com(i) + mass(j)*x(i,j)
+     end do
+  end do
+  com(:)=com(:)/sum(mass(:))
+  return
+end subroutine centreofmass
+
   subroutine instanton(xtilde,a,b)
     implicit none
     integer::                        iprint, m, iflag, mp,idof
     integer::                        i, lp, count, iw, j,k, dof
     double precision::               eps, xtol, gtol, stpmin, stpmax
     double precision::               f, xtilde(:,:,:), xtemp(ndim,natom)
-    double precision::               factr, a(:,:),b(:,:)
+    double precision::               factr, a(:,:),b(:,:), com(ndim)
     double precision, allocatable::  fprime(:,:,:), work(:), fprimework(:)
     double precision, allocatable::  lb(:), ub(:), dsave(:), xwork(:)
     integer, allocatable::           nbd(:), iwork(:), isave(:)
@@ -539,27 +576,41 @@ end subroutine Partition
     dof= n*ndim*natom
     allocate(lb(dof), ub(dof),fprime(n,ndim,natom), nbd(dof))
     allocate(fprimework(dof), xwork(dof))
+    call centreofmass(a, com)
+    do i=1,ndim
+       do j=1,natom
+          a(i,j)= a(i,j)- com(i)
+       end do
+    end do
+    call centreofmass(b, com)
+    do i=1,ndim
+       do j=1,natom
+          b(i,j)= b(i,j)- com(i)
+       end do
+    end do 
     do i=1, n, 1
+       call centreofmass(xtilde(i,:,:), com)
        do j=1,ndim
           do k=1,natom
+             xtilde(i,j,k)= xtilde(i,j,k)- com(j)
              idof= ((k-1)*ndim + j -1)*n +i
-             if (k.eq. 1) then
+             ! if (k.eq. 1) then
+             !    lb(idof)= a(j,k)
+             !    ub(idof)= a(j,k)
+             !    nbd(idof)=2
+             ! else if (k.eq.2 .and. (j.eq.2 .or. j.eq.3)) then ! 
+             !    lb(idof)= a(j,k)
+             !    ub(idof)= a(j,k)
+             !    nbd(idof)=2
+             ! else if (k .eq. 3 .and. j.eq.2) then !
+             !    lb(idof)= a(j,k)
+             !    ub(idof)= a(j,k)
+             !    nbd(idof)=2
+             ! else
                 lb(idof)= a(j,k)
                 ub(idof)= a(j,k)
-                nbd(idof)=2
-             else if (k.eq.2 .and. (j.eq.2 .or. j.eq.3)) then
-                lb(idof)= a(j,k)
-                ub(idof)= a(j,k)
-                nbd(idof)=2
-             else if (k .eq. 3 .and. j.eq.2) then
-                lb(idof)= a(j,k)
-                ub(idof)= a(j,k)
-                nbd(idof)=2
-             else
-                lb(idof)= a(j,k)
-                ub(idof)= b(j,k)
                 nbd(idof)=0
-             end if
+             ! end if
           end do
        end do
     end do
@@ -603,10 +654,11 @@ end subroutine Partition
        end if
     end do
     if (task(1:5) .eq. "ERROR" .or. task(1:4) .eq. "ABNO") then
-         write(*,*) "Error:"
-         write(*,*) task
-         ! stop
-      end if
+       write(*,*) "Error:"
+       write(*,*) task
+       ! stop
+    end if
+
     deallocate(work, lb, ub, fprime, fprimework,xwork)
     deallocate(iwork, nbd, isave, dsave)
 

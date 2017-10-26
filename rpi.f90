@@ -4,13 +4,15 @@ program rpi
   double precision, allocatable::   xtilde(:,:,:), xharm(:,:,:), H(:,:)
   double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:)
   double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:)
-  double precision, allocatable::   initpath(:,:)
-  double precision::                lndetj, lndetj0, skink
-  double precision::                theta,delta, phi
-  integer::                         i, j,k,npath, dummy, zerocount
+  double precision, allocatable::   initpath(:,:), xtilderot(:,:,:), wellrot(:,:)
+  double precision::                lndetj, lndetj0, skink, psi, cutoff
+  double precision::                theta,delta, phi, omega, gamma, Ibeta
+  integer::                         i, j,k,npath, dummy, zerocount, npoints
+  integer::                         ii,jj,kk
   character, allocatable::         label(:)
   character::                      dummylabel, dummystr(28)
-  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, eps
+  logical::                        angular
+  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, eps, angular, npoints, cutoff
 
   !-------------------------
   !Set default system parameters then read in namelist
@@ -21,6 +23,8 @@ program rpi
   xunit=1
   npath=0
   eps=1d-3
+  npoints=10
+  angular=.false.
 
   read(5, nml=RPIDATA)
   betan= beta/dble(n)
@@ -34,6 +38,17 @@ program rpi
   ndof=ndim*natom
   totdof= n*ndof
   call V_init()
+
+  allocate(well1(ndim,natom),well2(ndim,natom))
+  open(30, file="well1.dat", status='old')
+  open(40, file="well2.dat", status='old')
+  do j=1, natom
+     read(30,*)(well1(i,j), i=1,ndim)
+     read(40,*)(well2(i,j), i=1,ndim)
+  end do
+  close(30)
+  close(40)
+  write(*,*) "Potential at wells:", V(well1), V(well2)
   !-------------------------
   !obtain instanton solution, x_tilde
   allocate(initpath(ndim, natom), lampath(npath), Vpath(npath))
@@ -46,13 +61,14 @@ program rpi
      do j=1, natom
         read(15,*) dummylabel, (initpath(k,j), k=1,ndim)
      end do
-     call align_atoms(initpath, path(i,:,:))
-     ! path(i,:,:)= initpath(:,:)
      if (i.eq.1) then
+        ! call align_atoms(
         lampath(1)=0.0d0
      else
         lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
      end if
+     ! call align_atoms(initpath, path(i,:,:))
+     path(i,:,:)= initpath(:,:)
      Vpath(i)= V(path(i,:,:))
   end do
   lampath(:)= lampath(:)/lampath(npath)
@@ -77,10 +93,6 @@ program rpi
      path(:,:,:) = path(:,:,:)/0.529177d0
   end if
 
-  allocate(well1(ndim,natom),well2(ndim,natom))
-  well1(:,:)= path(1,:,:)
-  well2(:,:)= path(npath,:,:)
-  write(*,*) "Potential at wells:", V(well1), V(well2)
   allocate(xtilde(n, ndim, natom),splinepath(npath))
   xtilde=0.0d0
   splinepath=0.0d0
@@ -95,7 +107,7 @@ program rpi
   end do
   deallocate(lampath,Vpath, path, splinepath)
   call instanton(xtilde,well1,well2)
-  write(*,*) "Found instanton."
+    write(*,*) "Found instanton."
   open(19, file="instanton.xyz")
   do i=1,n
      write(19,*) natom
@@ -106,20 +118,9 @@ program rpi
   end do
   close(19)
 
-  !-------------------------
-  !work out Hessian at the instantons
+  !------------------------------------
+  !work out Q_0
   allocate(xharm(n,ndim, natom), etasquared(totdof))
-  call detJ(xtilde, etasquared)
-  lndetj= 0.0d0
-  zerocount=0
-  do i=2,totdof
-     if (etasquared(i) .gt. 0.0d0) then
-        lndetj= lndetj+ log(etasquared(i))
-     else
-        zerocount=zerocount+1
-     end if
-  end do
-  write(*,*) "Skipped ", zerocount, "states"
   do i=1,n
      xharm(i,:,:)= well1(:,:)
   end do
@@ -136,20 +137,86 @@ program rpi
      end if
   end do
   write(*,*) "Skipped ", zerocount, "states"
+
+  call detJ(xtilde, etasquared)
+  lndetj= 0.0d0
+  zerocount=0
+  do i=2,totdof
+     if (etasquared(i) .gt. 0.0d0) then
+        lndetj= lndetj+ log(etasquared(i))
+     else
+        zerocount=zerocount+1
+     end if
+  end do
+  write(*,*) "Skipped ", zerocount, "states"
   write(*,*) "lndetJ", lndetj, lndetj0
+  gamma= exp(0.5d0*(lndetJ-lndetJ0))
+
+  !------------------------------------
+  !loop over solid angle points
+  if (angular) then
+     allocate(xtilderot(n,ndim,natom), wellrot(ndim,natom))
+     open(90, file="angularI.dat")
+     xtilderot(:,:,:)= xtilde(:,:,:)
+     do ii=1,npoints
+        theta= cutoff*dble(ii-1)/dble(npoints-1)
+        do jj=1,npoints
+           ! do k=1,10
+           phi= 0.5d0*cutoff*dble(jj-1)/dble(npoints-1)
+              ! do i=1,n
+              !    dtheta= dble(i-1)*theta/dble(n-1)
+              !    ! dphi= dble(i-1)*phi/dble(n-1)
+              !    call rotate_atoms(xtilderot(i,:,:),1,dtheta)
+              !    ! call rotate_atoms(xtilderot(i,:,:),1,dphi)
+              ! end do
+              wellrot(:,:)= well2(:,:)
+              call rotate_atoms(wellrot,1,theta)
+              call rotate_atoms(wellrot,2,phi)
+              ! call rotate_atoms(wellrot,3,psi)
+              call instanton(xtilderot,well1,wellrot)
+              ! call detJ(xtilderot, etasquared)
+
+              ! lndetj= 0.0d0
+              ! zerocount=0
+              ! do i=2,totdof
+              !    if (etasquared(i) .gt. 0.0d0) then
+              !       lndetj= lndetj+ log(etasquared(i))
+              !    else
+              !       zerocount=zerocount+1
+              !    end if
+              ! end do
+              ! write(*,*) "Skipped ", zerocount, "states"
+              ! write(*,*) "lndetJ", lndetj, lndetj0
+              !-------------------------
+              !Put it all together and output.
+              Skink= betan*UM(xtilderot, well1, wellrot)
+              omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gamma
+              Ibeta= tanh(omega*N)
+              write(90,*) theta, phi, Ibeta, 219475.0d0*omega/betan
+              write(*,*) theta,phi, Ibeta, 219475.0d0*omega/betan
+              ! end do
+           ! end do
+        end do
+     end do
+     deallocate(xtilderot, wellrot)
+     close(90)
+  else
   !-------------------------
-  !Put it all together and output.
-  phi= exp(0.5d0*(lndetJ-lndetJ0))
-  Skink= betan*UM(xtilde, well1, well2)
-  theta= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/phi
-  delta= 2.0d0*theta/betan
-  write(*,*) "beta=", beta, "n=", n
-  write(*,*) "beta_n=", betan
-  write(*,*) "phi=", phi
-  write(*,*) "s_kink=", skink
-  write(*,*) "theta, N*theta=",theta,theta*N
-  write(*,*) "h_ij=", theta/betan, 219475.0d0*theta/betan
-  write(*,*) "RPI delta=", delta, delta*219475.0d0
+  !work out Hessian at the instantons
+     !-------------------------
+     !Put it all together and output.
+     gamma= exp(0.5d0*(lndetJ-lndetJ0))
+     Skink= betan*UM(xtilde, well1, well2)
+     omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gamma
+     delta= 2.0d0*omega/betan
+     write(*,*) "beta=", beta, "n=", n
+     write(*,*) "beta_n=", betan
+     write(*,*) "phi=", gamma
+     write(*,*) "s_kink=", skink
+     write(*,*) "theta, N*theta=",omega,omega*N
+     write(*,*) "h_ij=", omega/betan, 219475.0d0*omega/betan
+     write(*,*) "RPI delta=", delta, delta*219475.0d0
+  end if
 
   deallocate(xharm, etasquared, xtilde)
 end program rpi
