@@ -1,18 +1,20 @@
 program rpi
   use mcmod_mass
+  use verletint
   implicit none
-  double precision, allocatable::   xtilde(:,:,:), xharm(:,:,:), H(:,:)
+  double precision, allocatable::   theta(:),phi(:), xtilde(:,:,:), xharm(:,:,:), H(:,:)
+  double precision, allocatable::   weightstheta(:),weightsphi(:)
   double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:)
   double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:)
   double precision, allocatable::   initpath(:,:), xtilderot(:,:,:), wellrot(:,:)
-  double precision::                lndetj, lndetj0, skink, psi, cutoff
-  double precision::                theta,delta, phi, omega, gamma, Ibeta
+  double precision::                lndetj, lndetj0, skink, psi, cutofftheta, cutoffphi
+  double precision::                delta, omega, gammetilde, Ibeta
   integer::                         i, j,k,npath, dummy, zerocount, npoints
   integer::                         ii,jj,kk
   character, allocatable::         label(:)
   character::                      dummylabel, dummystr(28)
   logical::                        angular
-  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, eps, angular, npoints, cutoff
+  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, eps, angular, npoints, cutofftheta,cutoffphi
 
   !-------------------------
   !Set default system parameters then read in namelist
@@ -150,19 +152,21 @@ program rpi
   end do
   write(*,*) "Skipped ", zerocount, "states"
   write(*,*) "lndetJ", lndetj, lndetj0
-  gamma= exp(0.5d0*(lndetJ-lndetJ0))
+  gammetilde= exp(0.5d0*(lndetJ-lndetJ0))
 
   !------------------------------------
   !loop over solid angle points
   if (angular) then
+     allocate(theta(npoints), weightstheta(npoints))
+     allocate(phi(npoints), weightsphi(npoints))
      allocate(xtilderot(n,ndim,natom), wellrot(ndim,natom))
+     call gauleg(0d0,cutofftheta,theta, weightstheta,npoints)
+     call gauleg(0d0,cutoffphi,phi, weightsphi,npoints)
      open(90, file="angularI.dat")
      xtilderot(:,:,:)= xtilde(:,:,:)
      do ii=1,npoints
-        theta= cutoff*dble(ii-1)/dble(npoints-1)
         do jj=1,npoints
            ! do k=1,10
-           phi= 0.5d0*cutoff*dble(jj-1)/dble(npoints-1)
               ! do i=1,n
               !    dtheta= dble(i-1)*theta/dble(n-1)
               !    ! dphi= dble(i-1)*phi/dble(n-1)
@@ -170,30 +174,30 @@ program rpi
               !    ! call rotate_atoms(xtilderot(i,:,:),1,dphi)
               ! end do
               wellrot(:,:)= well2(:,:)
-              call rotate_atoms(wellrot,1,theta)
-              call rotate_atoms(wellrot,2,phi)
+              call rotate_atoms(wellrot,1,theta(ii))
+              call rotate_atoms(wellrot,2,phi(jj))
               ! call rotate_atoms(wellrot,3,psi)
               call instanton(xtilderot,well1,wellrot)
-              ! call detJ(xtilderot, etasquared)
+              call detJ(xtilderot, etasquared)
 
-              ! lndetj= 0.0d0
-              ! zerocount=0
-              ! do i=2,totdof
-              !    if (etasquared(i) .gt. 0.0d0) then
-              !       lndetj= lndetj+ log(etasquared(i))
-              !    else
-              !       zerocount=zerocount+1
-              !    end if
-              ! end do
+              lndetj= 0.0d0
+              zerocount=0
+              do i=2,totdof
+                 if (etasquared(i) .gt. 0.0d0) then
+                    lndetj= lndetj+ log(etasquared(i))
+                 else
+                    zerocount=zerocount+1
+                 end if
+              end do
               ! write(*,*) "Skipped ", zerocount, "states"
               ! write(*,*) "lndetJ", lndetj, lndetj0
               !-------------------------
               !Put it all together and output.
               Skink= betan*UM(xtilderot, well1, wellrot)
-              omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gamma
+              omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
               Ibeta= tanh(omega*N)
-              write(90,*) theta, phi, Ibeta, 219475.0d0*omega/betan
-              write(*,*) theta,phi, Ibeta, 219475.0d0*omega/betan
+              write(90,*) theta(ii), phi(jj), weightstheta(ii)*weightsphi(jj), Ibeta
+              write(*,*) theta(ii),phi(jj), weightstheta(ii)*weightsphi(jj), Ibeta
               ! end do
            ! end do
         end do
@@ -205,13 +209,13 @@ program rpi
   !work out Hessian at the instantons
      !-------------------------
      !Put it all together and output.
-     gamma= exp(0.5d0*(lndetJ-lndetJ0))
+     gammetilde= exp(0.5d0*(lndetJ-lndetJ0))
      Skink= betan*UM(xtilde, well1, well2)
-     omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gamma
+     omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
      delta= 2.0d0*omega/betan
      write(*,*) "beta=", beta, "n=", n
      write(*,*) "beta_n=", betan
-     write(*,*) "phi=", gamma
+     write(*,*) "phi=", gammetilde
      write(*,*) "s_kink=", skink
      write(*,*) "theta, N*theta=",omega,omega*N
      write(*,*) "h_ij=", omega/betan, 219475.0d0*omega/betan
