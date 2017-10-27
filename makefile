@@ -36,7 +36,7 @@ FORMICLIBS= -L. -lpes_formic
 
 #Water dimer (MB-pol):
 WATDIMFILES= $(OBJDIR)/mcmod_waterdimer.o
-WATDIMLIBS= -L../../Water/ -lmbpol -cxxlib
+WATDIMLIBS= -L../../Water/mbpol-19-Dec-2013/mbpol/ -lmbpol -cxxlib
 
 #Water dimer (HBB2):
 HBB2FILES= $(OBJDIR)/mcmod_waterdimer_hbb2.o
