@@ -171,12 +171,10 @@ program pimd
         close(16)
         ! xunit=1 means bohr
         ! xunit=2 means angstroms
-        ! if (xunit .eq. 2) then
-        !    well1(:,:)= well1(:,:)/0.529177d0
-        !    well2(:,:)= well2(:,:)/0.529177d0
-        ! end if
-        ! well1(:,:)= path(1,:,:)
-        ! well2(:,:)= path(npath,:,:)
+        if (xunit .eq. 2) then
+           well1(:,:)= well1(:,:)/0.529177d0
+           well2(:,:)= well2(:,:)/0.529177d0
+        end if
         write(*,*) "Potential at wells:", V(well1), V(well2)
         allocate(xtilde(n, ndim, natom),splinepath(npath))
         do i=1,ndim

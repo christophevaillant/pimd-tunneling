@@ -50,6 +50,12 @@ program rpi
   end do
   close(30)
   close(40)
+
+  if (xunit .eq. 2) then
+     well1(:,:)= well1(:,:)/0.529177d0
+     well2(:,:)= well2(:,:)/0.529177d0
+  end if
+
   write(*,*) "Potential at wells:", V(well1), V(well2)
   !-------------------------
   !obtain instanton solution, x_tilde
@@ -160,45 +166,44 @@ program rpi
      allocate(theta(npoints), weightstheta(npoints))
      allocate(phi(npoints), weightsphi(npoints))
      allocate(xtilderot(n,ndim,natom), wellrot(ndim,natom))
-     call gauleg(0d0,cutofftheta,theta, weightstheta,npoints)
-     call gauleg(0d0,cutoffphi,phi, weightsphi,npoints)
+     call gauleg(0d0,2.0d0*pi,theta, weightstheta,npoints)
+     call gauleg(0d0,pi,phi, weightsphi,npoints)
      open(90, file="angularI.dat")
      xtilderot(:,:,:)= xtilde(:,:,:)
      do ii=1,npoints
         do jj=1,npoints
-           ! do k=1,10
-              ! do i=1,n
-              !    dtheta= dble(i-1)*theta/dble(n-1)
-              !    ! dphi= dble(i-1)*phi/dble(n-1)
-              !    call rotate_atoms(xtilderot(i,:,:),1,dtheta)
-              !    ! call rotate_atoms(xtilderot(i,:,:),1,dphi)
-              ! end do
-              wellrot(:,:)= well2(:,:)
-              call rotate_atoms(wellrot,1,theta(ii))
-              call rotate_atoms(wellrot,2,phi(jj))
-              ! call rotate_atoms(wellrot,3,psi)
-              call instanton(xtilderot,well1,wellrot)
-              call detJ(xtilderot, etasquared)
+           if (theta(ii).gt. cutofftheta .or. phi(jj).gt. cutoffphi) then
+              write(90,*) theta(ii), phi(jj), weightstheta(ii)*weightsphi(jj), 0.0d0
+              write(*,*) theta(ii),phi(jj), weightstheta(ii)*weightsphi(jj), 0.0d0, "(skipped)"
+              cycle
+           end if
+           wellrot(:,:)= well2(:,:)
+           xtilderot(:,:,:)= xtilde(:,:,:)
+           call rotate_atoms(wellrot,1,theta(ii))
+           call rotate_atoms(wellrot,2,phi(jj))
+           call instanton(xtilderot,well1,wellrot)
+           call detJ(xtilderot, etasquared)
 
-              lndetj= 0.0d0
-              zerocount=0
-              do i=2,totdof
-                 if (etasquared(i) .gt. 0.0d0) then
-                    lndetj= lndetj+ log(etasquared(i))
-                 else
-                    zerocount=zerocount+1
-                 end if
-              end do
-              ! write(*,*) "Skipped ", zerocount, "states"
-              ! write(*,*) "lndetJ", lndetj, lndetj0
-              !-------------------------
-              !Put it all together and output.
-              Skink= betan*UM(xtilderot, well1, wellrot)
-              omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
-              Ibeta= tanh(omega*N)
-              write(90,*) theta(ii), phi(jj), weightstheta(ii)*weightsphi(jj), Ibeta
-              write(*,*) theta(ii),phi(jj), weightstheta(ii)*weightsphi(jj), Ibeta
-              ! end do
+           lndetj= 0.0d0
+           zerocount=0
+           do i=2,totdof
+              if (etasquared(i) .gt. 0.0d0) then
+                 lndetj= lndetj+ log(etasquared(i))
+              else
+                 zerocount=zerocount+1
+              end if
+           end do
+           write(*,*) "Skipped ", zerocount, "states"
+           write(*,*) "lndetJ", lndetj, lndetj0
+           gammetilde= exp(0.5d0*(lndetJ-lndetJ0))
+           !-------------------------
+           !Put it all together and output.
+           Skink= betan*UM(xtilderot, well1, wellrot)
+           omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
+           Ibeta= tanh(omega*N)
+           write(90,*) theta(ii), phi(jj), weightstheta(ii)*weightsphi(jj), Ibeta
+           write(*,*) theta(ii),phi(jj), weightstheta(ii)*weightsphi(jj), Ibeta, lndetj
+           ! end do
            ! end do
         end do
      end do
