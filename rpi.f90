@@ -4,7 +4,7 @@ program rpi
   implicit none
   double precision, allocatable::   theta(:),phi(:), xtilde(:,:,:), xharm(:,:,:), H(:,:)
   double precision, allocatable::   weightstheta(:),weightsphi(:)
-  double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:)
+  double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:), wellinit(:,:)
   double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:)
   double precision, allocatable::   initpath(:,:), xtilderot(:,:,:), wellrot(:,:)
   double precision::                lndetj, lndetj0, skink, psi, cutofftheta, cutoffphi
@@ -13,8 +13,8 @@ program rpi
   integer::                         ii,jj,kk
   character, allocatable::         label(:)
   character::                      dummylabel, dummystr(28)
-  logical::                        angular
-  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, eps, angular, npoints, cutofftheta,cutoffphi
+  logical::                        angular, output_instanton
+  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, eps, angular, npoints, cutofftheta,cutoffphi, output_instanton
 
   !-------------------------
   !Set default system parameters then read in namelist
@@ -27,6 +27,7 @@ program rpi
   eps=1d-3
   npoints=10
   angular=.false.
+  output_instanton=.false.
 
   read(5, nml=RPIDATA)
   betan= beta/dble(n)
@@ -41,7 +42,7 @@ program rpi
   totdof= n*ndof
   call V_init()
 
-  allocate(well1(ndim,natom),well2(ndim,natom))
+  allocate(well1(ndim,natom),well2(ndim,natom), wellinit(ndim,natom))
   open(30, file="well1.dat", status='old')
   open(40, file="well2.dat", status='old')
   do j=1, natom
@@ -55,6 +56,10 @@ program rpi
      well1(:,:)= well1(:,:)/0.529177d0
      well2(:,:)= well2(:,:)/0.529177d0
   end if
+  wellinit(:,:)= well1(:,:)
+  call align_atoms(wellinit, well1)
+  wellinit(:,:)= well2(:,:)
+  call align_atoms(wellinit, well2)
 
   write(*,*) "Potential at wells:", V(well1), V(well2)
   !-------------------------
@@ -75,8 +80,8 @@ program rpi
      else
         lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
      end if
-     ! call align_atoms(initpath, path(i,:,:))
-     path(i,:,:)= initpath(:,:)
+     call align_atoms(initpath, path(i,:,:))
+     ! path(i,:,:)= initpath(:,:)
      Vpath(i)= V(path(i,:,:))
   end do
   lampath(:)= lampath(:)/lampath(npath)
@@ -146,20 +151,6 @@ program rpi
   end do
   write(*,*) "Skipped ", zerocount, "states"
 
-  call detJ(xtilde, etasquared)
-  lndetj= 0.0d0
-  zerocount=0
-  do i=2,totdof
-     if (etasquared(i) .gt. 0.0d0) then
-        lndetj= lndetj+ log(etasquared(i))
-     else
-        zerocount=zerocount+1
-     end if
-  end do
-  write(*,*) "Skipped ", zerocount, "states"
-  write(*,*) "lndetJ", lndetj, lndetj0
-  gammetilde= exp(0.5d0*(lndetJ-lndetJ0))
-
   !------------------------------------
   !loop over solid angle points
   if (angular) then
@@ -182,6 +173,18 @@ program rpi
            call rotate_atoms(wellrot,1,theta(ii))
            call rotate_atoms(wellrot,2,phi(jj))
            call instanton(xtilderot,well1,wellrot)
+           if (output_instanton) then
+              open(19, file="instanton.xyz")
+              do i=1,n
+                 write(19,*) natom
+                 write(19,*) "Energy of minimum",i
+                 do j=1, natom
+                    write(19,*)  label(j), (xtilderot(i,k,j)*0.529177d0, k=1,ndim)
+                 end do
+              end do
+              close(19)
+           end if
+
            call detJ(xtilderot, etasquared)
 
            lndetj= 0.0d0
@@ -214,7 +217,21 @@ program rpi
   !work out Hessian at the instantons
      !-------------------------
      !Put it all together and output.
+     call detJ(xtilde, etasquared)
+     lndetj= 0.0d0
+     zerocount=0
+     do i=2,totdof
+        if (etasquared(i) .gt. 0.0d0) then
+           lndetj= lndetj+ log(etasquared(i))
+        else
+           zerocount=zerocount+1
+        end if
+     end do
+     write(*,*) "Skipped ", zerocount, "states"
+     write(*,*) "lndetJ", lndetj, lndetj0
      gammetilde= exp(0.5d0*(lndetJ-lndetJ0))
+
+
      Skink= betan*UM(xtilde, well1, well2)
      omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
      delta= 2.0d0*omega/betan

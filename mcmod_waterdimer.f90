@@ -171,39 +171,45 @@ contains
   !---------------------------------------------------------------------
   !Align a vector of atoms
 
-  subroutine align_atoms(atomsvec1, atomsvec2, alpha, beta,gamma)
+  subroutine align_atoms(atomsin, atomsout)
     implicit none
-    double precision::     atomsvec1(:,:), atomsvec2(:,:)
-    double precision::     workvec1(ndim), workvec2(ndim)
-    double precision::     alpha, beta, gamma, com(ndim), costheta
-    integer::              i,j,k
+    double precision::     atomsin(:,:), atomsout(:,:), workvec(3), atoms(ndim,natom)
+    double precision::     theta1, theta2, theta3
+    integer::              i,j,k, atom1, atom2, atom3
 
-    ! if (ndim .ne. 3) then
-    !    write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
-    !    stop
-    ! end if
 
-    ! !Put everything in COM frame, just in case it hasn't been done
-    ! call centreofmass(atomsvec1, com)
-    ! do i=1, natoms
-    !    atomsvec1(:,i)= atomsvec1(:,i) - com(:)
-    ! end do
-    ! call centreofmass(atomsvec2, com)
-    ! do i=1, natoms
-    !    atomsvec2(:,i)= atomsvec2(:,i) - com(:)
-    ! end do
+    if (ndim .ne. 3) then
+       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
+       stop
+    end if
 
-    ! !Figure out gamma from O1--O2 axis (rotation about z axis)
-    ! workvec1(:)= atomsvec1(:,1) - atomsvec1(:,4)
-    ! workvec2(:)= atomsvec2(:,1) - atomsvec2(:,4)
-    ! costheta= workvec1(1)*workvec2(1) + workvec1(2)*workvec2(2)
-    ! costheta=costheta/sqrt(workvec1(1)**2 + workvec1(2)**2)
-    ! costheta=costheta/sqrt(workvec2(1)**2 + workvec2(2)**2)
-    ! gamma= acos(costheta)
+    atom1=1
+    atom2=2
+    atom3=3
 
-    ! call rotate_vec(workvec1, 3, -gamma)
+    !-----------------------------------------
+    !Put atom1 at origin
+    do i=1, natom
+    atomsout(:,i)= atomsin(:,i) - atomsin(:,atom1)
+    end do
+    !-----------------------------------------
+    !Align vector between atom1 and atom2 to x axis
+    !first rotate about z-axis to align with zx plane
+    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+    theta1= atan2(workvec(2),workvec(1))
+    call rotate_atoms(atomsout, 3, theta1)
 
-    !Figure out beta
+    !rotate about y-axis to align with z-axis
+    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+    theta2= atan2(workvec(3), workvec(1))
+    call rotate_atoms(atomsout, 2, theta2)
+
+    !-----------------------------------------
+    !Align vector between atom1 and atom3 to xz plane
+    !rotate about x-axis
+    workvec(:)= atomsout(:,atom3) - atomsout(:,atom1)
+    theta3= -atan2(workvec(2),workvec(3))
+    call rotate_atoms(atomsout, 1, theta3)
     
     
     return
@@ -631,32 +637,20 @@ end subroutine centreofmass
     count=0
     do while( task(1:2).eq.'FG'.or.task.eq.'NEW_X'.or. &
          task.eq.'START')
-       ! write(*,*) f
        count=count+1
-       ! do i=1,n
-       !    xtemp(:,:)= xtilde(i,:,:)
-       !    call align_atoms(xtemp, xtilde(i,:,:))
-       ! end do
        xwork=reshape(xtilde,(/dof/))
        fprimework= reshape(fprime,(/dof/))
        call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps,work&
             ,iwork,task,iprint, csave,lsave,isave,dsave)
        if (task(1:2) .eq. 'FG') then
           xtilde= reshape(xwork,(/n,ndim,natom/))
-          ! do i=1,n
-          !    xtemp(:,:)= xtilde(i,:,:)
-          !    call align_atoms(xtemp, xtilde(i,:,:))
-          ! end do
-
           f= UM(xtilde,a,b)
           call UMprime(xtilde,a,b,fprime)
-          ! write(*,*) count, f, dot_product(fprime, fprime)
        end if
     end do
     if (task(1:5) .eq. "ERROR" .or. task(1:4) .eq. "ABNO") then
        write(*,*) "Error:"
        write(*,*) task
-       ! stop
     end if
 
     deallocate(work, lb, ub, fprime, fprimework,xwork)
