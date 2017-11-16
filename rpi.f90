@@ -3,12 +3,13 @@ program rpi
   use verletint
   implicit none
   double precision, allocatable::   theta(:),phi(:), xtilde(:,:,:), xharm(:,:,:), H(:,:)
-  double precision, allocatable::   weightstheta(:),weightsphi(:)
+  double precision, allocatable::   weightstheta(:),weightsphi(:), origin(:)
   double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:), wellinit(:,:)
   double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:)
   double precision, allocatable::   initpath(:,:), xtilderot(:,:,:), wellrot(:,:)
   double precision::                lndetj, lndetj0, skink, psi, cutofftheta, cutoffphi
   double precision::                delta, omega, gammetilde, Ibeta
+  double precision::                theta1, theta2, theta3
   integer::                         i, j,k,npath, dummy, zerocount, npoints
   integer::                         ii,jj,kk
   character, allocatable::         label(:)
@@ -56,10 +57,13 @@ program rpi
      well1(:,:)= well1(:,:)/0.529177d0
      well2(:,:)= well2(:,:)/0.529177d0
   end if
+  allocate(origin(ndim))
+
+  call get_align(well1,theta1, theta2, theta3, origin)
   wellinit(:,:)= well1(:,:)
-  call align_atoms(wellinit, well1)
+  call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
   wellinit(:,:)= well2(:,:)
-  call align_atoms(wellinit, well2)
+  call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
 
   write(*,*) "Potential at wells:", V(well1), V(well2)
   !-------------------------
@@ -77,10 +81,11 @@ program rpi
      if (i.eq.1) then
         ! call align_atoms(
         lampath(1)=0.0d0
+        call get_align(initpath,theta1, theta2, theta3, origin)
      else
         lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
      end if
-     call align_atoms(initpath, path(i,:,:))
+     call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
      ! path(i,:,:)= initpath(:,:)
      Vpath(i)= V(path(i,:,:))
   end do
@@ -100,7 +105,7 @@ program rpi
   end do
   close(20)
 
-  deallocate(initpath)
+  deallocate(initpath, origin)
 
   if (xunit .eq. 2) then
      path(:,:,:) = path(:,:,:)/0.529177d0

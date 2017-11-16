@@ -171,9 +171,57 @@ contains
   !---------------------------------------------------------------------
   !Align a vector of atoms
 
-  subroutine align_atoms(atomsin, atomsout)
+  subroutine get_align(atomsin,theta1, theta2, theta3, origin)
     implicit none
-    double precision::     atomsin(:,:), atomsout(:,:), workvec(3), atoms(ndim,natom)
+    double precision::     atomsin(:,:), workvec(3), atoms(ndim,natom)
+    double precision::     theta1, theta2, theta3, origin(ndim)
+    integer::              i,j,k, atom1, atom2, atom3
+
+
+    if (ndim .ne. 3) then
+       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
+       stop
+    end if
+
+    atom1=1
+    atom2=2
+    atom3=3
+
+    !-----------------------------------------
+    !Put atom1 at origin
+    origin(:)= atomsin(:,atom1)
+
+    do i=1, natom
+    atoms(:,i)= atomsin(:,i) - origin(:)
+    end do
+    !-----------------------------------------
+    !Align vector between atom1 and atom2 to x axis
+    !first rotate about z-axis to align with zx plane
+    workvec(:)= atoms(:,atom2) - atoms(:,atom1)
+    theta1= atan2(workvec(2),workvec(1))
+    call rotate_atoms(atoms, 3, theta1)
+
+    !rotate about y-axis to align with z-axis
+    workvec(:)= atoms(:,atom2) - atoms(:,atom1)
+    theta2= atan2(workvec(3), workvec(1))
+    call rotate_atoms(atoms, 2, theta2)
+
+    !-----------------------------------------
+    !Align vector between atom1 and atom3 to xz plane
+    !rotate about x-axis
+    workvec(:)= atoms(:,atom3) - atoms(:,atom1)
+    theta3= -atan2(workvec(2),workvec(3))
+    
+    
+    return
+  end subroutine get_align
+
+  !---------------------------------------------------------------------
+  !Align a vector of atoms
+
+  subroutine align_atoms(atomsin, theta1,theta2,theta3, origin, atomsout)
+    implicit none
+    double precision::     atomsin(:,:), atomsout(:,:), workvec(3), origin(ndim)
     double precision::     theta1, theta2, theta3
     integer::              i,j,k, atom1, atom2, atom3
 
@@ -196,21 +244,17 @@ contains
     !Align vector between atom1 and atom2 to x axis
     !first rotate about z-axis to align with zx plane
     workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
-    theta1= atan2(workvec(2),workvec(1))
     call rotate_atoms(atomsout, 3, theta1)
 
     !rotate about y-axis to align with z-axis
     workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
-    theta2= atan2(workvec(3), workvec(1))
     call rotate_atoms(atomsout, 2, theta2)
 
     !-----------------------------------------
     !Align vector between atom1 and atom3 to xz plane
     !rotate about x-axis
     workvec(:)= atomsout(:,atom3) - atomsout(:,atom1)
-    theta3= -atan2(workvec(2),workvec(3))
     call rotate_atoms(atomsout, 1, theta3)
-    
     
     return
   end subroutine align_atoms
