@@ -2,7 +2,7 @@ module mcmod_mass
   use malonaldehyde
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
-  double precision::               beta, betan, UMtilde
+  double precision::               beta, betan, UMtilde, eps
   integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
 
@@ -582,5 +582,33 @@ end subroutine Partition
 
     return
   end subroutine instanton
+
+  subroutine rotate_atoms(atoms,axis,theta)
+    implicit none
+    double precision::     rotmatrix(3,3), atoms(:,:)
+    double precision::     theta
+    integer::              i, axis, j,k
+
+    if (axis.eq. 1) then
+       j=2
+       k=3
+    else if(axis.eq.2) then
+       j=1
+       k=3
+    else
+       j=1
+       k=2
+    end if
+    rotmatrix(:,:)=0.0d0
+    rotmatrix(axis,axis)=1.0d0
+    rotmatrix(j,j)= cos(theta)
+    rotmatrix(k,k)= cos(theta)
+    rotmatrix(k,j)= -sin(theta)
+    rotmatrix(j,k)= sin(theta)
+    do i=1, natom
+       atoms(:,i)= matmul(rotmatrix(:,:), atoms(:,i))
+    end do
+    return
+  end subroutine rotate_atoms
 
 end module mcmod_mass
