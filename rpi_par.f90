@@ -5,10 +5,10 @@ program rpi
 
   include 'mpif.h'
 
-  double precision, allocatable::   theta(:),phi(:), xtilde(:,:,:), xharm(:,:,:), H(:,:)
+  double precision, allocatable::   theta(:),phi(:), xtilde(:,:,:), xharm(:,:,:)
   double precision, allocatable::   weightstheta(:),weightsphi(:), origin(:)
   double precision, allocatable::   eta(:),weightseta(:)
-  double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:), wellinit(:,:)
+  double precision, allocatable::   etasquared(:),Vpath(:), wellinit(:,:)
   double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:)
   double precision, allocatable::   initpath(:,:), xtilderot(:,:,:), wellrot(:,:)
   double precision::                lndetj, lndetj0, skink, psi, cutofftheta, cutoffphi
@@ -225,7 +225,7 @@ program rpi
            do kk=1,npoints
               wellrot(:,:)= well2(:,:)
               call rotate_atoms(wellrot,1,eta(kk))
-              call rotate_atoms(wellrot,2,phi(jj))
+              call rotate_atoms(wellrot,3,phi(jj))
               call rotate_atoms(wellrot,1,theta(ii))
               allendpoints(i, :,:)= wellrot(:,:)
               i=i+1
@@ -233,6 +233,7 @@ program rpi
         end do
      end do
   end if
+  deallocate(well2)
 
   endpoints=0.0d0
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
@@ -249,6 +250,7 @@ program rpi
         call MPI_Recv(endpoints(i,:,:), ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus,ierr)
      end do
   end if
+  deallocate(allendpoints)
 
   allocate(results(ncalcs))
   do ii=1, ncalcs
@@ -276,7 +278,7 @@ program rpi
      results(ii)= Ibeta
      write(*,*) iproc, ii, Ibeta
   end do
-  deallocate(xtilderot)
+  deallocate(xtilderot, endpoints, well1)
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
   !Collate data from all processors and have the root finalize the calculations
   allocate(allresults(ncalcs*nproc))

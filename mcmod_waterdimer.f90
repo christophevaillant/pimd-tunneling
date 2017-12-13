@@ -59,8 +59,9 @@ contains
     implicit none
     double precision::     hess(:,:,:,:), x(:,:), dummy1
     integer::              i, j
-    double precision::     gradplus(ndim, natom), gradminus(ndim, natom)
+    double precision, allocatable::     gradplus(:, :), gradminus(:, :)
 
+    allocate(gradplus(ndim, natom), gradminus(ndim, natom))
     do i= 1, ndim
        do j= 1, natom
           x(i,j)= x(i,j) + eps
@@ -71,6 +72,7 @@ contains
           hess(i,j,:,:)= (gradplus(:,:)-gradminus(:,:))/(2.0d0*eps)          
        end do
     end do
+    deallocate(gradplus, gradminus)
     return
   end subroutine Vdoubleprime
 

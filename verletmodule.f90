@@ -9,7 +9,7 @@ module verletint
 
   integer::                         NMC, Noutput, imin, iproc
   integer, allocatable::            ipar(:)
-  double precision::                dt
+  double precision::                dt, dHdrlimit
   double precision,allocatable::    transmatrix(:,:),dpar(:), beadvec(:,:)
   double precision,allocatable::    beadmass(:,:), lam(:)
   double precision, allocatable::   c1(:,:), c2(:,:)
@@ -449,9 +449,9 @@ contains
   subroutine propagate_pimd_pile(xprop,vprop,a,b,dbdl,dHdr)
     implicit none
     double precision::     xprop(:,:,:), vprop(:,:,:),randno
-    double precision::     a(:,:),b(:,:), dHdr, dbdl(:,:)
+    double precision::     a(:,:),b(:,:), dHdr, dbdl(:,:), contr
     double precision, allocatable:: force(:,:,:)
-    integer::              i,j,k,count, time1,time2,imax, irate
+    integer::              i,j,k,count, time1,time2,imax, irate, skipcount
     integer (kind=4)::     rkick(1)
 
     allocate(c1(natom,n), c2(natom,n), force(n, ndim, natom))
@@ -464,6 +464,7 @@ contains
     count=0
     dHdr=0.0d0
     force(:,:,:)=0.0d0
+    skipcount=0
     do i=1, NMC, 1
        count=count+1
        if (count .ge. Noutput .and. i .gt. imin) then
@@ -472,14 +473,23 @@ contains
        end if
        call time_step_test_pile(xprop, vprop)
        if (i.gt.imin) then
+          contr=0.0d0
           do j=1,ndim
              do k=1,natom
-                dHdr= dHdr+mass(k)*(-xprop(n,j,k))*dbdl(j,k)
+                contr=contr+mass(k)*(-xprop(n,j,k))*dbdl(j,k)
              end do
           end do
+          if (abs(contr) .lt. dHdrlimit .and. dHdrlimit .gt. 0.0) then
+             dHdr= dHdr+contr
+          else
+             ! write(*,*) "Over limit", contr, ", skipped"
+             skipcount=skipcount+1
+          end if
+
        end if
     end do
-    dHdr= dHdr/dble(NMC-imin)
+    dHdr= dHdr/dble(NMC-imin-skipcount)
+    if (skipcount .gt. 0) write(*,*) "Skipped", skipcount, "points"
     deallocate(c1, c2)
     return
   end subroutine propagate_pimd_pile

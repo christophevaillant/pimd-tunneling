@@ -175,7 +175,7 @@ program rpi
               wellrot(:,:)= well2(:,:)
               xtilderot(:,:,:)= xtilde(:,:,:)
               call rotate_atoms(wellrot,1,eta(kk))
-              call rotate_atoms(wellrot,2,phi(jj))
+              call rotate_atoms(wellrot,3,phi(jj))
               call rotate_atoms(wellrot,1,theta(ii))
               call instanton(xtilderot,well1,wellrot)
               if (output_instanton) then
