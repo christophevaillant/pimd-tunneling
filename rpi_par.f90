@@ -225,7 +225,7 @@ program rpi
            do kk=1,npoints
               wellrot(:,:)= well2(:,:)
               call rotate_atoms(wellrot,1,eta(kk))
-              call rotate_atoms(wellrot,2,phi(jj))
+              call rotate_atoms(wellrot,3,phi(jj))
               call rotate_atoms(wellrot,1,theta(ii))
               allendpoints(i, :,:)= wellrot(:,:)
               i=i+1

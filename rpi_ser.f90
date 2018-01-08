@@ -148,8 +148,8 @@ program rpi
   lndetj0= 0.0d0
   zerocount=0
   do i=1,totdof
-     if (etasquared(i) .gt. 0.0d0) then
      ! write(*,*) i,etasquared(i)
+     if (etasquared(i) .gt. 0.0d0) then
         lndetj0= lndetj0+ log(etasquared(i))
      else
         zerocount=zerocount+1
@@ -164,6 +164,7 @@ program rpi
      allocate(phi(npoints), weightsphi(npoints))
      allocate(eta(npoints), weightseta(npoints))
      allocate(xtilderot(n,ndim,natom), wellrot(ndim,natom))
+     if (ndim.eq.3) then
      call gauleg(0d0,min(2.0d0*pi, cutofftheta),theta, weightstheta,npoints)
      call gauleg(0d0,min(pi, cutoffphi),phi, weightsphi,npoints)
      call gauleg(0d0,min(2.0d0*pi, cutofftheta),eta, weightseta,npoints)
@@ -175,7 +176,7 @@ program rpi
               wellrot(:,:)= well2(:,:)
               xtilderot(:,:,:)= xtilde(:,:,:)
               call rotate_atoms(wellrot,1,eta(kk))
-              call rotate_atoms(wellrot,2,phi(jj))
+              call rotate_atoms(wellrot,3,phi(jj))
               call rotate_atoms(wellrot,1,theta(ii))
               call instanton(xtilderot,well1,wellrot)
               if (output_instanton) then
@@ -215,6 +216,51 @@ program rpi
            end do
         end do
      end do
+     else if (ndim.eq.2) then
+     open(90, file="angularI.dat")
+        call gauleg(0d0,min(2.0d0*pi, cutofftheta),eta, weightseta,npoints)
+           do kk=1,npoints
+              ! eta(kk)= pi*dble(kk)/dble(npoints)
+              wellrot(:,:)= well2(:,:)
+              xtilderot(:,:,:)= xtilde(:,:,:)
+              call rotate_atoms(wellrot,1,eta(kk))
+              call instanton(xtilderot,well1,wellrot)
+              if (output_instanton) then
+                 open(19, file="instanton.xyz")
+                 do i=1,n
+                    write(19,*) natom
+                    write(19,*) "Energy of minimum",i
+                    do j=1, natom
+                       write(19,*)  label(j), (xtilderot(i,k,j)*0.529177d0, k=1,ndim)
+                    end do
+                 end do
+                 close(19)
+              end if
+
+              call detJ(xtilderot, etasquared)
+
+              lndetj= 0.0d0
+              zerocount=0
+              do i=2,totdof
+                 if (etasquared(i) .gt. 0.0d0) then
+                    lndetj= lndetj+ log(etasquared(i))
+                 else
+                    zerocount=zerocount+1
+                 end if
+              end do
+              write(*,*) "Skipped ", zerocount, "states"
+              write(*,*) "lndetJ", lndetj, lndetj0
+              gammetilde= exp(0.5d0*(lndetJ-lndetJ0))
+              !-------------------------
+              !Put it all together and output.
+              Skink= betan*UM(xtilderot, well1, wellrot)
+              omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
+              Ibeta= tanh(omega*N)
+              write(90,*) eta(kk),weightseta(kk), Ibeta
+              write(*,*) eta(kk), weightseta(kk), Ibeta, lndetj
+              ! end do
+           end do
+     end if
      deallocate(xtilderot, wellrot)
      close(90)
   else

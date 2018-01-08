@@ -45,11 +45,11 @@ c                        March  2011
 c                                                 
 c============================================================================= 
       subroutine setulb(n, m, x, l, u, nbd, f, g, factr, pgtol, wa, iwa,
-     +                 task, iprint, csave, lsave, isave, dsave)
+     +                task, iprint, csave, lsave, isave, dsave, maxiter)
  
       character*60     task, csave
       logical          lsave(4)
-      integer          n, m, iprint, 
+      integer          n, m, iprint, maxiter,
      +                 nbd(n), iwa(3*n), isave(44)
       double precision f, factr, pgtol, x(n), l(n), u(n), g(n),
 c
@@ -276,7 +276,7 @@ c-jlm-jn
      +  wa(lwn),wa(lsnd),wa(lz),wa(lr),wa(ld),wa(lt),wa(lxp),
      +  wa(lwa),
      +  iwa(1),iwa(n+1),iwa(2*n+1),task,iprint, 
-     +  csave,lsave,isave(22),dsave)
+     +  csave,lsave,isave(22),dsave, maxiter)
 
       return
 
@@ -287,12 +287,12 @@ c======================= The end of setulb =============================
       subroutine mainlb(n, m, x, l, u, nbd, f, g, factr, pgtol, ws, wy,
      +                  sy, ss, wt, wn, snd, z, r, d, t, xp, wa, 
      +                  index, iwhere, indx2, task,
-     +                  iprint, csave, lsave, isave, dsave)
+     +                  iprint, csave, lsave, isave, dsave, maxiter)
       implicit none
       character*60     task, csave
       logical          lsave(4)
       integer          n, m, iprint, nbd(n), index(n),
-     +                 iwhere(n), indx2(n), isave(23)
+     +                 iwhere(n), indx2(n), isave(23), maxiter
       double precision f, factr, pgtol,
      +                 x(n), l(n), u(n), g(n), z(n), r(n), d(n), t(n), 
 c-jlm-jn
@@ -787,7 +787,7 @@ c     Generate the search direction d:=z-x.
       call lnsrlb(n,l,u,nbd,x,f,fold,gd,gdold,g,d,r,t,z,stp,dnorm,
      +            dtd,xstep,stpmx,iter,ifun,iback,nfgv,info,task,
      +            boxed,cnstnd,csave,isave(22),dsave(17))
-      if (info .ne. 0 .or. iback .ge. 20) then
+      if (info .ne. 0 .or. iback .ge. maxiter) then
 c          restore the previous iterate.
          call dcopy(n,t,1,x,1)
          call dcopy(n,r,1,g,1)

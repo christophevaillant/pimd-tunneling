@@ -19,6 +19,9 @@ COMFILES= $(OBJDIR)/blas.o $(OBJDIR)/linpack.o $(OBJDIR)/timer.o \
 #1D double well potential:
 1DFILES= $(OBJDIR)/mcmod_1d.o
 
+#SO(2) potential:
+SO2FILES= $(OBJDIR)/mcmod_so2.o
+
 #Malonaldehyde:
 MALONFILES= $(OBJDIR)/pes_malonaldehyde.o $(OBJDIR)/mcmod_malon.o
 
@@ -74,6 +77,16 @@ pimd_1d_par: $(1DFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 pimd_1d_ser: $(1DFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 	$(FC) $(FFLAGS) $(COMFILES) $(1DFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
+################################
+#SO(2) potential:
+pimd_so2_par: $(SO2FILES) $(COMFILES) $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(COMFILES) $(SO2FILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+
+pimd_so2_ser: $(SO2FILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(SO2FILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+
+rpi_so2_ser: $(SO2FILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(SO2FILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 ################################
 #Malonaldehyde:

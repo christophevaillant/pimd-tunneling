@@ -14,11 +14,12 @@ contains
   !---------------------------------------------------------------------
   function V(x)
     implicit none
-    double precision::     v, x(:,:), r
+    double precision::     v, x(:,:), r, answer
     integer::              i,j
 
     r= sqrt(x(1,1)**2 + x(2,1)**2)
-    V= -0.5*(exp(-2.0d0*(r-3.0d0)**2) + exp(-0.2d0*(r-3.0d0)**2)
+    answer= 1.0d0 -0.5*(exp(-2.0d0*(r-3.0d0)**2) + exp(-0.2d0*(r-3.0d0)**2))
+    V=answer
     return
   end function V
 
@@ -26,12 +27,26 @@ contains
   subroutine Vprime(x, grad)
     implicit none
     integer::              i,j
-    double precision::     grad(:,:), x(:,:), dummy1
+    double precision::     grad(:,:), x(:,:), r, u, dvdr
+    double precision::     gradplus, gradminus, xtest(2), eps
 
+    eps=1d-5
     r= sqrt(x(1,1)**2 + x(2,1)**2)
-    grad(1,1)= x(1,1)*(1.0d0- 3.0d0/r)*(2.0d0*exp(-2.0d0*(r-3.0d0)**2) + 0.2d0*exp(-0.2d0*(r-3.0d0)**2))
-    grad(2,1)= x(2,1)*(1.0d0- 3.0d0/r)*(2.0d0*exp(-2.0d0*(r-3.0d0)**2) + 0.2d0*exp(-0.2d0*(r-3.0d0)**2))
-
+    u= (r-3.0d0)**2
+    dvdr=sqrt(u)*(2.0d0*exp(-2.0d0*u) + 0.2d0*exp(-0.2d0*u))
+    ! grad(1,1)= x(1,1)*(1.0d0- 3.0d0/r)*(2.0d0*exp(-2.0d0*(r-3.0d0)**2) + 0.2d0*exp(-0.2d0*(r-3.0d0)**2))
+    ! grad(2,1)= x(2,1)*(1.0d0- 3.0d0/r)*(2.0d0*exp(-2.0d0*(r-3.0d0)**2) + 0.2d0*exp(-0.2d0*(r-3.0d0)**2))
+    grad(1,1)= -dvdr*x(1,1)/r
+    grad(2,1)= -dvdr*x(2,1)/r
+    ! do i=1,2
+    !    x(i,1)= x(i,1) + eps
+    !    gradplus= V(x)
+    !    x(i,1)= x(i,1) - 2.0d0*eps
+    !    gradminus= V(x)
+    !    x(i,1)= x(i,1) + eps
+    !    xtest(i)=(gradplus-gradminus)/(2.0d0*eps)
+    ! end do
+    ! write(*,*) grad(1,1), xtest(1),grad(2,1), xtest(2)
     return
   end subroutine Vprime
   !---------------------------------------------------------------------
@@ -42,7 +57,7 @@ contains
 
     r= sqrt(x(1,1)**2 + x(2,1)**2)
     u= (r-3.0d0)**2
-    dvdr=(1.0d0+ 2.0d0*u)*(-2.0d0*exp(-2.0d0*u) + 0.16d0*exp(-0.2*u))
+    dvdr=(2.0d0 - 4.0d0*u)*exp(-2.0d0*u) + (0.2d0 - 4.0d-2*u)*exp(-0.2d0*u)
     hess(1,1,1,1)= dvdr*x(2,1)**2/r**3
     hess(2,1,2,1)= dvdr*x(1,1)**2/r**3
     hess(1,1,2,1)= dvdr*x(1,1)*x(2,1)/r**3
@@ -56,25 +71,28 @@ contains
   function UM(x,a,b)
     implicit none
     integer::            i,j,k
-    double precision::   x(:,:,:), UM,a(:,:),b(:,:)
+    double precision::   x(:,:,:), UM,a(:,:),b(:,:), answer, pot
 
-    UM=0.0d0
+    answer=0.0d0
     do i=2, N-1, 1
-       UM=UM+ V(x(i,:,:)) + 7.909252131246103d-3
+       pot=V(x(i,:,:))
+       ! write(*,*) x(i,1,1),x(i,2,1),pot
+       answer=answer+ pot
        do j=1, ndim
           do k=1, natom
-             UM=UM+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
+             answer=answer+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
           end do
        end do
     end do
-    UM=UM+ V(x(n,:,:))+ V(x(1,:,:))+ 2.0d0*7.909252131246103d-3
+    answer=answer+ V(x(n,:,:))+ V(x(1,:,:))
     do j=1, ndim
        do k=1, natom
-          UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
-          UM=UM+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
+          answer=answer+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
+          answer=answer+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
        end do
     end do
-
+    ! write(*,*) "UM:", answer
+    UM=answer
     return
   end function UM
 
@@ -87,6 +105,7 @@ contains
 
     allocate(grad(ndim,natom))
 
+    eps=1d-5
     do i=1, N
        do j=1,ndim
           do k=1,natom
@@ -157,42 +176,11 @@ contains
     double precision::     theta1, theta2, theta3, origin(ndim)
     integer::              i,j,k, atom1, atom2, atom3
 
+    theta1=0.0d0
+    theta2=0.0d0
+    theta3=0.0d0
+    origin(:)= 0.0d0
 
-    if (ndim .ne. 3) then
-       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
-       stop
-    end if
-
-    atom1=1
-    atom2=2
-    atom3=3
-
-    !-----------------------------------------
-    !Put atom1 at origin
-    origin(:)= atomsin(:,atom1)
-
-    do i=1, natom
-    atoms(:,i)= atomsin(:,i) - origin(:)
-    end do
-    !-----------------------------------------
-    !Align vector between atom1 and atom2 to x axis
-    !first rotate about z-axis to align with zx plane
-    workvec(:)= atoms(:,atom2) - atoms(:,atom1)
-    theta1= atan2(workvec(2),workvec(1))
-    call rotate_atoms(atoms, 3, theta1)
-
-    !rotate about y-axis to align with z-axis
-    workvec(:)= atoms(:,atom2) - atoms(:,atom1)
-    theta2= atan2(workvec(3), workvec(1))
-    call rotate_atoms(atoms, 2, theta2)
-
-    !-----------------------------------------
-    !Align vector between atom1 and atom3 to xz plane
-    !rotate about x-axis
-    workvec(:)= atoms(:,atom3) - atoms(:,atom1)
-    theta3= -atan2(workvec(2),workvec(3))
-    
-    
     return
   end subroutine get_align
 
@@ -205,62 +193,16 @@ contains
     double precision::     theta1, theta2, theta3
     integer::              i,j,k, atom1, atom2, atom3
 
-
-    if (ndim .ne. 3) then
-       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
-       stop
-    end if
-
-    atom1=1
-    atom2=2
-    atom3=3
-
-    !-----------------------------------------
-    !Put atom1 at origin
-    do i=1, natom
-    atomsout(:,i)= atomsin(:,i) - atomsin(:,atom1)
-    end do
-    !-----------------------------------------
-    !Align vector between atom1 and atom2 to x axis
-    !first rotate about z-axis to align with zx plane
-    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
-    call rotate_atoms(atomsout, 3, theta1)
-
-    !rotate about y-axis to align with z-axis
-    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
-    call rotate_atoms(atomsout, 2, theta2)
-
-    !-----------------------------------------
-    !Align vector between atom1 and atom3 to xz plane
-    !rotate about x-axis
-    workvec(:)= atomsout(:,atom3) - atomsout(:,atom1)
-    call rotate_atoms(atomsout, 1, theta3)
-    
+    atomsout(:,:)= atomsin(:,:)
     return
   end subroutine align_atoms
 
   subroutine rotate_vec(vec,axis,theta)
     implicit none
-    double precision::     rotmatrix(3,3), vec(:)
+    double precision::     rotmatrix(2,2), vec(:)
     double precision::     theta
     integer::              i, axis, j,k
 
-    if (axis.eq. 1) then
-       j=2
-       k=3
-    else if(axis.eq.2) then
-       j=1
-       k=3
-    else
-       j=1
-       k=2
-    end if
-    rotmatrix(:,:)=0.0d0
-    rotmatrix(axis,axis)=1.0d0
-    rotmatrix(j,j)= cos(theta)
-    rotmatrix(k,k)= cos(theta)
-    rotmatrix(k,j)= -sin(theta)
-    rotmatrix(j,k)= sin(theta)
     vec(:)= matmul(rotmatrix(:,:), vec(:))
     return
   end subroutine rotate_vec
@@ -271,25 +213,11 @@ contains
     double precision::     theta
     integer::              i, axis, j,k
 
-    if (axis.eq. 1) then
-       j=2
-       k=3
-    else if(axis.eq.2) then
-       j=1
-       k=3
-    else
-       j=1
-       k=2
-    end if
-    rotmatrix(:,:)=0.0d0
-    rotmatrix(axis,axis)=1.0d0
-    rotmatrix(j,j)= cos(theta)
-    rotmatrix(k,k)= cos(theta)
-    rotmatrix(k,j)= -sin(theta)
-    rotmatrix(j,k)= sin(theta)
-    do i=1, natom
-       atoms(:,i)= matmul(rotmatrix(:,:), atoms(:,i))
-    end do
+    rotmatrix(1,1)= cos(theta)
+    rotmatrix(2,2)= cos(theta)
+    rotmatrix(1,2)= -sin(theta)
+    rotmatrix(2,1)= sin(theta)
+    atoms(:,1)= matmul(rotmatrix(:,:), atoms(:,1))
     return
   end subroutine rotate_atoms
   !---------------------------------------------------------------------
@@ -593,8 +521,8 @@ end subroutine centreofmass
   subroutine instanton(xtilde,a,b)
     implicit none
     integer::                        iprint, m, iflag, mp,idof
-    integer::                        i, lp, count, iw, j,k, dof
-    double precision::               eps, xtol, gtol, stpmin, stpmax
+    integer::                        i, lp, count, iw, j,k, dof, maxiter
+    double precision::               eps, xtol, gtol, stpmin, stpmax, xforce, yforce
     double precision::               f, xtilde(:,:,:), xtemp(ndim,natom)
     double precision::               factr, a(:,:),b(:,:), com(ndim)
     double precision, allocatable::  fprime(:,:,:), work(:), fprimework(:)
@@ -606,47 +534,22 @@ end subroutine centreofmass
     dof= n*ndim*natom
     allocate(lb(dof), ub(dof),fprime(n,ndim,natom), nbd(dof))
     allocate(fprimework(dof), xwork(dof))
-    call centreofmass(a, com)
-    do i=1,ndim
-       do j=1,natom
-          a(i,j)= a(i,j)- com(i)
-       end do
-    end do
-    call centreofmass(b, com)
-    do i=1,ndim
-       do j=1,natom
-          b(i,j)= b(i,j)- com(i)
-       end do
-    end do 
     do i=1, n, 1
-       call centreofmass(xtilde(i,:,:), com)
        do j=1,ndim
           do k=1,natom
-             xtilde(i,j,k)= xtilde(i,j,k)- com(j)
+             ! xtilde(i,j,k)= a(j,k) + (b(j,k)-a(j,k))*dble(i-1)/dble(n-1)
              idof= ((k-1)*ndim + j -1)*n +i
-             ! if (k.eq. 1) then
-             !    lb(idof)= a(j,k)
-             !    ub(idof)= a(j,k)
-             !    nbd(idof)=2
-             ! else if (k.eq.2 .and. (j.eq.2 .or. j.eq.3)) then ! 
-             !    lb(idof)= a(j,k)
-             !    ub(idof)= a(j,k)
-             !    nbd(idof)=2
-             ! else if (k .eq. 3 .and. j.eq.2) then !
-             !    lb(idof)= a(j,k)
-             !    ub(idof)= a(j,k)
-             !    nbd(idof)=2
-             ! else
-                lb(idof)= a(j,k)
-                ub(idof)= a(j,k)
-                nbd(idof)=0
-             ! end if
+             lb(idof)= a(j,k)
+             ub(idof)= b(j,k)
+             nbd(idof)=0
           end do
        end do
+       ! write(*,*) i,xtilde(i,1,1),xtilde(i,2,1)
     end do
     !------------------------
     !perform minimization
     task='START'
+    maxiter=50
     m=8
     iprint=-1
     xtol= 1d-8
@@ -654,17 +557,20 @@ end subroutine centreofmass
     allocate(work(iw), iwork(3*dof), isave(44), dsave(29))
     iflag=0
     eps= 1.0d-8
-    factr=1.0d7
+    factr=1.0d5
     f= UM(xtilde,a,b)
     call UMprime(xtilde,a,b,fprime)
     count=0
+    ! xforce= sum(fprime(:,1,1))
+    ! yforce= sum(fprime(:,2,1))
+    ! write(*,*) f, xforce, yforce
     do while( task(1:2).eq.'FG'.or.task.eq.'NEW_X'.or. &
          task.eq.'START')
        count=count+1
        xwork=reshape(xtilde,(/dof/))
        fprimework= reshape(fprime,(/dof/))
        call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps,work&
-            ,iwork,task,iprint, csave,lsave,isave,dsave)
+            ,iwork,task,iprint, csave,lsave,isave,dsave, maxiter)
        if (task(1:2) .eq. 'FG') then
           xtilde= reshape(xwork,(/n,ndim,natom/))
           f= UM(xtilde,a,b)
@@ -674,8 +580,12 @@ end subroutine centreofmass
     if (task(1:5) .eq. "ERROR" .or. task(1:4) .eq. "ABNO") then
        write(*,*) "Error:"
        write(*,*) task
+    ! write(*,*) "final UM:", f
+    do i=1,n
+       ! write(*,*) "final force:", i, fprime(i,1,1), fprime(i,2,1)
+       write(*,*) i,xtilde(i,1,1),xtilde(i,2,1)
+    end do
     end if
-
     deallocate(work, lb, ub, fprime, fprimework,xwork)
     deallocate(iwork, nbd, isave, dsave)
 
