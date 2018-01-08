@@ -40,7 +40,8 @@ program pimd
   integer (kind=4)::               ierrmkl
   integer, dimension(MPI_STATUS_SIZE) :: rstatus
   namelist /MCDATA/ n, beta, NMC, Noutput,dt, iprint,imin,tau,npath, gamma,&
-       nintegral,nrep, use_mkl, thermostat, ndim, natom, xunit, instapath, centre
+       nintegral,nrep, use_mkl, thermostat, ndim, natom, xunit, instapath, centre,&
+       dHdrlimit
 
   !initialize MPI
   nproc=0
@@ -72,6 +73,7 @@ program pimd
   tau=1.0d0
   gamma=1.0d0
   instapath=.false.
+  dHdrlimit=-1.0
 
   !Read in namelist variables for root proc, and spread
   !it to other procs
@@ -127,6 +129,7 @@ program pimd
   call MPI_Bcast(tau, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(gamma, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(mass, natom, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(dHdrlimit, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   ndof=ndim*natom
 
   !Set up integration path and integration points/weights
@@ -209,6 +212,7 @@ program pimd
         lampath(:)= lampath(:)/lampath(npath)
         close(19)
      end if
+     deallocate(xtilde)
      !-------------------------
      !Find the centre to make sure this is symmetric
      if (centre) then
@@ -288,6 +292,7 @@ program pimd
            end do
         end do
      end do
+     deallocate(path, xint, dbdxi)
   end if
 
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
@@ -318,8 +323,8 @@ program pimd
         call MPI_Recv(gradpoints(i,:,:), ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus,ierr)
      end do
   end if
+  deallocate(allgradpoints, allendpoints)
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
-
   !-------------------------
   !-------------------------
   !Start loop over integration points
