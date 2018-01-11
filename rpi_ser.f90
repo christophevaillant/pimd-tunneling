@@ -6,7 +6,7 @@ program rpi
   double precision, allocatable::   weightstheta(:),weightsphi(:), origin(:)
   double precision, allocatable::   eta(:),weightseta(:)
   double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:), wellinit(:,:)
-  double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:)
+  double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:), grad(:,:)
   double precision, allocatable::   initpath(:,:), xtilderot(:,:,:), wellrot(:,:)
   double precision::                lndetj, lndetj0, skink, psi, cutofftheta, cutoffphi
   double precision::                delta, omega, gammetilde, Ibeta
@@ -67,6 +67,20 @@ program rpi
   call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
 
   write(*,*) "Potential at wells:", V(well1), V(well2)
+  allocate(grad(ndim,natom))
+  call Vprime(well1, grad)
+  write(*,*) "With norm of grad:", norm2(reshape(grad, (/ndim*natom/)))
+  open(21, file="aligned_ends.xyz")
+  write(21,*) natom
+  write(21,*) "Well1"
+  do i=1, natom
+     write(21,*)  label(i), (well1(k,i)*0.529177d0, k=1,ndim)
+  end do
+  write(21,*) natom
+  write(21,*) "Well2"
+  do i=1, natom
+     write(21,*)  label(i), (well2(k,i)*0.529177d0, k=1,ndim)
+  end do
   !-------------------------
   !obtain instanton solution, x_tilde
   allocate(initpath(ndim, natom), lampath(npath), Vpath(npath))
@@ -83,12 +97,11 @@ program rpi
         ! call align_atoms(
         lampath(1)=0.0d0
         call get_align(initpath,theta1, theta2, theta3, origin)
+        call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
      else
+        call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
         lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
      end if
-     call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
-     ! path(i,:,:)= initpath(:,:)
-     Vpath(i)= V(path(i,:,:))
   end do
   lampath(:)= lampath(:)/lampath(npath)
   close(15)
@@ -126,7 +139,6 @@ program rpi
   end do
   deallocate(lampath,Vpath, path, splinepath)
   call instanton(xtilde,well1,well2)
-    write(*,*) "Found instanton."
   open(19, file="instanton.xyz")
   do i=1,n
      write(19,*) natom

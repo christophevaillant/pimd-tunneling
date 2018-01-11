@@ -14,9 +14,10 @@ program pimd
   double precision::               diagonals, offdiags, Pacc, delta, stdev
   double precision::               UHinitial, f, randno,answer, com, totm
   double precision::               lndetj, lndetj0, skink, theta, phi, dummyE
-  double precision::               dHdr, dx, finalI,sigmaA, a, b, c, xmiddle
-  double precision, allocatable::  x(:,:,:), vel(:), tempv(:), tempp(:)
-  double precision, allocatable::  xtilde(:,:,:)
+  double precision::               dHdr, dx, finalI,sigmaA, a, b, xmiddle
+  double precision::               theta1, theta2, theta3
+  double precision, allocatable::  x(:,:,:), vel(:), tempv(:), initpath(:,:), tempp(:)
+  double precision, allocatable::  xtilde(:,:,:), origin(:), wellinit(:,:)
   double precision, allocatable::  xi(:), dbdxi(:,:,:), y(:,:,:), pinit(:,:,:)
   double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:), Vpath(:)
   integer::                        ndofrb, dummy
@@ -137,33 +138,43 @@ program pimd
      !-------------------------
      !-------------------------
      !Read in initial wells, and masses
-     allocate(path(npath, ndim, natom), lampath(npath), Vpath(npath))
+     allocate(initpath(ndim, natom),path(npath, ndim, natom), lampath(npath))
+     allocate(origin(ndim))
      open(15, file="path.xyz")
      do i=1, npath
         read(15,*) dummy
         read(15,'(28A)') dummystr!, dummyE !'(A,G25.15)'
-        do j=1, natom
-           ! read(15,*) dummylabel, path(i, 1, j),path(i, 2, j),path(i, 3, j) !'(A2,4X,3G20.10)'
-           read(15,*) dummylabel, (path(i,k,j), k=1,ndim)
-        end do
+           do j=1, natom
+              read(15,*) dummylabel, (initpath(k,j), k=1,ndim)
+           end do
+        if (xunit .eq. 2) then
+           initpath(:,:)= initpath(:,:)/0.529177d0
+        end if
         if (i.eq.1) then
            lampath(1)=0.0d0
+           call get_align(initpath,theta1, theta2, theta3, origin)
+        call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
         else
-           lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
+        call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
+           lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))
         end if
-        Vpath(i)= V(path(i,:,:))
      end do
      lampath(:)= lampath(:)/lampath(npath)
+     deallocate(initpath)
      close(15)
-
+     open(20, file="aligned.xyz")
+     do i=1,npath
+        write(20,*) natom
+        write(20,*) "Energy of minimum",i
+        do j=1, natom
+           write(20,*)  label(j), (path(i,k,j)*0.529177d0, k=1,ndim)
+        end do
+     end do
+     close(20)
      !xunit=1 means bohr
      !xunit=2 means angstroms
-     if (xunit .eq. 2) then
-        path(:,:,:) = path(:,:,:)/0.529177d0
-     end if
-
      if (instapath) then
-        allocate(well1(ndim,natom), well2(ndim,natom))
+        allocate(well1(ndim,natom), well2(ndim,natom), wellinit(ndim,natom))
         open(15, file="well1.dat", status="old")
         open(16, file="well2.dat", status="old")
         do j=1,natom
@@ -178,6 +189,12 @@ program pimd
            well1(:,:)= well1(:,:)/0.529177d0
            well2(:,:)= well2(:,:)/0.529177d0
         end if
+        call get_align(well1,theta1, theta2, theta3, origin)
+        wellinit(:,:)= well1(:,:)
+        call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
+        wellinit(:,:)= well2(:,:)
+        call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
+
         write(*,*) "Potential at wells:", V(well1), V(well2)
         allocate(xtilde(n, ndim, natom),splinepath(npath))
         do i=1,ndim
@@ -189,7 +206,7 @@ program pimd
               end do
            end do
         end do
-        deallocate(lampath,Vpath, path, splinepath)
+        deallocate(lampath,path, splinepath)
         call instanton(xtilde,well1,well2)
         npath=n
         allocate(lampath(npath), Vpath(npath), path(npath,ndim,natom))
@@ -200,7 +217,7 @@ program pimd
            write(19,*) natom
            write(19,*) "Energy of minimum",i
            do j=1, natom
-              write(19,*)  label(j), (path(i,k,j), k=1,ndim)
+              write(19,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim)
            end do
            if (i.eq.1) then
               lampath(1)=0.0d0
@@ -223,7 +240,6 @@ program pimd
         deallocate(splinepath)
         a= 2.0d0  - 4.0d0*xmiddle
         b= 4.0d0*xmiddle - 1.0d0
-        c= 0.0d0
         do i=1, npath
            ! lampath(i)= a*lampath(i)**2 + lampath(i)*b
            if (a.ge.0) then

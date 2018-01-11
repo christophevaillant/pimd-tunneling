@@ -2,7 +2,7 @@
 #Define all the compilers and their options
 FC= ifort
 MPIFC= mpif90
-FFLAGS= -g -O3 -i8 -r8 -w -no-wrap-margin -module ../build/modules
+FFLAGS= -g -O2 -i8 -r8 -w -no-wrap-margin -module ../build/modules
 FLIBS_PAR=-L${MKLROOT}/lib/intel64 -mkl=sequential -lmkl_rt -lpthread -lm -ldl
 FLIBS_SEQ=-L${MKLROOT}/lib/intel64 -mkl=sequential -lmkl_rt -lpthread -lm -ldl
 INCLUDE= -I${MKLROOT}/include
@@ -45,8 +45,12 @@ WATDIMLIBS= -L. -lmbpol -cxxlib
 HBB2FILES= $(OBJDIR)/mcmod_waterdimer_hbb2.o
 pimd_hbb2_par: FFLAGS+= -O -I./mod_water
 pimd_hbb2_ser: FFLAGS+= -O -I./mod_water
-rpi_hbb2: FFLAGS+= -O -I./mod_water
+rpi_hbb2_ser: FFLAGS+= -O -I./mod_water
 HBB2LIBS= -L. -lpes_water -lpesd_water
+
+#Water dimer (CCPol):
+# CCPOLFILES= $(OBJDIR)/H2O.pjt2.o $(OBJDIR)/main_CCpol-8sf.o $(OBJDIR)/proc_ccpol8s-dimer_xyz_ncd.o $(OBJDIR)/proc_sapt5sf_new_ncd.o $(OBJDIR)/ang_interface.o $(OBJDIR)/mcmod_waterdimer_ccpol.o
+CCPOLFILES= $(OBJDIR)/ccpol.o $(OBJDIR)/mcmod_waterdimer_ccpol.o
 
 #Methane Clathrate:
 CLATHFILES= $(OBJDIR)/watermethane.o $(OBJDIR)/mcmod_clathrate.o
@@ -125,6 +129,17 @@ pimd_hbb2_ser: $(HBB2FILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 
 rpi_hbb2_ser: $(HBB2FILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
 	$(FC) $(FFLAGS) $(HBB2FLAGS) $(COMFILES) $(HBB2FILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(HBB2LIBS) $(FLIBS_SEQ)
+
+################################
+#Water Dimer CCPol
+pimd_ccpol_par: $(CCPOLFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(CCPOLFLAGS) $(COMFILES) $(CCPOLFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@  $(FLIBS_PAR)
+
+pimd_ccpol_ser: $(CCPOLFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(CCPOLFLAGS) $(COMFILES) $(CCPOLFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+
+rpi_ccpol_ser: $(CCPOLFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(CCPOLFLAGS) $(COMFILES) $(CCPOLFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 ################################
 #Water Dimer MB-pol

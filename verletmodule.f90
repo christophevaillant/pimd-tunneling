@@ -448,10 +448,11 @@ contains
   !main function for propagating a MD trajectory with Langevin thermostat
   subroutine propagate_pimd_pile(xprop,vprop,a,b,dbdl,dHdr)
     implicit none
-    double precision::     xprop(:,:,:), vprop(:,:,:),randno
+    double precision::     xprop(:,:,:), vprop(:,:,:),randno, Eold
+    double precision::     potenergy, springenergy, kinenergy, totenergy
     double precision::     a(:,:),b(:,:), dHdr, dbdl(:,:), contr
     double precision, allocatable:: force(:,:,:)
-    integer::              i,j,k,count, time1,time2,imax, irate, skipcount
+    integer::              i,j,k,count, time1,time2,imax, irate, skipcount,jj
     integer (kind=4)::     rkick(1)
 
     allocate(c1(natom,n), c2(natom,n), force(n, ndim, natom))
@@ -471,7 +472,7 @@ contains
           count=0
           if (iprint) write(*,*) 100*dble(i)/dble(NMC-imin), dHdr/(betan**2*dble(i-imin))
        end if
-       call time_step_test_pile(xprop, vprop)
+       call time_step_test_pile(xprop, vprop, force)
        if (i.gt.imin) then
           contr=0.0d0
           do j=1,ndim
@@ -485,14 +486,29 @@ contains
              ! write(*,*) "Over limit", contr, ", skipped"
              skipcount=skipcount+1
           end if
-
        end if
+       !    totenergy= UM(xprop,a,b)
+       !    do jj=1, N
+       !       do k=1,natom
+       !          kinenergy= 0.0d0
+       !          do j=1,ndim
+       !             kinenergy= kinenergy + vprop(jj,j,k)**2
+       !          end do
+       !          totenergy= totenergy+0.5d0*kinenergy/mass(k)
+       !    end do
+       ! end do
+       ! if (iprint) then
+       !    write(*,*) i, totenergy- Eold
+       ! end if
+       ! if (abs(totenergy- Eold) .gt. 1d-1) write(*,*) i, totenergy
+       ! Eold=totenergy
     end do
     dHdr= dHdr/dble(NMC-imin-skipcount)
     if (skipcount .gt. 0) write(*,*) "Skipped", skipcount, "points"
     deallocate(c1, c2)
     return
   end subroutine propagate_pimd_pile
+
   !-----------------------------------------------------
   !-----------------------------------------------------
   !main function for propagating a MD trajectory with Langevin thermostat
@@ -613,6 +629,7 @@ contains
              newv(i,j,k)= vprop(i,j,k) - force(i,j,k)*dt 
              if (newv(i,j,k) .ne. newv(i,j,k)) then
                 write(*,*) "NaN in pot propagation"
+                write(*,*) i,j,k,force(i,j,k)
                 ! stop
              end if
           end do
@@ -672,15 +689,15 @@ contains
   !-----------------------------------------------------
   !routine taking a step in time using normal mode verlet algorithm
   !from ceriotti et al 2010 paper.
-  subroutine time_step_test_pile(x, vprop)
+  subroutine time_step_test_pile(x, vprop, force)
     implicit none
-    double precision::    x(:,:,:), vprop(:,:,:), omegak
-    double precision, allocatable::  newv(:,:,:), newx(:,:,:),force(:,:,:)
+    double precision::    x(:,:,:), vprop(:,:,:), omegak,force(:,:,:)
+    double precision, allocatable::  newv(:,:,:), newx(:,:,:)
     double precision, allocatable::  q(:,:,:), p(:,:,:)
     double precision, allocatable::  pprop(:)
     integer::             i,j,k,dofi
 
-    allocate(pprop(n*ndof), force(n,ndim, natom))
+    allocate(pprop(n*ndof))
     allocate(p(n,ndim,natom),q(n,ndim,natom))
     allocate(newv(n,ndim,natom), newx(n,ndim,natom))
     do i=1,n
@@ -690,8 +707,9 @@ contains
        do j=1,ndim
           do k=1,natom
              vprop(i,j,k)= vprop(i,j,k) - 0.5d0*force(i,j,k)*dt 
-             if (newv(i,j,k) .ne. newv(i,j,k)) then
+             if (vprop(i,j,k) .ne. vprop(i,j,k)) then
                 write(*,*) "NaN in pot propagation"
+                write(*,*) i,j,k,force(i,j,k)
                 stop
              end if
           end do
@@ -805,7 +823,7 @@ contains
     ! end do
 
     deallocate(pprop)
-    deallocate(newv, newx,force)
+    deallocate(newv, newx)
     deallocate(q,p)
     return
   end subroutine time_step_test_pile

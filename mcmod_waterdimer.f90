@@ -616,7 +616,7 @@ end subroutine centreofmass
 
   subroutine instanton(xtilde,a,b)
     implicit none
-    integer::                        iprint, m, iflag, mp,idof
+    integer::                        iprint, m, iflag, mp,idof, maxiter
     integer::                        i, lp, count, iw, j,k, dof
     double precision::               eps, xtol, gtol, stpmin, stpmax
     double precision::               f, xtilde(:,:,:), xtemp(ndim,natom)
@@ -680,6 +680,7 @@ end subroutine centreofmass
     iflag=0
     eps= 1.0d-8
     factr=1.0d7
+    maxiter=30
     f= UM(xtilde,a,b)
     call UMprime(xtilde,a,b,fprime)
     count=0
@@ -689,7 +690,7 @@ end subroutine centreofmass
        xwork=reshape(xtilde,(/dof/))
        fprimework= reshape(fprime,(/dof/))
        call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps,work&
-            ,iwork,task,iprint, csave,lsave,isave,dsave)
+            ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
        if (task(1:2) .eq. 'FG') then
           xtilde= reshape(xwork,(/n,ndim,natom/))
           f= UM(xtilde,a,b)
