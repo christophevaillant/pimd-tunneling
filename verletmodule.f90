@@ -480,7 +480,7 @@ contains
                 contr=contr+mass(k)*(-xprop(n,j,k))*dbdl(j,k)
              end do
           end do
-          if (abs(contr) .lt. dHdrlimit .and. dHdrlimit .gt. 0.0) then
+          if (abs(contr) .lt. dHdrlimit .or. dHdrlimit .lt. 0.0) then
              dHdr= dHdr+contr
           else
              ! write(*,*) "Over limit", contr, ", skipped"
