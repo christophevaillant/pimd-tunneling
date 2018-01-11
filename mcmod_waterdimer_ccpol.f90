@@ -1,8 +1,8 @@
 module mcmod_mass
-  use ccpolmod
+  ! use ccpolmod
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
-  double precision::               beta, betan, UMtilde, eps
+  double precision::               beta, betan, UMtilde
   integer::                        n, ndim, ndof, natom, xunit, totdof, nw
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:), tst(:,:)
   integer,dimension(:,:),allocatable::conn
@@ -13,7 +13,7 @@ contains
 
   subroutine V_init()
 
-    call init_ccpol(10, 1,1,1)
+    call init_ccpol(3, 1,1,1)
 
     write(*,*) "Potential initializaton complete"
 
@@ -37,7 +37,7 @@ contains
     implicit none
     integer::              i,j
     double precision::     grad(:,:), x(:,:)
-    double precision::     potplus, potminus
+    double precision::     potplus, potminus, eps
     eps=1d-5
     do i= 1,ndim
        do j=1,natom
@@ -55,10 +55,10 @@ contains
   !---------------------------------------------------------------------
   subroutine  Vdoubleprime(x,hess)
     implicit none
-    double precision::     hess(:,:,:,:), x(:,:), dummy1
+    double precision::     hess(:,:,:,:), x(:,:), dummy1, eps
     integer::              i, j
     double precision::     gradplus(ndim, natom), gradminus(ndim, natom)
-
+    eps=1d-5
     do i= 1, ndim
        do j= 1, natom
           x(i,j)= x(i,j) + eps

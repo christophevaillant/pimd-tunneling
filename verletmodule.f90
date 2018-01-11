@@ -23,7 +23,43 @@ module verletint
   integer::                         seed_normal, rk
 
 contains
+  !-----------------------------------------------------
+  !-----------------------------------------------------
+  !function for initializing a path
+  subroutine init_path(start, end, x, p)
+    double precision::  start(:,:), end(:,:), x(:,:,:), p(:,:,:)
+    double precision, allocatable::    vel(:), tempp(:)
+    double precision::  stdev
+    integer::           i,j,k, dofi
 
+    allocate(vel(n),tempp(n))
+
+    do i=1,n
+       x(i,:,:)= start(:,:) + (end(:,:)-start(:,:))*dble(i-1)/dble(n-1)
+    end do
+
+    do i=1,ndim
+       do k=1,natom
+          dofi=(k-1)*ndim +i
+          stdev=sqrt(1.0d0/betan)
+          errcode_normal = vdrnggaussian(rmethod_normal,stream_normal,n,vel,0.0d0,stdev)
+          do j=1,n
+             vel(j)= vel(j)*sqrt(beadmass(k,j))
+          end do
+          call nmtransform_backward(vel, tempp, 0)
+          do j=1,n
+             p(j,i,k)= tempp(j)
+          end do
+       end do
+    end do
+
+    deallocate(vel, tempp)
+    return
+  end subroutine init_path
+
+  !-----------------------------------------------------
+  !-----------------------------------------------------
+  !function for calculating gauss-legendre points
   subroutine gauleg(x1,x2,x,w,nintegral)
     implicit none
     integer::             i,j,m,nintegral
@@ -483,8 +519,9 @@ contains
           if (abs(contr) .lt. dHdrlimit .or. dHdrlimit .lt. 0.0) then
              dHdr= dHdr+contr
           else
-             ! write(*,*) "Over limit", contr, ", skipped"
-             skipcount=skipcount+1
+             write(*,*) "Over limit", contr, ", reinitialize path"
+             call init_path(a, b, xprop, vprop)
+!             skipcount=skipcount+1
           end if
        end if
        !    totenergy= UM(xprop,a,b)
@@ -504,7 +541,7 @@ contains
        ! Eold=totenergy
     end do
     dHdr= dHdr/dble(NMC-imin-skipcount)
-    if (skipcount .gt. 0) write(*,*) "Skipped", skipcount, "points"
+    ! if (skipcount .gt. 0) write(*,*) "Skipped", skipcount, "points"
     deallocate(c1, c2)
     return
   end subroutine propagate_pimd_pile
@@ -629,7 +666,7 @@ contains
              newv(i,j,k)= vprop(i,j,k) - force(i,j,k)*dt 
              if (newv(i,j,k) .ne. newv(i,j,k)) then
                 write(*,*) "NaN in pot propagation"
-                write(*,*) i,j,k,force(i,j,k)
+                write(*,*) i,j,k,force(i,j,k), x(i,j,k)
                 ! stop
              end if
           end do
@@ -708,7 +745,7 @@ contains
           do k=1,natom
              vprop(i,j,k)= vprop(i,j,k) - 0.5d0*force(i,j,k)*dt 
              if (vprop(i,j,k) .ne. vprop(i,j,k)) then
-                write(*,*) "NaN in pot propagation"
+                write(*,*) "NaN in 1st pot propagation"
                 write(*,*) i,j,k,force(i,j,k)
                 stop
              end if
@@ -755,7 +792,7 @@ contains
           do k=1,natom
              newv(i,j,k)= vprop(i,j,k) - 0.5d0*force(i,j,k)*dt 
              if (newv(i,j,k) .ne. newv(i,j,k)) then
-                write(*,*) "NaN in pot propagation"
+                write(*,*) "NaN in 2nd pot propagation"
                 stop
              end if
           end do

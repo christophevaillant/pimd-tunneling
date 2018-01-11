@@ -16,7 +16,7 @@ program pimd
   double precision::               lndetj, lndetj0, skink, theta, phi, dummyE
   double precision::               dHdr, dx, finalI,sigmaA, a, b, xmiddle
   double precision::               theta1, theta2, theta3
-  double precision, allocatable::  x(:,:,:), vel(:), tempv(:), initpath(:,:), tempp(:)
+  double precision, allocatable::  x(:,:,:), initpath(:,:)
   double precision, allocatable::  xtilde(:,:,:), origin(:), wellinit(:,:)
   double precision, allocatable::  xi(:), dbdxi(:,:,:), y(:,:,:), pinit(:,:,:)
   double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:), Vpath(:)
@@ -277,7 +277,7 @@ program pimd
      deallocate(splinepath,lampath)
 
      do i=1, nintegral
-        write(*,*) xi(i), V(xint(i,:,:))
+        write(*,*) xi(i), V(xint(i,:,:)), norm2(reshape(dbdxi(i,:,:), (/ndim*natom/)))
      end do
 
   end if
@@ -347,8 +347,7 @@ program pimd
   allocate(integrand(ncalcs))
   integrand(:)=0.0d0
   ! call random_seed()
-  allocate(x(n,ndim,natom), vel(n),pinit(n,ndim,natom))
-  allocate(tempp(n), tempv(n))
+  allocate(x(n,ndim,natom), pinit(n,ndim,natom))
   allocate(transmatrix(n,n),beadmass(natom,n),beadvec(n,ndof), lam(n))
   call alloc_nm(iproc)
   do ii=1, ncalcs
@@ -357,24 +356,7 @@ program pimd
         cycle
      end if
      call init_nm(startpoint,endpoints(ii,:,:))
-     ! call instanton(x, well1, b)
-     do i=1,n
-        x(i,:,:)= startpoint + (endpoints(ii,:,:)-startpoint)*dble(i-1)/dble(n-1)
-     end do
-     do i=1,ndim
-        do k=1,natom
-           dofi=(k-1)*ndim +i
-           stdev=sqrt(1.0d0/betan)
-           errcode_normal = vdrnggaussian(rmethod_normal,stream_normal,n,vel,0.0d0,stdev)
-           do j=1,n
-              vel(j)= vel(j)*sqrt(beadmass(k,j))
-           end do
-           call nmtransform_backward(vel, tempp, 0)
-           do j=1,n
-              pinit(j,i,k)= tempp(j)
-           end do
-        end do
-     end do
+     call init_path(startpoint, endpoints(ii,:,:), x, pinit)
      if (thermostat .eq. 1) then
         call propagate_pimd_nm(x,pinit, startpoint,endpoints(ii,:,:), gradpoints(ii,:,:),dHdr)
      else if (thermostat .eq. 2) then
@@ -389,7 +371,7 @@ program pimd
      write(*,*) ii,iproc, integrand(ii)
   end do
   call free_nm()
-  deallocate(x, vel,pinit, tempv, tempp)
+  deallocate(x, pinit)
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
 
   !Collate data from all processors and have the root finalize the calculations

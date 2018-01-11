@@ -648,23 +648,9 @@ end subroutine centreofmass
           do k=1,natom
              xtilde(i,j,k)= xtilde(i,j,k)- com(j)
              idof= ((k-1)*ndim + j -1)*n +i
-             ! if (k.eq. 1) then
-             !    lb(idof)= a(j,k)
-             !    ub(idof)= a(j,k)
-             !    nbd(idof)=2
-             ! else if (k.eq.2 .and. (j.eq.2 .or. j.eq.3)) then ! 
-             !    lb(idof)= a(j,k)
-             !    ub(idof)= a(j,k)
-             !    nbd(idof)=2
-             ! else if (k .eq. 3 .and. j.eq.2) then !
-             !    lb(idof)= a(j,k)
-             !    ub(idof)= a(j,k)
-             !    nbd(idof)=2
-             ! else
                 lb(idof)= a(j,k)
                 ub(idof)= a(j,k)
                 nbd(idof)=0
-             ! end if
           end do
        end do
     end do
