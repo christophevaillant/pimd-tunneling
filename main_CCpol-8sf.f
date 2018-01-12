@@ -210,6 +210,7 @@ c
       subroutine ccpol(Etot,Oa,Ha1,Ha2,Ob,HB1,Hb2)
       implicit real*8 (a-h,o-z)
       dimension Oa(3),Ha1(3),Ha2(3),Ob(3),Hb1(3),Hb2(3)
+      dimension raa1(1,3), raa2(1,3)
 
       common /ddaattaa/ param(18,6),parab(84,6,6),
      .       c(1000),cc(2000),params(1000),
@@ -256,11 +257,18 @@ c        write(6,'(a,3f13.8)') "rB1, rB2, thB:  ",rB1, rB2, thB*rad2deg
         rA2=rA2/a0
         rB1=rB1/a0
         rB2=rB2/a0
-        call pots(vA,rA1,rA2,thA)
-        call pots(vB,rB1,rB2,thB)
+        raa1(1,1)= rA1
+        raa1(1,2)= rA2
+        raa1(1,3)= thA
+        raa2(1,1)= rB1
+        raa2(1,2)= rB2
+        raa2(1,3)= thB
+c$$$        call pots(vA,rA1,rA2,thA)
+c$$$        call pots(vB,rB1,rB2,thB)
 c        write(6,'(a,f13.8)') "vA= ",vA*h2kcal
 c        write(6,'(a,f13.8)') "vB= ",vB*h2kcal
-
+        call h2ovibpot(raa1, vA, 1)
+        call h2ovibpot(raa2, vB, 1)
 c        write(6,'(a,f13.8)') "Etot(dimer only): ",Etot
         Etot=Etot+(vA+vB)*h2kcal
 

@@ -38,8 +38,12 @@ c        thB=valB(3)*rad2deg
 c        write(6,'(a,3f13.8)') "rA1, rA2, thA:  ",rA1, rA2, thA
 c        write(6,'(a,3f13.8)') "rB1, rB2, thB:  ",rB1, rB2, thB
 
-        call pots(vA,valA(1),valA(2),valA(3))
-        call pots(vB,valB(1),valB(2),valB(3))
+c$$$        call pots(vA,valA(1),valA(2),valA(3))
+c$$$        call pots(vB,valB(1),valB(2),valB(3))
+
+        call h2ovibpot(valA, vA, 1)
+        call h2ovibpot(valB, vB, 1)
+
 c        write(6,'(a,f13.8)') "vA= ",vA*h2kcal
 c        write(6,'(a,f13.8)') "vB= ",vB*h2kcal
 
