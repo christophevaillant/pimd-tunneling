@@ -61,6 +61,7 @@ contains
     integer::              i, j
     double precision, allocatable::     gradplus(:, :), gradminus(:, :)
 
+    eps=1d-5
     allocate(gradplus(ndim, natom), gradminus(ndim, natom))
     do i= 1, ndim
        do j= 1, natom

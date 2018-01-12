@@ -105,6 +105,7 @@ contains
     double precision::     grad(:,:), x(:,:)
     double precision::     potplus, potminus
 
+    eps=1d-4
     do i= 1,ndim
        do j=1,natom
           x(i,j)= x(i,j) + eps
@@ -124,6 +125,7 @@ contains
     integer::              i, j
     double precision::     gradplus(ndim, natom), gradminus(ndim, natom)
 
+    eps=1d-4
     do i= 1, ndim
        do j= 1, natom
           x(i,j)= x(i,j) + eps

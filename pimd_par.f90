@@ -153,9 +153,9 @@ program pimd
         if (i.eq.1) then
            lampath(1)=0.0d0
            call get_align(initpath,theta1, theta2, theta3, origin)
-        call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
+           call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
         else
-        call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
+           call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
            lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))
         end if
      end do
