@@ -1,5 +1,4 @@
 module mcmod_mass
-  ! use ccpolmod
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
   double precision::               beta, betan, UMtilde
@@ -13,7 +12,7 @@ contains
 
   subroutine V_init()
 
-    call init_ccpol(3, 1,1,1)
+    call init_ccpol(3, 1,1,0)
 
     write(*,*) "Potential initializaton complete"
 
@@ -23,10 +22,19 @@ contains
   function V(x)
     double precision:: V, x(:,:), xtemp(ndim,natom), Etot
     double precision, parameter::  ang=0.529177d0
-
+    integer::  i,j
     xtemp(:,:)= x(:,:)*ang
     call ccpol(Etot, xtemp(:,1), xtemp(:,2), xtemp(:,3), xtemp(:,4), xtemp(:,5), xtemp(:,6))
-    V=(Etot/627.510d0)  + 7.994192765186106d-3
+    ! if (abs(Etot) .lt. 5.d3) then
+       V=(Etot/627.510d0)  + 7.994192765186106d-3
+    ! else
+    !    V=0.0d0
+    !    write(*,*) "cut:", Etot
+    !    do i=1, natom
+    !       write(*,*) (x(j,i)*ang, j=1,ndim)
+    !    end do
+    !    stop
+    ! end if
 
     return
 
@@ -38,7 +46,7 @@ contains
     integer::              i,j
     double precision::     grad(:,:), x(:,:)
     double precision::     potplus, potminus, eps
-    eps=1d-5
+    eps=1d-4
     do i= 1,ndim
        do j=1,natom
           x(i,j)= x(i,j) + eps

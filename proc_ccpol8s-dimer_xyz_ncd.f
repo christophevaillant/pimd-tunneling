@@ -366,6 +366,7 @@ c     -----------------------
          write (*,'(a,g12.3)') 'energy change=',change
          write (*,'(a,g12.3)') 'thr_iter=',thr_iter
 c$$$         stop
+         energy=0.0d0
       end if
 
 c      energy = 627.510d0*energy   ! hartree--->kcal/mol
