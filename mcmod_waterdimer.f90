@@ -3,7 +3,7 @@ module mcmod_mass
   double precision, parameter::    pi=3.14159265358979d0
   double precision::               beta, betan, UMtilde, eps
   integer::                        n, ndim, ndof, natom, xunit, totdof
-  double precision, allocatable::  well1(:,:), well2(:,:), mass(:), tst(:,:)
+  double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
 
   public :: QsortC
   private :: Partition
