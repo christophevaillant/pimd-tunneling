@@ -11,7 +11,7 @@ module verletint
   integer, allocatable::            ipar(:)
   double precision::                dt, dHdrlimit
   double precision,allocatable::    transmatrix(:,:),dpar(:), beadvec(:,:)
-  double precision,allocatable::    beadmass(:,:), lam(:)
+  double precision,allocatable::    xtilde(:,:,:),beadmass(:,:), lam(:)
   double precision, allocatable::   c1(:,:), c2(:,:)
   double precision::                alpha1, alpha2, alpha3, alpha4
   double precision::                beta1, beta2, beta3, tau, gamma
@@ -21,6 +21,7 @@ module verletint
   type (vsl_stream_state)::         stream_poisson,stream_normal
   integer::                         errcode_normal, rmethod_normal, brng_normal
   integer::                         seed_normal, rk
+  character, allocatable::         label(:)
 
 contains
   !-----------------------------------------------------
@@ -34,9 +35,20 @@ contains
 
     allocate(vel(n),tempp(n))
 
-    do i=1,n
-       x(i,:,:)= start(:,:) + (end(:,:)-start(:,:))*dble(i-1)/dble(n-1)
-    end do
+    ! do i=1,n
+    !    x(i,:,:)= start(:,:) + (end(:,:)-start(:,:))*dble(i-1)/dble(n-1)
+    ! end do
+    x(:,:,:)= xtilde(:,:,:)
+    ! open(45+iproc)
+    ! do i=1,n
+    !    write(45+iproc,*) natom
+    !    write(45+iproc,*) "Energy of minimum",i
+    !    do j=1, natom
+    !       write(*,*) "bonk", i, iproc,j
+    !       write(45+iproc,*)  label(j), (x(i,k,j)*0.529177d0, k=1,ndim)
+    !    end do
+    ! end do
+    ! close(45+iproc)
 
     do i=1,ndim
        do k=1,natom
@@ -726,9 +738,9 @@ contains
   !-----------------------------------------------------
   !routine taking a step in time using normal mode verlet algorithm
   !from ceriotti et al 2010 paper.
-  subroutine time_step_test_pile(x, vprop, force)
+  subroutine time_step_test_pile(xprop, vprop, force)
     implicit none
-    double precision::    x(:,:,:), vprop(:,:,:), omegak,force(:,:,:)
+    double precision::    xprop(:,:,:), vprop(:,:,:), omegak,force(:,:,:)
     double precision, allocatable::  newv(:,:,:), newx(:,:,:)
     double precision, allocatable::  q(:,:,:), p(:,:,:)
     double precision, allocatable::  pprop(:)
@@ -738,7 +750,7 @@ contains
     allocate(p(n,ndim,natom),q(n,ndim,natom))
     allocate(newv(n,ndim,natom), newx(n,ndim,natom))
     do i=1,n
-       call Vprime(x(i,:,:),force(i,:,:))
+       call Vprime(xprop(i,:,:),force(i,:,:))
     end do
     do i=1,n
        do j=1,ndim
@@ -746,7 +758,7 @@ contains
              vprop(i,j,k)= vprop(i,j,k) - 0.5d0*force(i,j,k)*dt 
              if (vprop(i,j,k) .ne. vprop(i,j,k)) then
                 write(*,*) "NaN in 1st pot propagation"
-                write(*,*) i,j,k,force(i,j,k)
+                write(*,*) i,j,k,force(i,j,k), n, ndim, natom
                 stop
              end if
           end do
@@ -805,10 +817,10 @@ contains
           dofi= (j-1)*ndim +i
           if (.not. use_mkl) then
              call nmtransform_forward(newv(:,i,j), p(:,i,j), 0)
-             call nmtransform_forward(x(:,i,j), q(:,i,j), dofi)
+             call nmtransform_forward(xprop(:,i,j), q(:,i,j), dofi)
           else
              call nmtransform_forward_nr(newv(:,i,j), p(:,i,j), 0)
-             call nmtransform_forward_nr(x(:,i,j), q(:,i,j), dofi)
+             call nmtransform_forward_nr(xprop(:,i,j), q(:,i,j), dofi)
           end if
           ! q(:,i,j)=newx(:,i,j)
        end do
@@ -838,10 +850,10 @@ contains
           dofi=(j-1)*ndim + i
           if (.not. use_mkl) then
              call nmtransform_backward(newv(:,i,j), vprop(:,i,j), 0)
-             call nmtransform_backward(newx(:,i,j), x(:,i,j),dofi)
+             call nmtransform_backward(newx(:,i,j), xprop(:,i,j),dofi)
           else
              call nmtransform_backward_nr(newv(:,i,j), vprop(:,i,j),0)
-             call nmtransform_backward_nr(newx(:,i,j), x(:,i,j),dofi)
+             call nmtransform_backward_nr(newx(:,i,j), xprop(:,i,j),dofi)
           end if
        end do
     end do

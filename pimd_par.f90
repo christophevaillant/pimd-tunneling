@@ -17,7 +17,7 @@ program pimd
   double precision::               dHdr, dx, finalI,sigmaA, a, b, xmiddle
   double precision::               theta1, theta2, theta3
   double precision, allocatable::  x(:,:,:), initpath(:,:)
-  double precision, allocatable::  xtilde(:,:,:), origin(:), wellinit(:,:)
+  double precision, allocatable::  origin(:), wellinit(:,:)
   double precision, allocatable::  xi(:), dbdxi(:,:,:), y(:,:,:), pinit(:,:,:)
   double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:), Vpath(:)
   integer::                        ndofrb, dummy
@@ -31,7 +31,6 @@ program pimd
   double precision::               vl, vu, abstol
   integer::                        nout, ldz, lwork, liwork, info
   integer,allocatable::            isuppz(:), iwork(:)
-  character, allocatable::         label(:)
   !MPI variables
   integer::                        ierr, nproc, ncalcs
   integer, allocatable::           mpi_int_send(:)
@@ -114,7 +113,7 @@ program pimd
   call MPI_Bcast(ndim, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
 
-  allocate(mass(natom), label(natom))
+  allocate(xtilde(n, ndim, natom),mass(natom), label(natom))
   if (iproc.eq.0) then
      open(18, file="masses.dat", status="old")
      do j=1,natom
@@ -131,6 +130,7 @@ program pimd
   call MPI_Bcast(gamma, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(mass, natom, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(dHdrlimit, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(label, natom, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
   ndof=ndim*natom
 
   !Set up integration path and integration points/weights
@@ -196,7 +196,7 @@ program pimd
         call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
 
         write(*,*) "Potential at wells:", V(well1), V(well2)
-        allocate(xtilde(n, ndim, natom),splinepath(npath))
+        allocate(splinepath(npath))
         do i=1,ndim
            do j=1,natom
               splinepath(:)=0.0d0
@@ -229,7 +229,6 @@ program pimd
         lampath(:)= lampath(:)/lampath(npath)
         close(19)
      end if
-     deallocate(xtilde)
      !-------------------------
      !Find the centre to make sure this is symmetric
      if (centre) then
@@ -313,6 +312,7 @@ program pimd
 
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
   call MPI_Bcast(startpoint, ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(xtilde, n*ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
 
   if (iproc.eq.0) then
      do ii=1,nproc-1
@@ -416,6 +416,7 @@ program pimd
      call system_clock(time2, irate, imax)
      write(*,*) "Ran in", dble(time2-time1)/dble(irate), "s"
   end if
+  deallocate(xtilde, label)
 
   call MPI_FINALIZE(ierr)
 

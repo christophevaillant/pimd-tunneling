@@ -143,6 +143,8 @@ program pimd
      lampath(:)= lampath(:)/lampath(npath)
      close(19)
   end if
+  allocate(xtilde(n, ndim,natom))
+  xtilde(:,:,:)= path(:,:,)
   !-------------------------
   !Find the centre to make sure this is symmetric
   ! allocate(splinepath(npath))
@@ -245,23 +247,7 @@ program pimd
      integrand(ii)=0.0d0
      do jj=1, nrep
         call init_nm(path(1,:,:),xint(ii,:,:))
-        do i=1,n
-           x(i,:,:)= path(1,:,:) + (xint(ii,:,:)-path(1,:,:))*dble(i-1)/dble(n-1)
-        end do
-        do i=1,ndim
-           do k=1,natom
-              dofi=(k-1)*ndim +i
-              stdev=sqrt(1.0d0/betan)
-              errcode_normal = vdrnggaussian(rmethod_normal,stream_normal,n,vel,0.0d0,stdev)
-              do j=1,n
-                 vel(j)= vel(j)*sqrt(beadmass(k,j))
-              end do
-              call nmtransform_backward(vel, tempp, 0)
-              do j=1,n
-                 p(j,i,k)= tempp(j)
-              end do
-           end do
-        end do
+        call init_path(path(1,:,:), xint(ii,:,:), x, p)
         if (thermostat .eq. 1) then
            call propagate_pimd_nm(x,p, path(1,:,:),xint(ii,:,:),dbdxi(ii,:,:),dHdr)
         else if (thermostat .eq. 2) then
@@ -299,5 +285,5 @@ program pimd
   write(*,*) "q0/q=", 1.0d0/finalI, betan*sqrt(sigmaA)/(finalI*sqrt(dble(nrep)))
   call system_clock(time2, irate, imax)
   write(*,*) "Ran in", dble(time2-time1)/dble(irate), "s"
-
+  deallocate(path, xtilde)
 end program pimd
