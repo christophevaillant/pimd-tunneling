@@ -1,7 +1,7 @@
 module mcmod_mass
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
-  double precision::               beta, betan, UMtilde, eps, V0
+  double precision::               beta, betan, UMtilde, V0
   integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
 
@@ -57,7 +57,7 @@ contains
   !---------------------------------------------------------------------
   subroutine  Vdoubleprime(x,hess)
     implicit none
-    double precision::     hess(:,:,:,:), x(:,:), dummy1
+    double precision::     hess(:,:,:,:), x(:,:), dummy1, eps
     integer::              i, j
     double precision, allocatable::     gradplus(:, :), gradminus(:, :)
 

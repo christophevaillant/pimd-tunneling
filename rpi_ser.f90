@@ -15,7 +15,7 @@ program rpi
   integer::                         ii,jj,kk
   character::                      dummylabel, dummystr(28)
   logical::                        angular, output_instanton
-  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, eps, angular, npoints, cutofftheta,cutoffphi, output_instanton
+  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, angular, npoints, cutofftheta,cutoffphi, output_instanton
 
   !-------------------------
   !Set default system parameters then read in namelist
@@ -25,7 +25,6 @@ program rpi
   natom=1
   xunit=1
   npath=0
-  eps=1d-3
   npoints=10
   angular=.false.
   output_instanton=.false.
