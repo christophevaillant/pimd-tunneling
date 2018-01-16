@@ -61,7 +61,7 @@ contains
     integer::              i, j
     double precision, allocatable::     gradplus(:, :), gradminus(:, :)
 
-    eps=1d-5
+    eps=1d-4
     allocate(gradplus(ndim, natom), gradminus(ndim, natom))
     do i= 1, ndim
        do j= 1, natom
@@ -619,7 +619,7 @@ end subroutine centreofmass
     implicit none
     integer::                        iprint, m, iflag, mp,idof, maxiter
     integer::                        i, lp, count, iw, j,k, dof
-    double precision::               eps, xtol, gtol, stpmin, stpmax
+    double precision::               eps2, xtol, gtol, stpmin, stpmax
     double precision::               f, xtilde(:,:,:), xtemp(ndim,natom)
     double precision::               factr, a(:,:),b(:,:), com(ndim)
     double precision, allocatable::  fprime(:,:,:), work(:), fprimework(:)
@@ -665,7 +665,7 @@ end subroutine centreofmass
     iw=dof*(2*m+5) + 11*m**2 + 8*m
     allocate(work(iw), iwork(3*dof), isave(44), dsave(29))
     iflag=0
-    eps= 1.0d-8
+    eps2= 1.0d-8
     factr=1.0d7
     maxiter=30
     f= UM(xtilde,a,b)
@@ -676,7 +676,7 @@ end subroutine centreofmass
        count=count+1
        xwork=reshape(xtilde,(/dof/))
        fprimework= reshape(fprime,(/dof/))
-       call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps,work&
+       call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
             ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
        if (task(1:2) .eq. 'FG') then
           xtilde= reshape(xwork,(/n,ndim,natom/))
