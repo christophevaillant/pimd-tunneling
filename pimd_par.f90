@@ -194,7 +194,7 @@ program pimd
         call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
         wellinit(:,:)= well2(:,:)
         call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
-
+        V0=V(well1)
         write(*,*) "Potential at wells:", V(well1), V(well2)
         allocate(splinepath(npath))
         do i=1,ndim

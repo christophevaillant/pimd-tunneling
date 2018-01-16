@@ -2,7 +2,7 @@ program rpi
   use mcmod_mass
   use verletint
   implicit none
-  double precision, allocatable::   theta(:),phi(:), xtilde(:,:,:), xharm(:,:,:), H(:,:)
+  double precision, allocatable::   theta(:),phi(:), xharm(:,:,:), H(:,:)
   double precision, allocatable::   weightstheta(:),weightsphi(:), origin(:)
   double precision, allocatable::   eta(:),weightseta(:)
   double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:), wellinit(:,:)
@@ -13,7 +13,6 @@ program rpi
   double precision::                theta1, theta2, theta3
   integer::                         i, j,k,npath, dummy, zerocount, npoints
   integer::                         ii,jj,kk
-  character, allocatable::         label(:)
   character::                      dummylabel, dummystr(28)
   logical::                        angular, output_instanton
   namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, eps, angular, npoints, cutofftheta,cutoffphi, output_instanton
@@ -65,7 +64,7 @@ program rpi
   call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
   wellinit(:,:)= well2(:,:)
   call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
-
+  V0=V(well1)
   write(*,*) "Potential at wells:", V(well1), V(well2)
   allocate(grad(ndim,natom))
   call Vprime(well1, grad)
@@ -81,6 +80,9 @@ program rpi
   do i=1, natom
      write(21,*)  label(i), (well2(k,i)*0.529177d0, k=1,ndim)
   end do
+     write(*,*) "beta=", beta, "n=", n
+     write(*,*) "beta_n=", betan
+
   !-------------------------
   !obtain instanton solution, x_tilde
   allocate(initpath(ndim, natom), lampath(npath), Vpath(npath))
@@ -298,8 +300,6 @@ program rpi
      Skink= betan*UM(xtilde, well1, well2)
      omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
      delta= 2.0d0*omega/betan
-     write(*,*) "beta=", beta, "n=", n
-     write(*,*) "beta_n=", betan
      write(*,*) "phi=", gammetilde
      write(*,*) "s_kink=", skink
      write(*,*) "theta, N*theta=",omega,omega*N

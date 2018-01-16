@@ -1,7 +1,7 @@
 module mcmod_mass
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
-  double precision::               beta, betan, UMtilde, eps
+  double precision::               beta, betan, UMtilde, eps, V0
   integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
 
@@ -10,7 +10,7 @@ module mcmod_mass
 contains
 
   subroutine V_init()
-
+    V0=0.0d0
     return
   end subroutine V_init
   !---------------------------------------------------------------------
@@ -27,7 +27,7 @@ contains
        end do
     end do
     call mbpolenergy(2, V, xtemp)
-    V= V*1.59362d-3
+    V= V*1.59362d-3 - V0
     deallocate(xtemp)
     return
   end function V
@@ -86,14 +86,14 @@ contains
 
     UM=0.0d0
     do i=2, N-1, 1
-       UM=UM+ V(x(i,:,:)) + 7.909252131246103d-3
+       UM=UM+ V(x(i,:,:))! + 7.909252131246103d-3
        do j=1, ndim
           do k=1, natom
              UM=UM+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
           end do
        end do
     end do
-    UM=UM+ V(x(n,:,:))+ V(x(1,:,:))+ 2.0d0*7.909252131246103d-3
+    UM=UM+ V(x(n,:,:))+ V(x(1,:,:))!+ 2.0d0*7.909252131246103d-3
     do j=1, ndim
        do k=1, natom
           UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
