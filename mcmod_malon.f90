@@ -516,11 +516,11 @@ end subroutine Partition
 
   subroutine instanton(xtilde,a,b)
     implicit none
-    integer::                        iprint, m, iflag, mp,idof
+    integer::                        iprint, m, iflag, mp,idof, maxiter
     integer::                        i, lp, count, iw, j,k, dof
     double precision::               eps, xtol, gtol, stpmin, stpmax
     double precision::               f, xtilde(:,:,:)
-    double precision::               factr, a(:,:),b(:,:)
+    double precision::               factr, a(:,:),b(:,:), com(ndim)
     double precision, allocatable::  fprime(:,:,:), work(:), fprimework(:)
     double precision, allocatable::  lb(:), ub(:), dsave(:), xwork(:)
     integer, allocatable::           nbd(:), iwork(:), isave(:)
@@ -530,14 +530,27 @@ end subroutine Partition
     dof= n*ndim*natom
     allocate(lb(dof), ub(dof),fprime(n,ndim,natom), nbd(dof))
     allocate(fprimework(dof), xwork(dof))
+    call centreofmass(a, com)
+    do i=1,ndim
+       do j=1,natom
+          a(i,j)= a(i,j)- com(i)
+       end do
+    end do
+    call centreofmass(b, com)
+    do i=1,ndim
+       do j=1,natom
+          b(i,j)= b(i,j)- com(i)
+       end do
+    end do 
     do i=1, n, 1
+       call centreofmass(xtilde(i,:,:), com)
        do j=1,ndim
           do k=1,natom
+             xtilde(i,j,k)= xtilde(i,j,k)- com(j)
              idof= ((k-1)*ndim + j -1)*n +i
-             lb(idof)= a(j,k)
-             ub(idof)= b(j,k)
-             nbd(idof)=0
-             xtilde(i,j,k)= a(j,k) + (b(j,k)-a(j,k))*dble(i-1)/dble(n-1)
+                lb(idof)= a(j,k)
+                ub(idof)= a(j,k)
+                nbd(idof)=0
           end do
        end do
     end do
@@ -554,6 +567,7 @@ end subroutine Partition
     iflag=0
     eps= 1.0d-8
     factr=1.0d4
+    maxiter=30
     f= UM(xtilde,a,b)
     call UMprime(xtilde,a,b,fprime)
     count=0
@@ -564,7 +578,7 @@ end subroutine Partition
        xwork=reshape(xtilde,(/dof/))
        fprimework= reshape(fprime,(/dof/))
        call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps,work&
-            ,iwork,task,iprint, csave,lsave,isave,dsave)
+            ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
        if (task(1:2) .eq. 'FG') then
           xtilde= reshape(xwork,(/n,ndim,natom/))
           f= UM(xtilde,a,b)
@@ -582,6 +596,123 @@ end subroutine Partition
 
     return
   end subroutine instanton
+
+  !---------------------------------------------------------------------
+  !Align a vector of atoms
+
+  subroutine get_align(atomsin,theta1, theta2, theta3, origin)
+    implicit none
+    double precision::     atomsin(:,:), workvec(3), atoms(ndim,natom)
+    double precision::     theta1, theta2, theta3, origin(ndim)
+    integer::              i,j,k, atom1, atom2, atom3
+
+
+    if (ndim .ne. 3) then
+       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
+       stop
+    end if
+
+    atom1=1
+    atom2=2
+    atom3=4
+
+    !-----------------------------------------
+    !Put atom1 at origin
+    origin(:)= atomsin(:,atom1)
+
+    do i=1, natom
+    atoms(:,i)= atomsin(:,i) - origin(:)
+    end do
+    !-----------------------------------------
+    !Align vector between atom1 and atom2 to x axis
+    !first rotate about z-axis to align with zx plane
+    workvec(:)= atoms(:,atom2) - atoms(:,atom1)
+    theta1= atan2(workvec(2),workvec(1))
+    call rotate_atoms(atoms, 3, theta1)
+
+    !rotate about y-axis to align with z-axis
+    workvec(:)= atoms(:,atom2) - atoms(:,atom1)
+    theta2= atan2(workvec(3), workvec(1))
+    call rotate_atoms(atoms, 2, theta2)
+
+    !-----------------------------------------
+    !Align vector between atom1 and atom3 to xz plane
+    !rotate about x-axis
+    workvec(:)= atoms(:,atom3) - atoms(:,atom1)
+    theta3= -atan2(workvec(2),workvec(3))
+    
+    
+    return
+  end subroutine get_align
+
+  !---------------------------------------------------------------------
+  !Align a vector of atoms
+
+  subroutine align_atoms(atomsin, theta1,theta2,theta3, origin, atomsout)
+    implicit none
+    double precision::     atomsin(:,:), atomsout(:,:), workvec(3), origin(ndim)
+    double precision::     theta1, theta2, theta3
+    integer::              i,j,k, atom1, atom2, atom3
+
+
+    if (ndim .ne. 3) then
+       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
+       stop
+    end if
+
+    atom1=1
+    atom2=2
+    atom3=4
+
+    !-----------------------------------------
+    !Put atom1 at origin
+    do i=1, natom
+    atomsout(:,i)= atomsin(:,i) - atomsin(:,atom1)
+    end do
+    !-----------------------------------------
+    !Align vector between atom1 and atom2 to x axis
+    !first rotate about z-axis to align with zx plane
+    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+    call rotate_atoms(atomsout, 3, theta1)
+
+    !rotate about y-axis to align with z-axis
+    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+    call rotate_atoms(atomsout, 2, theta2)
+
+    !-----------------------------------------
+    !Align vector between atom1 and atom3 to xz plane
+    !rotate about x-axis
+    workvec(:)= atomsout(:,atom3) - atomsout(:,atom1)
+    call rotate_atoms(atomsout, 1, theta3)
+    
+    return
+  end subroutine align_atoms
+
+  subroutine rotate_vec(vec,axis,theta)
+    implicit none
+    double precision::     rotmatrix(3,3), vec(:)
+    double precision::     theta
+    integer::              i, axis, j,k
+
+    if (axis.eq. 1) then
+       j=2
+       k=3
+    else if(axis.eq.2) then
+       j=1
+       k=3
+    else
+       j=1
+       k=2
+    end if
+    rotmatrix(:,:)=0.0d0
+    rotmatrix(axis,axis)=1.0d0
+    rotmatrix(j,j)= cos(theta)
+    rotmatrix(k,k)= cos(theta)
+    rotmatrix(k,j)= -sin(theta)
+    rotmatrix(j,k)= sin(theta)
+    vec(:)= matmul(rotmatrix(:,:), vec(:))
+    return
+  end subroutine rotate_vec
 
   subroutine rotate_atoms(atoms,axis,theta)
     implicit none
@@ -610,5 +741,20 @@ end subroutine Partition
     end do
     return
   end subroutine rotate_atoms
+
+subroutine centreofmass(x, com)
+  implicit none
+  double precision::    x(:,:), com(:)
+  integer::             i,j
+
+  com(:)=0.0d0
+  do i=1,ndim
+     do j=1,natom
+        com(i)= com(i) + mass(j)*x(i,j)
+     end do
+  end do
+  com(:)=com(:)/sum(mass(:))
+  return
+end subroutine centreofmass
 
 end module mcmod_mass

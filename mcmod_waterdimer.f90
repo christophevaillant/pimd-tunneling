@@ -1,16 +1,16 @@
 module mcmod_mass
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
-  double precision::               beta, betan, UMtilde, eps
+  double precision::               beta, betan, UMtilde, V0
   integer::                        n, ndim, ndof, natom, xunit, totdof
-  double precision, allocatable::  well1(:,:), well2(:,:), mass(:), tst(:,:)
+  double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
 
   public :: QsortC
   private :: Partition
 contains
 
   subroutine V_init()
-
+    V0=0.0d0
     return
   end subroutine V_init
   !---------------------------------------------------------------------
@@ -27,7 +27,7 @@ contains
        end do
     end do
     call mbpolenergy(2, V, xtemp)
-    V= V*1.59362d-3
+    V= V*1.59362d-3 - V0
     deallocate(xtemp)
     return
   end function V
@@ -57,11 +57,11 @@ contains
   !---------------------------------------------------------------------
   subroutine  Vdoubleprime(x,hess)
     implicit none
-    double precision::     hess(:,:,:,:), x(:,:), dummy1
+    double precision::     hess(:,:,:,:), x(:,:), dummy1, eps
     integer::              i, j
     double precision, allocatable::     gradplus(:, :), gradminus(:, :)
 
-    eps=1d-5
+    eps=1d-4
     allocate(gradplus(ndim, natom), gradminus(ndim, natom))
     do i= 1, ndim
        do j= 1, natom
@@ -86,14 +86,14 @@ contains
 
     UM=0.0d0
     do i=2, N-1, 1
-       UM=UM+ V(x(i,:,:)) + 7.909252131246103d-3
+       UM=UM+ V(x(i,:,:))! + 7.909252131246103d-3
        do j=1, ndim
           do k=1, natom
              UM=UM+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
           end do
        end do
     end do
-    UM=UM+ V(x(n,:,:))+ V(x(1,:,:))+ 2.0d0*7.909252131246103d-3
+    UM=UM+ V(x(n,:,:))+ V(x(1,:,:))!+ 2.0d0*7.909252131246103d-3
     do j=1, ndim
        do k=1, natom
           UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
@@ -619,7 +619,7 @@ end subroutine centreofmass
     implicit none
     integer::                        iprint, m, iflag, mp,idof, maxiter
     integer::                        i, lp, count, iw, j,k, dof
-    double precision::               eps, xtol, gtol, stpmin, stpmax
+    double precision::               eps2, xtol, gtol, stpmin, stpmax
     double precision::               f, xtilde(:,:,:), xtemp(ndim,natom)
     double precision::               factr, a(:,:),b(:,:), com(ndim)
     double precision, allocatable::  fprime(:,:,:), work(:), fprimework(:)
@@ -665,7 +665,7 @@ end subroutine centreofmass
     iw=dof*(2*m+5) + 11*m**2 + 8*m
     allocate(work(iw), iwork(3*dof), isave(44), dsave(29))
     iflag=0
-    eps= 1.0d-8
+    eps2= 1.0d-8
     factr=1.0d7
     maxiter=30
     f= UM(xtilde,a,b)
@@ -676,7 +676,7 @@ end subroutine centreofmass
        count=count+1
        xwork=reshape(xtilde,(/dof/))
        fprimework= reshape(fprime,(/dof/))
-       call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps,work&
+       call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
             ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
        if (task(1:2) .eq. 'FG') then
           xtilde= reshape(xwork,(/n,ndim,natom/))

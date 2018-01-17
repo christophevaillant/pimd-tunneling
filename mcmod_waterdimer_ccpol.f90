@@ -1,7 +1,7 @@
 module mcmod_mass
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
-  double precision::               beta, betan, UMtilde
+  double precision::               beta, betan, UMtilde,V0
   integer::                        n, ndim, ndof, natom, xunit, totdof, nw
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:), tst(:,:)
   integer,dimension(:,:),allocatable::conn
@@ -15,7 +15,7 @@ contains
     call init_ccpol(3, 1,1,0)
 
     write(*,*) "Potential initializaton complete"
-
+    V0=0.0d0
     return
   end subroutine V_init
   !---------------------------------------------------------------------
@@ -26,7 +26,7 @@ contains
     xtemp(:,:)= x(:,:)*ang
     call ccpol(Etot, xtemp(:,1), xtemp(:,2), xtemp(:,3), xtemp(:,4), xtemp(:,5), xtemp(:,6))
     ! if (abs(Etot) .lt. 5.d3) then
-       V=(Etot/627.510d0)  + 7.994192765186106d-3
+       V=(Etot/627.510d0)  -V0
     ! else
     !    V=0.0d0
     !    write(*,*) "cut:", Etot
