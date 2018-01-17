@@ -536,10 +536,10 @@ end subroutine Partition
     else
        write(*,*) "Found instanton in", count, "steps"
     end if
-    write(*,*) "Final U_M and gradient:", f
-    do i=1,totdof
-       write(*,*) i, fprimework(i)
-    end do
+    ! write(*,*) "Final U_M and gradient:", f
+    ! do i=1,totdof
+    !    write(*,*) i, fprimework(i)
+    ! end do
        deallocate(work, lb, ub, fprime, fprimework,xwork)
        deallocate(iwork, nbd, isave, dsave)
 
