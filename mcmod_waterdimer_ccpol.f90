@@ -509,7 +509,7 @@ end subroutine Partition
     allocate(work(iw), iwork(3*dof), isave(44), dsave(29))
     iflag=0
     eps2= 1.0d-6
-    factr=1.0d7
+    factr=1.0d3
     maxiter=20
     f= UM(xtilde,a,b)
     call UMprime(xtilde,a,b,fprime)
