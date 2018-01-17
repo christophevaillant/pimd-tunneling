@@ -2,7 +2,7 @@ module mcmod_mass
   use malonaldehyde
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
-  double precision::               beta, betan, UMtilde, eps
+  double precision::               beta, betan, UMtilde, eps, V0
   integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
 
@@ -56,6 +56,7 @@ contains
     double precision, allocatable:: dummy1(:),dummy2(:)
     
     call pes(x,0,V,dummy1,dummy2)
+    V= V- V0
     return
   end function V
 
