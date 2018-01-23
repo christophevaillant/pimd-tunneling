@@ -313,6 +313,7 @@ program pimd
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
   call MPI_Bcast(startpoint, ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(xtilde, n*ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(V0, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
 
   if (iproc.eq.0) then
      do ii=1,nproc-1
