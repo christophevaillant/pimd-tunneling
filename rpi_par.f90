@@ -5,7 +5,7 @@ program rpi
 
   include 'mpif.h'
 
-  double precision, allocatable::   theta(:),phi(:), xtilde(:,:,:), xharm(:,:,:)
+  double precision, allocatable::   theta(:),phi(:),xharm(:,:,:)
   double precision, allocatable::   weightstheta(:),weightsphi(:), origin(:)
   double precision, allocatable::   eta(:),weightseta(:)
   double precision, allocatable::   etasquared(:),Vpath(:), wellinit(:,:)
@@ -16,7 +16,6 @@ program rpi
   double precision::                theta1, theta2, theta3
   integer::                         i, j,k,npath, dummy, zerocount, npoints
   integer::                         ii,jj,kk
-  character, allocatable::         label(:)
   character::                      dummylabel, dummystr(28)
   !MPI variables
   integer::                        ierr, nproc, ncalcs
@@ -24,7 +23,7 @@ program rpi
   double precision, allocatable::  endpoints(:,:,:), allendpoints(:,:,:)
   double precision, allocatable::  results(:), allresults(:)
 
-  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, eps, npoints, cutofftheta,cutoffphi
+  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, npoints, cutofftheta,cutoffphi
 
   !initialize MPI
   nproc=0
@@ -44,7 +43,6 @@ program rpi
   natom=1
   xunit=1
   npath=0
-  eps=1d-3
   npoints=10
   call V_init()
 
@@ -168,7 +166,6 @@ program rpi
      close(19)
   end if
 
-  call MPI_Bcast(eps, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(beta, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(betan, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(mass, natom, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
