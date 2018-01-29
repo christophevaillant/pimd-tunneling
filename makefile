@@ -19,6 +19,9 @@ COMFILES= $(OBJDIR)/blas.o $(OBJDIR)/linpack.o $(OBJDIR)/timer.o \
 #1D double well potential:
 1DFILES= $(OBJDIR)/mcmod_1d.o
 
+#2D C_6 double well potential:
+2DFILES= $(OBJDIR)/mcmod_2dtest.o
+
 #SO(2) potential:
 SO2FILES= $(OBJDIR)/mcmod_so2.o
 
@@ -79,6 +82,17 @@ pimd_1d_par: $(1DFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 
 pimd_1d_ser: $(1DFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 	$(FC) $(FFLAGS) $(COMFILES) $(1DFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+
+################################
+#2D C_6 potential:
+pimd_2dtest_par: $(2DFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(COMFILES) $(2DFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+
+pimd_2dtest_ser: $(2DFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(2DFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+
+rpi_2dtest_ser: $(2DFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(2DFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 ################################
 #SO(2) potential:

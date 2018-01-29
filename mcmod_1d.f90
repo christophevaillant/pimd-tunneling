@@ -1,8 +1,8 @@
 module mcmod_mass
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
-  double precision::               beta, betan, UMtilde
-  double precision, parameter::    V0=1.0d0, x0=1.0d0
+  double precision::               beta, betan, UMtilde, V0
+  double precision, parameter::    Vheight=5.0d-3, x0=1.0d0
   integer::                        n, ndim, ndof, natom, xunit
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
 
@@ -19,7 +19,7 @@ contains
     integer::              i,j
 
     !sum only there to make arrays fit
-    V= sum(V0*((x/x0)**2 -1.0d0)**2) 
+    V= sum(Vheight*((x/x0)**2 -1.0d0)**2) 
 
     return
   end function V
@@ -31,7 +31,7 @@ contains
     double precision::     grad(:,:), x(:,:)
 
     grad(:,:)=((x(:,:)/x0)**2 -1.0)
-    grad(:,:)= grad(:,:)*4.0*V0*x(:,:)/x0**2
+    grad(:,:)= grad(:,:)*4.0*Vheight*x(:,:)/x0**2
 
     return
   end subroutine Vprime
@@ -469,7 +469,7 @@ end subroutine Partition
 
   subroutine instanton(xtilde,a,b)
     implicit none
-    integer::                        iprint, m, iflag, mp,idof
+    integer::                        iprint, m, iflag, mp,idof, maxiter
     integer::                        i, lp, count, iw, j,k, dof
     double precision::               eps, xtol, gtol, stpmin, stpmax
     double precision::               f, xtilde(:,:,:)
@@ -490,7 +490,7 @@ end subroutine Partition
              lb(idof)= a(j,k)
              ub(idof)= b(j,k)
              nbd(idof)=0
-             ! xtilde(i,j,k)= a(j,k) + (b(j,k)-a(j,k))*dble(i-1)/dble(n-1)
+             xtilde(i,j,k)= a(j,k) + (b(j,k)-a(j,k))*dble(i-1)/dble(n-1)
           end do
        end do
     end do
@@ -516,7 +516,7 @@ end subroutine Partition
        xwork=reshape(xtilde,(/dof/))
        fprimework= reshape(fprime,(/dof/))
        call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps,work&
-            ,iwork,task,iprint, csave,lsave,isave,dsave)
+            ,iwork,task,iprint, csave,lsave,isave,dsave, maxiter)
        if (task(1:2) .eq. 'FG') then
           xtilde= reshape(xwork,(/n,ndim,natom/))
           f= UM(xtilde,a,b)
@@ -584,5 +584,24 @@ end subroutine Partition
     eucliddist= sqrt(eucliddist)
     return
   end function eucliddist
+
+  subroutine get_align(atomsin,theta1, theta2, theta3, origin)
+    implicit none
+    double precision::     atomsin(:,:), origin(:)
+    double precision::     theta1, theta2, theta3
+    theta1=0.0d0
+    theta2=0.0d0
+    theta3=0.0d0
+    origin(:)=0.0d0
+    return
+  end subroutine get_align
+
+  subroutine align_atoms(atomsin, theta1,theta2,theta3, origin, atomsout)
+    implicit none
+    double precision::     atomsin(:,:), atomsout(:,:), origin(:)
+    double precision::     theta1, theta2, theta3
+    atomsout(:,:)= atomsin(:,:)
+    return
+  end subroutine align_atoms
 
 end module mcmod_mass
