@@ -79,8 +79,8 @@ program rpi
   do i=1, natom
      write(21,*)  label(i), (well2(k,i)*0.529177d0, k=1,ndim)
   end do
-     write(*,*) "beta=", beta, "n=", n
-     write(*,*) "beta_n=", betan
+  write(*,*) "beta=", beta, "n=", n
+  write(*,*) "beta_n=", betan
 
   !-------------------------
   !obtain instanton solution, x_tilde

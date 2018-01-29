@@ -667,7 +667,7 @@ end subroutine centreofmass
     iflag=0
     eps2= 1.0d-8
     factr=1.0d3
-    maxiter=30
+    maxiter=40
     f= UM(xtilde,a,b)
     call UMprime(xtilde,a,b,fprime)
     count=0
