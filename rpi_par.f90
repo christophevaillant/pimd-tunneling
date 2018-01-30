@@ -44,6 +44,8 @@ program rpi
   xunit=1
   npath=0
   npoints=10
+  cutofftheta=6.5d0
+  cutoffphi=3.2d0
   call V_init()
 
   if (iproc .eq. 0) then
@@ -64,6 +66,7 @@ program rpi
   call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   ndof=ndim*natom
   totdof= n*ndof
+  write(*,*) "ncalcs=", ncalcs, "on iproc", iproc
 
   allocate(mass(natom), label(natom), xtilde(n, ndim, natom))
   allocate(well1(ndim,natom),well2(ndim,natom), wellinit(ndim,natom))
@@ -168,10 +171,12 @@ program rpi
 
   call MPI_Bcast(beta, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(betan, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(V0, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(mass, natom, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(well1, ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(well2, ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(xtilde, totdof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(label, natom, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
 
 
   !------------------------------------
@@ -195,6 +200,7 @@ program rpi
         end if
      end do
      write(*,*) "Skipped ", zerocount, "states"
+     write(*,*) "lndetJ0", lndetj0
      deallocate(xharm)
   end if
   call MPI_Bcast(lndetj0, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
@@ -206,7 +212,7 @@ program rpi
   !-------------------------------------------
   !Set up end points array to distribute to the processors
   !ncalcs is number of calculations for each processor
-  allocate(xtilderot(n,ndim,natom), wellrot(ndim,natom))
+  allocate(wellrot(ndim,natom))
   allocate(endpoints(ncalcs, ndim, natom), allendpoints(npoints**3, ndim, natom))
   allendpoints=0.0d0
   if (iproc .eq. 0) then
@@ -230,10 +236,10 @@ program rpi
         end do
      end do
   end if
-  deallocate(well2)
-
   endpoints=0.0d0
+
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
+  write(*,*) iproc, "passed barrier"
 
   if (iproc.eq.0) then
      do ii=1,nproc-1
@@ -242,14 +248,13 @@ program rpi
         end do
      end do
      endpoints(1:ncalcs, :, :) = allendpoints(1:ncalcs, :, :)
-  else if (iproc.ne.0) then
+  else
      do i=1,ncalcs
         call MPI_Recv(endpoints(i,:,:), ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus,ierr)
      end do
   end if
   deallocate(allendpoints)
-
-  allocate(results(ncalcs))
+  allocate(xtilderot(n,ndim,natom), results(ncalcs))
   do ii=1, ncalcs
      xtilderot(:,:,:)= xtilde(:,:,:)
      call instanton(xtilderot,well1,endpoints(ii,:,:))
@@ -271,11 +276,14 @@ program rpi
      !Put it all together and output.
      Skink= betan*UM(xtilderot, well1, endpoints(ii,:,:))
      omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
-     Ibeta= tanh(omega*N)
+     if (omega*N > 1.0d0) then
+        Ibeta=1.0
+     else
+        Ibeta= tanh(omega*N)
+     end if
      results(ii)= Ibeta
-     write(*,*) iproc, ii, Ibeta
+     write(*,*) iproc, ii, Ibeta, omega, skink
   end do
-  deallocate(xtilderot, endpoints, well1)
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
   !Collate data from all processors and have the root finalize the calculations
   allocate(allresults(ncalcs*nproc))
@@ -294,8 +302,11 @@ program rpi
         end do
      end do
      close(90)
-  deallocate(theta, phi, eta)
+     deallocate(theta, phi, eta)
+     deallocate(weightstheta,weightsphi, weightseta)
+     deallocate(well2)
   end if
+  deallocate(xtilderot, endpoints, well1)
 
   deallocate(etasquared, xtilde)
   call MPI_FINALIZE(ierr)

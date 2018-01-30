@@ -227,7 +227,11 @@ program rpi
               !Put it all together and output.
               Skink= betan*UM(xtilderot, well1, wellrot)
               omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
-              Ibeta= tanh(omega*N)
+              if (omega*N > 1.0d0) then
+                 Ibeta=1.0
+              else
+                 Ibeta= tanh(omega*N)
+              end if
               write(90,*) theta(ii), phi(jj), eta(kk),weightstheta(ii)*weightsphi(jj)*weightseta(kk), Ibeta
               write(*,*) theta(ii),phi(jj),eta(kk), weightstheta(ii)*weightsphi(jj)*weightseta(kk), Ibeta, lndetj
               ! end do
