@@ -531,25 +531,6 @@ contains
   END FUNCTION locate
 
   !---------------------------------------------------------------------
-  ! subroutine UMhessian(x, answer)
-  !   !TODO: Implement UM hessian!
-  !   implicit none
-  !   integer::            i
-  !   double precision::   x(:,:), answer(n,n)
-
-  !   ! do i=2, n-1, 1
-  !   !    answer(i,i)= Vdoubleprime(x(i))+2.0*mass/betan**2
-  !   !    answer(i,i-1)= -mass/betan**2
-  !   !    answer(i,i+1)= -mass/betan**2
-  !   ! end do
-  !   ! answer(1,1)= Vdoubleprime(x(1))+2.0*mass/betan**2
-  !   ! answer(1,2)= -mass/betan**2
-  !   ! answer(n,n)= Vdoubleprime(x(n))+2.0*mass/betan**2
-  !   ! answer(n,n-1)=-mass/betan**2
-
-  !   return
-  ! end subroutine UMhessian
-  !---------------------------------------------------------------------
   !---------------------------------------------------------------------
   !sort algorithms
 recursive subroutine QsortC(A)

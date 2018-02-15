@@ -64,8 +64,8 @@ program rpi
   call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
   wellinit(:,:)= well2(:,:)
   call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
-  V0=V(well1)
   write(*,*) "Potential at wells:", V(well1), V(well2)
+  V0=V(well1)
   allocate(grad(ndim,natom))
   call Vprime(well1, grad)
   write(*,*) "With norm of grad:", norm2(reshape(grad, (/ndim*natom/)))
@@ -253,7 +253,7 @@ program rpi
                     write(19,*) natom
                     write(19,*) "Energy of minimum",i
                     do j=1, natom
-                       write(19,*)  label(j), (xtilderot(i,k,j)*0.529177d0, k=1,ndim)
+                       write(19,*)  label(j), (xtilderot(i,k,j), k=1,ndim)
                     end do
                  end do
                  close(19)
