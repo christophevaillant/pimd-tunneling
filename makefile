@@ -168,6 +168,9 @@ rpi_watdim_ser: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
 rpi_watdim_par: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/rpi_par.o
 	$(MPIFC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
 
+crossover_watdim: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/crossover.o
+	$(FC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+
 ################################
 #Clathrate
 pimd_clath_par: $(CLATHFILES) $(COMFILES) $(OBJDIR)/pimd_par.o

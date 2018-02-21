@@ -213,7 +213,7 @@ program rpi
 
               lndetj= 0.0d0
               zerocount=0
-              do i=2,totdof
+              do i=1,totdof
                  if (etasquared(i) .gt. 0.0d0) then
                     lndetj= lndetj+ log(etasquared(i))
                  else
@@ -263,7 +263,7 @@ program rpi
 
               lndetj= 0.0d0
               zerocount=0
-              do i=2,totdof
+              do i=1,totdof
                  if (etasquared(i) .gt. 0.0d0) then
                     lndetj= lndetj+ log(etasquared(i))
                  else

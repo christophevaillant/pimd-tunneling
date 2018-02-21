@@ -4,6 +4,7 @@ module mcmod_mass
   double precision::               beta, betan, UMtilde, V0
   integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
+  character, allocatable::         label(:)
 
   public :: QsortC
   private :: Partition

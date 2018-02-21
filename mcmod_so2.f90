@@ -5,6 +5,7 @@ module mcmod_mass
   double precision::               omegaforce, r0
   integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:), tst(:,:)
+  character, allocatable::         label(:)
 
   public :: QsortC
   private :: Partition
@@ -22,7 +23,7 @@ contains
     integer::              i,j
 
     r= sqrt(x(1,1)**2 + x(2,1)**2)
-    answer= 0.5d0*omegaforce*mass(1)*(r-r0)**2
+    answer= 0.5d0*omegaforce**2*mass(1)*(r-r0)**2
     ! answer= 1.0d0 -0.5*(exp(-2.0d0*(r-3.0d0)**2) + exp(-0.2d0*(r-3.0d0)**2))
     if (answer.ne.answer) then
        write(*,*) "NaN in pot!"
@@ -38,13 +39,13 @@ contains
     implicit none
     integer::              i,j
     double precision::     grad(:,:), x(:,:), r, u, dvdr
-    double precision::     gradplus, gradminus, xtest(2), eps
+    double precision::     eplus, Eminus, xtest(2), eps
+    double precision, allocatable:: gradtest(:,:)
 
     eps=1d-5
     r= sqrt(x(1,1)**2 + x(2,1)**2)
-    dvdr= omegaforce*mass(1)*(r-r0)
-    grad(1,1)= dvdr*x(1,1)/r
-    grad(2,1)= dvdr*x(2,1)/r
+    grad(1,1)= mass(1)*omegaforce**2*x(1,1)*(1.0d0 - r0/r)
+    grad(2,1)= mass(1)*omegaforce**2*x(2,1)*(1.0d0 - r0/r)
     if (grad(1,1).ne.grad(1,1) .or.grad(2,1).ne.grad(2,1) ) then
        write(*,*) "NaN in grad!"
        write(*,*) x
@@ -52,10 +53,23 @@ contains
        stop
     end if
 
-    ! u= (r-3.0d0)**2
-    ! dvdr=sqrt(u)*(2.0d0*exp(-2.0d0*u) + 0.2d0*exp(-0.2d0*u))
-    ! grad(1,1)= -dvdr*x(1,1)/r
-    ! grad(2,1)= -dvdr*x(2,1)/r
+    ! allocate(gradtest(ndim, natom))
+    ! eps=1d-6
+    ! do i= 1, ndim
+    !    do j= 1, natom
+    !       x(i,j)= x(i,j) + eps
+    !       eplus= V(x)
+    !       x(i,j)= x(i,j) - 2.0d0*eps
+    !       eminus= V(x)
+    !       x(i,j)= x(i,j) + eps
+    !       gradtest(i,j)= (Eplus-Eminus)/(2.0d0*eps)
+    !       write(*,*)"-----------"
+    !       write(*,*) i, j, gradtest(i,j)
+    !       write(*,*) i,j,grad(i,j)
+    !    end do
+    ! end do
+    ! deallocate(gradtest)
+
     return
   end subroutine Vprime
   !---------------------------------------------------------------------
@@ -67,11 +81,11 @@ contains
     integer::              i, j
 
     r= sqrt(x(1,1)**2 + x(2,1)**2)
-    dvdr= omegaforce*mass(1)*(r-r0)
-    hess(1,1,1,1)= omegaforce*mass(1)*(1.0 - (r0/r) + r0*x(1,1)**2/r**3)
-    hess(1,1,2,1)= omegaforce*mass(1)*(1.0 - (r0/r) + r0*x(2,1)*x(1,1)/r**3)
-    hess(2,1,1,1)= omegaforce*mass(1)*(1.0 - (r0/r) + r0*x(2,1)*x(1,1)/r**3)
-    hess(2,1,2,1)= omegaforce*mass(1)*(1.0 - (r0/r) + r0*x(2,1)**2/r**3)
+    dvdr= omegaforce**2*mass(1)*(r-r0)
+    hess(1,1,1,1)= x(1,1)**2*omegaforce**2*mass(1)*r0/r**3
+    hess(1,1,2,1)= x(1,1)*x(2,1)*omegaforce**2*mass(1)*r0/r**3
+    hess(2,1,1,1)= x(1,1)*x(2,1)*omegaforce**2*mass(1)*r0/r**3
+    hess(2,1,2,1)= x(2,1)**2*omegaforce**2*mass(1)*r0/r**3
 
     ! u= (r-3.0d0)**2
     ! dvdr=(2.0d0 - 4.0d0*u)*exp(-2.0d0*u) + (0.2d0 - 4.0d-2*u)*exp(-0.2d0*u)
@@ -90,10 +104,10 @@ contains
     !       x(i,j)= x(i,j) - 2.0d0*eps
     !       call Vprime(x, gradminus)
     !       x(i,j)= x(i,j) + eps
-    !       hess(i,j,:,:)= (gradplus(:,:)-gradminus(:,:))/(2.0d0*eps)
-    !       ! write(*,*)"-----------"
-    !       ! write(*,*) i, j, hesstest(i,j,:,1)
-    !       ! write(*,*) i,j,hess(i,j,:,1)
+    !       hesstest(i,j,:,:)= (gradplus(:,:)-gradminus(:,:))/(2.0d0*eps)
+    !       write(*,*)"-----------"
+    !       write(*,*) i, j, hesstest(i,j,:,1)
+    !       write(*,*) i,j,hess(i,j,:,1)
     !    end do
     ! end do
     ! deallocate(gradplus, gradminus, hesstest)
@@ -247,8 +261,8 @@ contains
 
     rotmatrix(1,1)= cos(theta)
     rotmatrix(2,2)= cos(theta)
-    rotmatrix(1,2)= -sin(theta)
-    rotmatrix(2,1)= sin(theta)
+    rotmatrix(1,2)= sin(theta)
+    rotmatrix(2,1)= -sin(theta)
     atoms(:,1)= matmul(rotmatrix(:,:), atoms(:,1))
     return
   end subroutine rotate_atoms
