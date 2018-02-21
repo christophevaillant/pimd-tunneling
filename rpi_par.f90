@@ -262,7 +262,7 @@ program rpi
 
      lndetj= 0.0d0
      zerocount=0
-     do i=2,totdof
+     do i=1,totdof
         if (etasquared(i) .gt. 0.0d0) then
            lndetj= lndetj+ log(etasquared(i))
         else
@@ -284,6 +284,7 @@ program rpi
      results(ii)= Ibeta
      write(*,*) iproc, ii, Ibeta, omega, skink
   end do
+  write(*,*) "Processor", iproc, "is done."
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
   !Collate data from all processors and have the root finalize the calculations
   allocate(allresults(ncalcs*nproc))
