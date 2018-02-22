@@ -145,6 +145,7 @@ program rpi
   end if
 
   call instanton(xtilde,well1,well2)
+  write(*,*) "Found instanton."
   open(19, file="instanton.xyz")
   do i=1,n
      write(19,*) natom
