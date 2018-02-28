@@ -70,6 +70,7 @@ program rpi
 
   allocate(mass(natom), label(natom), xtilde(n, ndim, natom))
   allocate(well1(ndim,natom),well2(ndim,natom), wellinit(ndim,natom))
+
   if (iproc.eq.0) then
      open(18, file="masses.dat", status="old")
      do j=1,natom
@@ -178,7 +179,6 @@ program rpi
   call MPI_Bcast(xtilde, totdof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(label, natom, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
 
-
   !------------------------------------
   !work out Q_0
   allocate( etasquared(totdof))
@@ -203,9 +203,9 @@ program rpi
      write(*,*) "lndetJ0", lndetj0
      deallocate(xharm)
   end if
+  call MPI_Barrier(MPI_COMM_WORLD,ierr)
   call MPI_Bcast(lndetj0, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   !put a barrier to make sure the procs are synced
-  call MPI_Barrier(MPI_COMM_WORLD,ierr)
 
   !------------------------------------
   !loop over solid angle points
@@ -262,7 +262,7 @@ program rpi
 
      lndetj= 0.0d0
      zerocount=0
-     do i=1,totdof
+     do i=2,totdof
         if (etasquared(i) .gt. 0.0d0) then
            lndetj= lndetj+ log(etasquared(i))
         else
