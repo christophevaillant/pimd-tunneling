@@ -647,8 +647,8 @@ end subroutine centreofmass
     iw=dof*(2*m+5) + 11*m**2 + 8*m
     allocate(work(iw), iwork(3*dof), isave(44), dsave(29))
     iflag=0
-    eps2= 1.0d-8
-    factr=1.0d3
+    eps2= 1.0d-6 !gradient convergence
+    factr=1.0d5
     maxiter=40
     f= UM(xtilde,a,b)
     call UMprime(xtilde,a,b,fprime)
