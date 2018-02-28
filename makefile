@@ -54,6 +54,10 @@ HBB2LIBS= -L. -lpes_water -lpesd_water
 #Water dimer (CCPol):
 CCPOLFILES= $(OBJDIR)/H2O.pjt2.o $(OBJDIR)/main_CCpol-8sf.o $(OBJDIR)/proc_ccpol8s-dimer_xyz_ncd.o $(OBJDIR)/proc_sapt5sf_new_ncd.o $(OBJDIR)/ang_interface.o $(OBJDIR)/mcmod_waterdimer_ccpol.o
 
+
+#Water-Methane Dimer
+WATMETHFILES= $(OBJDIR)/watermethane.o $(OBJDIR)/mcmod_watmeth.o
+
 #Methane Clathrate:
 CLATHFILES= $(OBJDIR)/watermethane.o $(OBJDIR)/mcmod_clathrate.o
 
@@ -178,6 +182,15 @@ pimd_clath_par: $(CLATHFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 
 pimd_clath_ser: $(CLATHFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 	$(FC) $(FFLAGS) $(COMFILES) $(CLATHFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+
+rpi_clath_ser: $(CLATHFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(CLATHFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+
+################################
+#Water-methane (for Eszter!)
+
+rpi_watmeth_ser: $(WATMETHFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(WATMETHFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
 ###################################################################################
 #Rules for cleanup
