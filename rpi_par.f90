@@ -61,11 +61,16 @@ program rpi
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
   ierr=0
   call MPI_Bcast(ncalcs, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(npoints, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(N, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(ndim, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   ndof=ndim*natom
   totdof= n*ndof
+  if (iproc.eq. nproc-1 .and. mod(npoints**3,nproc) > 0) then
+     ncalcs= mod(npoints**3,nproc)
+  end if
+
   write(*,*) "ncalcs=", ncalcs, "on iproc", iproc
 
   allocate(mass(natom), label(natom), xtilde(n, ndim, natom))
