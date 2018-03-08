@@ -280,7 +280,7 @@ program rpi
               omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
               Ibeta= tanh(omega*N)
               write(90,*) eta(kk),weightseta(kk), Ibeta
-              write(*,*) eta(kk), weightseta(kk), Ibeta, lndetj
+              write(*,*) eta(kk), weightseta(kk), Ibeta, lndetj, skink
               ! end do
            end do
      end if
