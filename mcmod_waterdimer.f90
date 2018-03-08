@@ -613,23 +613,23 @@ end subroutine centreofmass
     dof= n*ndim*natom
     allocate(lb(dof), ub(dof),fprime(n,ndim,natom), nbd(dof))
     allocate(fprimework(dof), xwork(dof))
-    call centreofmass(a, com)
-    do i=1,ndim
-       do j=1,natom
-          a(i,j)= a(i,j)- com(i)
-       end do
-    end do
-    call centreofmass(b, com)
-    do i=1,ndim
-       do j=1,natom
-          b(i,j)= b(i,j)- com(i)
-       end do
-    end do 
+    ! call centreofmass(a, com)
+    ! do i=1,ndim
+    !    do j=1,natom
+    !       a(i,j)= a(i,j)- com(i)
+    !    end do
+    ! end do
+    ! call centreofmass(b, com)
+    ! do i=1,ndim
+    !    do j=1,natom
+    !       b(i,j)= b(i,j)- com(i)
+    !    end do
+    ! end do 
     do i=1, n, 1
-       call centreofmass(xtilde(i,:,:), com)
+       ! call centreofmass(xtilde(i,:,:), com)
        do j=1,ndim
           do k=1,natom
-             xtilde(i,j,k)= xtilde(i,j,k) - com(j)
+             ! xtilde(i,j,k)= xtilde(i,j,k) - com(j)
              idof= ((k-1)*ndim + j -1)*n +i
                 lb(idof)= a(j,k)
                 ub(idof)= a(j,k)
