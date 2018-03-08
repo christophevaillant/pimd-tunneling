@@ -19,6 +19,9 @@ COMFILES= $(OBJDIR)/blas.o $(OBJDIR)/linpack.o $(OBJDIR)/timer.o \
 #1D double well potential:
 1DFILES= $(OBJDIR)/mcmod_1d.o
 
+#2D C_6 double well potential:
+2DFILES= $(OBJDIR)/mcmod_2dtest.o
+
 #SO(2) potential:
 SO2FILES= $(OBJDIR)/mcmod_so2.o
 
@@ -41,6 +44,10 @@ FORMICLIBS= -L. -lpes_formic
 WATDIMFILES= $(OBJDIR)/mcmod_waterdimer.o
 WATDIMLIBS= -L. -lmbpol -cxxlib
 
+#Water hexamer (MB-pol):
+WATHEXFILES= $(OBJDIR)/mcmod_waterhexamer.o
+
+
 #Water dimer (HBB2):
 HBB2FILES= $(OBJDIR)/mcmod_waterdimer_hbb2.o
 pimd_hbb2_par: FFLAGS+= -O -I./mod_water
@@ -50,6 +57,10 @@ HBB2LIBS= -L. -lpes_water -lpesd_water
 
 #Water dimer (CCPol):
 CCPOLFILES= $(OBJDIR)/H2O.pjt2.o $(OBJDIR)/main_CCpol-8sf.o $(OBJDIR)/proc_ccpol8s-dimer_xyz_ncd.o $(OBJDIR)/proc_sapt5sf_new_ncd.o $(OBJDIR)/ang_interface.o $(OBJDIR)/mcmod_waterdimer_ccpol.o
+
+
+#Water-Methane Dimer
+WATMETHFILES= $(OBJDIR)/watermethane.o $(OBJDIR)/mcmod_watmeth.o
 
 #Methane Clathrate:
 CLATHFILES= $(OBJDIR)/watermethane.o $(OBJDIR)/mcmod_clathrate.o
@@ -79,6 +90,17 @@ pimd_1d_par: $(1DFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 
 pimd_1d_ser: $(1DFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 	$(FC) $(FFLAGS) $(COMFILES) $(1DFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+
+################################
+#2D C_6 potential:
+pimd_2dtest_par: $(2DFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(COMFILES) $(2DFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+
+pimd_2dtest_ser: $(2DFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(2DFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+
+rpi_2dtest_ser: $(2DFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(2DFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 ################################
 #SO(2) potential:
@@ -154,6 +176,23 @@ rpi_watdim_ser: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
 rpi_watdim_par: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/rpi_par.o
 	$(MPIFC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
 
+crossover_watdim: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/crossover.o
+	$(FC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+
+################################
+#Water Dimer MB-pol
+pimd_wathex_par: $(WATHEXFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(COMFILES) $(WATHEXFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
+
+pimd_wathex_ser: $(WATHEXFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(WATHEXFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+
+rpi_wathex_ser: $(WATHEXFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(WATHEXFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+
+rpi_wathex_par: $(WATHEXFILES) $(COMFILES) $(OBJDIR)/rpi_par.o
+	$(MPIFC) $(FFLAGS) $(COMFILES) $(WATHEXFILES) $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
+
 ################################
 #Clathrate
 pimd_clath_par: $(CLATHFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
@@ -161,6 +200,15 @@ pimd_clath_par: $(CLATHFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 
 pimd_clath_ser: $(CLATHFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 	$(FC) $(FFLAGS) $(COMFILES) $(CLATHFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+
+rpi_clath_ser: $(CLATHFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(CLATHFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+
+################################
+#Water-methane (for Eszter!)
+
+rpi_watmeth_ser: $(WATMETHFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(WATMETHFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
 ###################################################################################
 #Rules for cleanup

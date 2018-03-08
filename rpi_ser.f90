@@ -14,8 +14,8 @@ program rpi
   integer::                         i, j,k,npath, dummy, zerocount, npoints
   integer::                         ii,jj,kk
   character::                      dummylabel, dummystr(28)
-  logical::                        angular, output_instanton
-  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, angular, npoints, cutofftheta,cutoffphi, output_instanton
+  logical::                        angular, output_instanton, readpath
+  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, angular, npoints, cutofftheta,cutoffphi, output_instanton, readpath
 
   !-------------------------
   !Set default system parameters then read in namelist
@@ -28,6 +28,7 @@ program rpi
   npoints=10
   angular=.false.
   output_instanton=.false.
+  readpath=.true.
 
   read(5, nml=RPIDATA)
   betan= beta/dble(n)
@@ -63,8 +64,8 @@ program rpi
   call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
   wellinit(:,:)= well2(:,:)
   call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
-  V0=V(well1)
   write(*,*) "Potential at wells:", V(well1), V(well2)
+  V0=V(well1)
   allocate(grad(ndim,natom))
   call Vprime(well1, grad)
   write(*,*) "With norm of grad:", norm2(reshape(grad, (/ndim*natom/)))
@@ -79,67 +80,72 @@ program rpi
   do i=1, natom
      write(21,*)  label(i), (well2(k,i)*0.529177d0, k=1,ndim)
   end do
-     write(*,*) "beta=", beta, "n=", n
-     write(*,*) "beta_n=", betan
+  write(*,*) "beta=", beta, "n=", n
+  write(*,*) "beta_n=", betan
 
   !-------------------------
   !obtain instanton solution, x_tilde
-  allocate(initpath(ndim, natom), lampath(npath), Vpath(npath))
-  allocate(path(npath, ndim, natom))
-  path=0.0d0
-  open(15, file="path.xyz")
-  do i=1, npath
-     read(15,*) dummy
-     read(15,'(28A)') dummystr!, dummyE !'(A,G25.15)'
-     do j=1, natom
-        read(15,*) dummylabel, (initpath(k,j), k=1,ndim)
-     end do
-     if (i.eq.1) then
-        ! call align_atoms(
-        lampath(1)=0.0d0
-        call get_align(initpath,theta1, theta2, theta3, origin)
-        call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
-     else
-        call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
-        lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
-     end if
-  end do
-  lampath(:)= lampath(:)/lampath(npath)
-  close(15)
-  open(20, file="aligned.xyz")
-  do i=1,npath
-     write(20,*) natom
-     write(20,*) "Energy of minimum",i
-     do j=1, natom
-        if (xunit .eq. 1) then
-           write(20,*)  label(j), (path(i,k,j)*0.529177d0, k=1,ndim)
+  allocate(xtilde(n, ndim, natom))
+  if (readpath) then
+     allocate(initpath(ndim, natom), lampath(npath), Vpath(npath))
+     allocate(path(npath, ndim, natom))
+     path=0.0d0
+     open(15, file="path.xyz")
+     do i=1, npath
+        read(15,*) dummy
+        read(15,'(28A)') dummystr!, dummyE !'(A,G25.15)'
+        do j=1, natom
+           read(15,*) dummylabel, (initpath(k,j), k=1,ndim)
+        end do
+        if (i.eq.1) then
+           ! call align_atoms(
+           lampath(1)=0.0d0
+           call get_align(initpath,theta1, theta2, theta3, origin)
+           call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
         else
-           write(20,*)  label(j), (path(i,k,j), k=1,ndim)
+           call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
+           lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
         end if
      end do
-  end do
-  close(20)
-
-  deallocate(initpath, origin)
-
-  if (xunit .eq. 2) then
-     path(:,:,:) = path(:,:,:)/0.529177d0
-  end if
-
-  allocate(xtilde(n, ndim, natom),splinepath(npath))
-  xtilde=0.0d0
-  splinepath=0.0d0
-  do i=1,ndim
-     do j=1,natom
-        splinepath(:)=0.0d0
-        call spline(lampath(:), path(:,i,j), 1.0d31, 1.0d31, splinepath(:))
-        do k=1,n
-           xtilde(k,i,j)= splint(lampath, path(:,i,j), splinepath(:), dble(k-1)/dble(n-1))
+     lampath(:)= lampath(:)/lampath(npath)
+     close(15)
+     open(20, file="aligned.xyz")
+     do i=1,npath
+        write(20,*) natom
+        write(20,*) "Energy of minimum",i
+        do j=1, natom
+           if (xunit .eq. 1) then
+              write(20,*)  label(j), (path(i,k,j)*0.529177d0, k=1,ndim)
+           else
+              write(20,*)  label(j), (path(i,k,j), k=1,ndim)
+           end if
         end do
      end do
-  end do
-  deallocate(lampath,Vpath, path, splinepath)
+     close(20)
+
+     deallocate(initpath, origin)
+
+     if (xunit .eq. 2) then
+        path(:,:,:) = path(:,:,:)/0.529177d0
+     end if
+
+     allocate(splinepath(npath))
+     xtilde=0.0d0
+     splinepath=0.0d0
+     do i=1,ndim
+        do j=1,natom
+           splinepath(:)=0.0d0
+           call spline(lampath(:), path(:,i,j), 1.0d31, 1.0d31, splinepath(:))
+           do k=1,n
+              xtilde(k,i,j)= splint(lampath, path(:,i,j), splinepath(:), dble(k-1)/dble(n-1))
+           end do
+        end do
+     end do
+     deallocate(lampath,Vpath, path, splinepath)
+  end if
+
   call instanton(xtilde,well1,well2)
+  write(*,*) "Found instanton."
   open(19, file="instanton.xyz")
   do i=1,n
      write(19,*) natom
@@ -222,7 +228,11 @@ program rpi
               !Put it all together and output.
               Skink= betan*UM(xtilderot, well1, wellrot)
               omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
-              Ibeta= tanh(omega*N)
+              if (omega*N > 1.0d0) then
+                 Ibeta=1.0
+              else
+                 Ibeta= tanh(omega*N)
+              end if
               write(90,*) theta(ii), phi(jj), eta(kk),weightstheta(ii)*weightsphi(jj)*weightseta(kk), Ibeta
               write(*,*) theta(ii),phi(jj),eta(kk), weightstheta(ii)*weightsphi(jj)*weightseta(kk), Ibeta, lndetj
               ! end do
@@ -244,7 +254,7 @@ program rpi
                     write(19,*) natom
                     write(19,*) "Energy of minimum",i
                     do j=1, natom
-                       write(19,*)  label(j), (xtilderot(i,k,j)*0.529177d0, k=1,ndim)
+                       write(19,*)  label(j), (xtilderot(i,k,j), k=1,ndim)
                     end do
                  end do
                  close(19)
@@ -270,7 +280,7 @@ program rpi
               omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
               Ibeta= tanh(omega*N)
               write(90,*) eta(kk),weightseta(kk), Ibeta
-              write(*,*) eta(kk), weightseta(kk), Ibeta, lndetj
+              write(*,*) eta(kk), weightseta(kk), Ibeta, lndetj, skink
               ! end do
            end do
      end if

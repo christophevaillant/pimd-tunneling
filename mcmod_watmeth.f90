@@ -1,25 +1,31 @@
 module mcmod_mass
+  use watermethane_mod
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
   double precision::               beta, betan, UMtilde, V0
-  double precision, parameter::    Vheight=5.0d-3, x0=1.0d0
-  integer::                        n, ndim, ndof, natom, xunit
+  integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
+  character, allocatable::         label(:)
 
   public :: QsortC
   private :: Partition
 contains
+
   subroutine V_init()
+    V0=0.0d0
     return
   end subroutine V_init
   !---------------------------------------------------------------------
   function V(x)
     implicit none
     double precision::     v, x(:,:)
+    double precision, allocatable:: dummy1(:)
     integer::              i,j
 
-    !sum only there to make arrays fit
-    V= sum(Vheight*((x/x0)**2 -1.0d0)**2) 
+    !the input x for this routine is in cartesian coordinates
+    !but the coordinates *have* to be varied in a rigid way
+    !otherwise the potential gives you nonsense.
+    call wmrb(x, dummy1, V, .false.)
 
     return
   end function V
@@ -28,103 +34,38 @@ contains
   subroutine Vprime(x, grad)
     implicit none
     integer::              i,j
-    double precision::     grad(:,:), x(:,:)
-
-    grad(:,:)=((x(:,:)/x0)**2 -1.0)
-    grad(:,:)= grad(:,:)*4.0*Vheight*x(:,:)/x0**2
-
+    double precision::     grad(:,:), x(:,:), dummy1
+    double precision, allocatable:: gradtemp(:), xtemp(:)
+    
+    call wmrb_grad(x, grad)
+    
     return
   end subroutine Vprime
-
   !---------------------------------------------------------------------
-  function UN(x)
+  subroutine  Vdoubleprime(x,hess)
     implicit none
-    integer::            i,j,k
-    double precision, intent(in)::   x(:,:,:)
-    double precision::  UN
+    double precision::     hess(:,:,:,:), x(:,:), dummy1, eps
+    integer::              i, j
+    double precision, allocatable::     gradplus(:, :), gradminus(:, :)
 
-    UN=0.0d0
-    do i=1, N-1, 1
-       UN=UN+ V(x(i,:,:))
-       do j=1, ndim
-          do k=1, natom
-             UN=UN+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
-          end do
+    !could probably work out an analytic hessian
+    !but not necessarily worth it yet
+    eps=1d-4
+    allocate(gradplus(ndim, natom), gradminus(ndim, natom))
+    do i= 1, ndim
+       do j= 1, natom
+          x(i,j)= x(i,j) + eps
+          call Vprime(x, gradplus)
+          x(i,j)= x(i,j) - 2.0d0*eps
+          call Vprime(x, gradminus)
+          x(i,j)= x(i,j) + eps
+          hess(i,j,:,:)= (gradplus(:,:)-gradminus(:,:))/(2.0d0*eps)          
        end do
     end do
-    UN=UN+ V(x(n,:,:))
-    do j=1, ndim
-       do k=1, natom
-          UN=UN+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-x(N,j,k))**2
-       end do
-    end do
+    deallocate(gradplus, gradminus)
     return
-  end function UN
+  end subroutine Vdoubleprime
 
-  !---------------------------------------------------------------------
-  subroutine UNprime(x, answer)
-    implicit none
-    integer::            i,j,k
-    double precision::   x(:,:,:), answer(:,:,:)
-    double precision, allocatable:: grad(:,:)
-    
-    allocate(grad(ndim,natom))
-    do i=1, N, 1
-       do j=1,ndim
-          do k=1,natom
-             if (i.eq.1) then
-                answer(1,j,k)=mass(k)*(2.0*x(1,j,k) - x(N,j,k) - x(2,j,k))/betan**2
-             else if (i.eq.N) then
-                answer(N,j,k)=mass(k)*(2.0*x(N,j,k) - x(N-1,j,k) - x(1,j,k))/betan**2
-             else
-                answer(i,j,k)= mass(k)*(2.0*x(i,j,k) - x(i-1,j,k) - x(i+1,j,k))/betan**2
-             end if
-          end do
-       end do
-       call Vprime(x(i,:,:),grad(:,:))
-       do j=1, ndim
-          do k=1, natom
-             answer(i,j,k)= answer(i,j,k)+ grad(j,k)
-          end do
-       end do
-    end do
-    deallocate(grad)
-    return
-  end subroutine UNprime
-
-  !---------------------------------------------------------------------
-  ! subroutine UNhessian(x, answer)
-  !   !TODO: implement UN hessian
-  !   implicit none
-  !   integer::            i,j,k
-  !   double precision::   x(:,:,:), answer(:,:,:,:)
-  !   double precision, allocatable:: hess(:,:)
-
-  !   answer(:,:,:,:)=0.0d0
-  !   allocate(hess(ndof,ndof))
-    
-  !   do i=2, n-1, 1
-  !      call Vdoubleprime(x(i,:,:),hess)
-  !      do j=1,ndof
-  !         answer(i,j,i,j)= 2.0*mass/betan**2 + hess(j,j)
-  !         answer(i,j,i-1,j)= -mass/betan**2 + hess(j,j)
-  !         answer(i,j,i+1,j)= -mass/betan**2 + hess(j,j)
-  !      end do
-  !   end do
-  !   call Vdoubleprime(x(1,:,:), hess)
-  !   answer(1,:,1,:)= hess(:,:)
-  !   call Vdoubleprime(x(n,:,:), hess)
-  !   answer(n,:,n,:)= hess(:,:)
-  !   do j=1,ndof
-  !      answer(1,j,1,j)= answer(1,j,1,j)+2.0*mass/betan**2
-  !      answer(1,j,2,j)= -mass/betan**2
-  !      answer(1,j,n,j)= -mass/betan**2
-  !      answer(n,j,n,j)=answer(n,j,n,j)+ 2.0*mass/betan**2
-  !      answer(n,j,n-1,j)=-mass/betan**2
-  !      answer(n,j,1,j)=-mass/betan**2
-  !   end do
-  !   return
-  ! end subroutine UNhessian
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
   function UM(x,a,b)
@@ -133,7 +74,7 @@ contains
     double precision::   x(:,:,:), UM,a(:,:),b(:,:)
 
     UM=0.0d0
-    do i=2, N-1, 1
+    do i=1, N-1, 1
        UM=UM+ V(x(i,:,:))
        do j=1, ndim
           do k=1, natom
@@ -141,7 +82,7 @@ contains
           end do
        end do
     end do
-    UM=UM+ V(x(n,:,:))+ V(x(1,:,:))
+    UM=UM+ V(a(:,:))+ V(b(:,:))+ V(x(N,:,:))
     do j=1, ndim
        do k=1, natom
           UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
@@ -184,6 +125,187 @@ contains
     return
   end subroutine UMprime
 
+  !---------------------------------------------------------------------
+  subroutine UMhessian(x, answer)
+    implicit none
+    integer::            i, j1, k1, j2, k2, idof1, idof2
+    double precision::   x(:,:,:), answer(:,:)
+    double precision, allocatable:: hess(:,:,:,:)
+
+    allocate(hess(ndim, natom, ndim, natom))
+
+    answer=0.0d0
+    do i=1, n, 1
+       hess=0.0d0
+       call Vdoubleprime(x(i,:,:), hess)
+       do j1=1,ndim
+          do k1=1,natom
+             do j2=1,ndim
+                do k2=1,natom
+                   idof1= (k1-1)*ndim + j1
+                   idof2= (k2-1)*ndim + j2
+                   answer(n*(idof1-1) + i,n*(idof2-1) + i)= hess(j1,k1,j2,k2)/sqrt(mass(k1)*mass(k2))
+                   if (idof1.eq.idof2) then
+                      answer(n*(idof1-1) + i,n*(idof1-1) + i)= &
+                           answer(n*(idof1-1) + i,n*(idof1-1) + i) +2.0d0/betan**2
+                      if (i.gt.1) answer(n*(idof1-1) + i,n*(idof1-1) + i-1)=&
+                           answer(n*(idof1-1) + i,n*(idof1-1) + i-1) -1.0d0/betan**2
+                      if (i.lt.n) answer(n*(idof1-1) + i,n*(idof1-1) + i+1)=&
+                           answer(n*(idof1-1) + i,n*(idof1-1) + i+1)-1.0d0/betan**2
+                   end if
+                end do
+             end do
+          end do
+       end do
+    end do
+    deallocate(hess)
+    return
+  end subroutine UMhessian
+
+  !---------------------------------------------------------------------
+  !Align a vector of atoms
+
+  subroutine get_align(atomsin,theta1, theta2, theta3, origin)
+    implicit none
+    double precision::     atomsin(:,:), workvec(3), atoms(ndim,natom)
+    double precision::     theta1, theta2, theta3, origin(ndim)
+    integer::              i,j,k, atom1, atom2, atom3
+
+
+    if (ndim .ne. 3) then
+       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
+       stop
+    end if
+
+    atom1=1
+    atom2=2
+    atom3=3
+
+    !-----------------------------------------
+    !Put atom1 at origin
+    origin(:)= atomsin(:,atom1)
+
+    do i=1, natom
+    atoms(:,i)= atomsin(:,i) - origin(:)
+    end do
+    !-----------------------------------------
+    !Align vector between atom1 and atom2 to x axis
+    !first rotate about z-axis to align with zx plane
+    workvec(:)= atoms(:,atom2) - atoms(:,atom1)
+    theta1= atan2(workvec(2),workvec(1))
+    call rotate_atoms(atoms, 3, theta1)
+
+    !rotate about y-axis to align with z-axis
+    workvec(:)= atoms(:,atom2) - atoms(:,atom1)
+    theta2= atan2(workvec(3), workvec(1))
+    call rotate_atoms(atoms, 2, theta2)
+
+    !-----------------------------------------
+    !Align vector between atom1 and atom3 to xz plane
+    !rotate about x-axis
+    workvec(:)= atoms(:,atom3) - atoms(:,atom1)
+    theta3= -atan2(workvec(2),workvec(3))
+    
+    
+    return
+  end subroutine get_align
+
+  !---------------------------------------------------------------------
+  !Align a vector of atoms
+
+  subroutine align_atoms(atomsin, theta1,theta2,theta3, origin, atomsout)
+    implicit none
+    double precision::     atomsin(:,:), atomsout(:,:), workvec(3), origin(ndim)
+    double precision::     theta1, theta2, theta3
+    integer::              i,j,k, atom1, atom2, atom3
+
+
+    if (ndim .ne. 3) then
+       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
+       stop
+    end if
+
+    atom1=1
+    atom2=2
+    atom3=3
+
+    !-----------------------------------------
+    !Put atom1 at origin
+    do i=1, natom
+    atomsout(:,i)= atomsin(:,i) - atomsin(:,atom1)
+    end do
+    !-----------------------------------------
+    !Align vector between atom1 and atom2 to x axis
+    !first rotate about z-axis to align with zx plane
+    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+    call rotate_atoms(atomsout, 3, theta1)
+
+    !rotate about y-axis to align with z-axis
+    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+    call rotate_atoms(atomsout, 2, theta2)
+
+    !-----------------------------------------
+    !Align vector between atom1 and atom3 to xz plane
+    !rotate about x-axis
+    workvec(:)= atomsout(:,atom3) - atomsout(:,atom1)
+    call rotate_atoms(atomsout, 1, theta3)
+    
+    return
+  end subroutine align_atoms
+
+  subroutine rotate_vec(vec,axis,theta)
+    implicit none
+    double precision::     rotmatrix(3,3), vec(:)
+    double precision::     theta
+    integer::              i, axis, j,k
+
+    if (axis.eq. 1) then
+       j=2
+       k=3
+    else if(axis.eq.2) then
+       j=1
+       k=3
+    else
+       j=1
+       k=2
+    end if
+    rotmatrix(:,:)=0.0d0
+    rotmatrix(axis,axis)=1.0d0
+    rotmatrix(j,j)= cos(theta)
+    rotmatrix(k,k)= cos(theta)
+    rotmatrix(k,j)= -sin(theta)
+    rotmatrix(j,k)= sin(theta)
+    vec(:)= matmul(rotmatrix(:,:), vec(:))
+    return
+  end subroutine rotate_vec
+
+  subroutine rotate_atoms(atoms,axis,theta)
+    implicit none
+    double precision::     rotmatrix(3,3), atoms(:,:)
+    double precision::     theta
+    integer::              i, axis, j,k
+
+    if (axis.eq. 1) then
+       j=2
+       k=3
+    else if(axis.eq.2) then
+       j=1
+       k=3
+    else
+       j=1
+       k=2
+    end if
+    rotmatrix(:,:)=0.0d0
+    rotmatrix(axis,axis)=1.0d0
+    rotmatrix(j,j)= cos(theta)
+    rotmatrix(k,k)= cos(theta)
+    rotmatrix(k,j)= -sin(theta)
+    rotmatrix(j,k)= sin(theta)
+    do i=1, natom
+       atoms(:,i)= matmul(rotmatrix(:,:), atoms(:,i))
+    end do
+    return
+  end subroutine rotate_atoms
   !---------------------------------------------------------------------
   !spline algorithms
   FUNCTION assert_eq(n1,n2,n3,string)
@@ -398,25 +520,6 @@ contains
   END FUNCTION locate
 
   !---------------------------------------------------------------------
-  ! subroutine UMhessian(x, answer)
-  !   !TODO: Implement UM hessian!
-  !   implicit none
-  !   integer::            i
-  !   double precision::   x(:,:), answer(n,n)
-
-  !   ! do i=2, n-1, 1
-  !   !    answer(i,i)= Vdoubleprime(x(i))+2.0*mass/betan**2
-  !   !    answer(i,i-1)= -mass/betan**2
-  !   !    answer(i,i+1)= -mass/betan**2
-  !   ! end do
-  !   ! answer(1,1)= Vdoubleprime(x(1))+2.0*mass/betan**2
-  !   ! answer(1,2)= -mass/betan**2
-  !   ! answer(n,n)= Vdoubleprime(x(n))+2.0*mass/betan**2
-  !   ! answer(n,n-1)=-mass/betan**2
-
-  !   return
-  ! end subroutine UMhessian
-  !---------------------------------------------------------------------
   !---------------------------------------------------------------------
   !sort algorithms
 recursive subroutine QsortC(A)
@@ -467,13 +570,28 @@ subroutine Partition(A, marker)
 
 end subroutine Partition
 
+subroutine centreofmass(x, com)
+  implicit none
+  double precision::    x(:,:), com(:)
+  integer::             i,j
+
+  com(:)=0.0d0
+  do i=1,ndim
+     do j=1,natom
+        com(i)= com(i) + mass(j)*x(i,j)
+     end do
+  end do
+  com(:)=com(:)/sum(mass(:))
+  return
+end subroutine centreofmass
+
   subroutine instanton(xtilde,a,b)
     implicit none
     integer::                        iprint, m, iflag, mp,idof, maxiter
     integer::                        i, lp, count, iw, j,k, dof
-    double precision::               eps, xtol, gtol, stpmin, stpmax
-    double precision::               f, xtilde(:,:,:)
-    double precision::               factr, a(:,:),b(:,:)
+    double precision::               eps2, xtol, gtol, stpmin, stpmax
+    double precision::               f, xtilde(:,:,:), xtemp(ndim,natom)
+    double precision::               factr, a(:,:),b(:,:), com(ndim)
     double precision, allocatable::  fprime(:,:,:), work(:), fprimework(:)
     double precision, allocatable::  lb(:), ub(:), dsave(:), xwork(:)
     integer, allocatable::           nbd(:), iwork(:), isave(:)
@@ -483,14 +601,27 @@ end subroutine Partition
     dof= n*ndim*natom
     allocate(lb(dof), ub(dof),fprime(n,ndim,natom), nbd(dof))
     allocate(fprimework(dof), xwork(dof))
+    call centreofmass(a, com)
+    do i=1,ndim
+       do j=1,natom
+          a(i,j)= a(i,j)- com(i)
+       end do
+    end do
+    call centreofmass(b, com)
+    do i=1,ndim
+       do j=1,natom
+          b(i,j)= b(i,j)- com(i)
+       end do
+    end do 
     do i=1, n, 1
+       call centreofmass(xtilde(i,:,:), com)
        do j=1,ndim
           do k=1,natom
+             xtilde(i,j,k)= xtilde(i,j,k) - com(j)
              idof= ((k-1)*ndim + j -1)*n +i
-             lb(idof)= a(j,k)
-             ub(idof)= b(j,k)
-             nbd(idof)=0
-             xtilde(i,j,k)= a(j,k) + (b(j,k)-a(j,k))*dble(i-1)/dble(n-1)
+                lb(idof)= a(j,k)
+                ub(idof)= a(j,k)
+                nbd(idof)=0
           end do
        end do
     end do
@@ -504,36 +635,72 @@ end subroutine Partition
     iw=dof*(2*m+5) + 11*m**2 + 8*m
     allocate(work(iw), iwork(3*dof), isave(44), dsave(29))
     iflag=0
-    eps= 1.0d-8
-    factr=1.0d7
+    eps2= 1.0d-6 !gradient convergence
+    factr=1.0d5
+    maxiter=40
     f= UM(xtilde,a,b)
     call UMprime(xtilde,a,b,fprime)
     count=0
     do while( task(1:2).eq.'FG'.or.task.eq.'NEW_X'.or. &
          task.eq.'START')
-       ! write(*,*) f
        count=count+1
        xwork=reshape(xtilde,(/dof/))
        fprimework= reshape(fprime,(/dof/))
-       call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps,work&
-            ,iwork,task,iprint, csave,lsave,isave,dsave, maxiter)
+       call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
+            ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
        if (task(1:2) .eq. 'FG') then
           xtilde= reshape(xwork,(/n,ndim,natom/))
           f= UM(xtilde,a,b)
           call UMprime(xtilde,a,b,fprime)
-          ! write(*,*) count, f, dot_product(fprime, fprime)
        end if
     end do
     if (task(1:5) .eq. "ERROR" .or. task(1:4) .eq. "ABNO") then
-         write(*,*) "Error:"
-         write(*,*) task
-         ! stop
-      end if
+       write(*,*) "Error:"
+       write(*,*) task
+    end if
+
     deallocate(work, lb, ub, fprime, fprimework,xwork)
     deallocate(iwork, nbd, isave, dsave)
 
     return
   end subroutine instanton
+
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  subroutine detJ(x, etasquared)
+  character::                      jobz, range, uplo
+  double precision::               vl, vu, abstol
+  double precision::               x(:,:,:), etasquared(:)
+  integer::                        nout, ldz, lwork, liwork, info,i
+  integer,allocatable::            isuppz(:), iwork(:)
+  double precision, allocatable::  work(:), z(:,:), H(:,:)
+  ! !get diagonal hessian
+  jobz='N'
+  range='A'
+  uplo='U'
+  abstol=1.0d-8
+  lwork= 2*totdof +1!26*totdof !
+  liwork= 1!10*totdof !
+  info=0
+  ldz=totdof
+  vl=0.0d0
+  vu=0.0d0
+  nout=0
+  allocate(isuppz(2*totdof), work(lwork), iwork(liwork), z(totdof,totdof), H(totdof,totdof))
+  H=0.0d0
+  etasquared=0.0d0
+  call UMhessian(x,H)
+  ! call dsyevr(jobz, range, uplo, totdof, H, totdof, vl, vu, totdof, totdof, abstol, nout, etasquared,&
+  !      z, ldz, isuppz, work, lwork, iwork, liwork, info)
+  call dsyevd(jobz, uplo, totdof, H, totdof, etasquared,work,lwork,iwork,liwork,info)
+  ! write(*,*) info
+  ! do i=1,totdof
+  ! write(*,*) i,etasquared(i)
+  ! end do
+
+  deallocate(isuppz, work, iwork, z,H)
+  return
+  end subroutine detJ
 
   function findmiddle(x1,x2,lampath,path, splinepath)
     integer::          jmax,j
@@ -584,24 +751,5 @@ end subroutine Partition
     eucliddist= sqrt(eucliddist)
     return
   end function eucliddist
-
-  subroutine get_align(atomsin,theta1, theta2, theta3, origin)
-    implicit none
-    double precision::     atomsin(:,:), origin(:)
-    double precision::     theta1, theta2, theta3
-    theta1=0.0d0
-    theta2=0.0d0
-    theta3=0.0d0
-    origin(:)=0.0d0
-    return
-  end subroutine get_align
-
-  subroutine align_atoms(atomsin, theta1,theta2,theta3, origin, atomsout)
-    implicit none
-    double precision::     atomsin(:,:), atomsout(:,:), origin(:)
-    double precision::     theta1, theta2, theta3
-    atomsout(:,:)= atomsin(:,:)
-    return
-  end subroutine align_atoms
 
 end module mcmod_mass

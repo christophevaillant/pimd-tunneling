@@ -4,6 +4,7 @@ module mcmod_mass
   double precision::               beta, betan, UMtilde, V0
   integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
+  character, allocatable::         label(:)
 
   public :: QsortC
   private :: Partition
@@ -85,15 +86,15 @@ contains
     double precision::   x(:,:,:), UM,a(:,:),b(:,:)
 
     UM=0.0d0
-    do i=2, N-1, 1
-       UM=UM+ V(x(i,:,:))! + 7.909252131246103d-3
+    do i=1, N-1, 1
+       UM=UM+ V(x(i,:,:))
        do j=1, ndim
           do k=1, natom
              UM=UM+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
           end do
        end do
     end do
-    UM=UM+ V(x(n,:,:))+ V(x(1,:,:))!+ 2.0d0*7.909252131246103d-3
+    UM=UM+ V(a(:,:))+ V(b(:,:))+ V(x(N,:,:))
     do j=1, ndim
        do k=1, natom
           UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
@@ -531,25 +532,6 @@ contains
   END FUNCTION locate
 
   !---------------------------------------------------------------------
-  ! subroutine UMhessian(x, answer)
-  !   !TODO: Implement UM hessian!
-  !   implicit none
-  !   integer::            i
-  !   double precision::   x(:,:), answer(n,n)
-
-  !   ! do i=2, n-1, 1
-  !   !    answer(i,i)= Vdoubleprime(x(i))+2.0*mass/betan**2
-  !   !    answer(i,i-1)= -mass/betan**2
-  !   !    answer(i,i+1)= -mass/betan**2
-  !   ! end do
-  !   ! answer(1,1)= Vdoubleprime(x(1))+2.0*mass/betan**2
-  !   ! answer(1,2)= -mass/betan**2
-  !   ! answer(n,n)= Vdoubleprime(x(n))+2.0*mass/betan**2
-  !   ! answer(n,n-1)=-mass/betan**2
-
-  !   return
-  ! end subroutine UMhessian
-  !---------------------------------------------------------------------
   !---------------------------------------------------------------------
   !sort algorithms
 recursive subroutine QsortC(A)
@@ -631,23 +613,23 @@ end subroutine centreofmass
     dof= n*ndim*natom
     allocate(lb(dof), ub(dof),fprime(n,ndim,natom), nbd(dof))
     allocate(fprimework(dof), xwork(dof))
-    call centreofmass(a, com)
-    do i=1,ndim
-       do j=1,natom
-          a(i,j)= a(i,j)- com(i)
-       end do
-    end do
-    call centreofmass(b, com)
-    do i=1,ndim
-       do j=1,natom
-          b(i,j)= b(i,j)- com(i)
-       end do
-    end do 
+    ! call centreofmass(a, com)
+    ! do i=1,ndim
+    !    do j=1,natom
+    !       a(i,j)= a(i,j)- com(i)
+    !    end do
+    ! end do
+    ! call centreofmass(b, com)
+    ! do i=1,ndim
+    !    do j=1,natom
+    !       b(i,j)= b(i,j)- com(i)
+    !    end do
+    ! end do 
     do i=1, n, 1
-       call centreofmass(xtilde(i,:,:), com)
+       ! call centreofmass(xtilde(i,:,:), com)
        do j=1,ndim
           do k=1,natom
-             xtilde(i,j,k)= xtilde(i,j,k)- com(j)
+             ! xtilde(i,j,k)= xtilde(i,j,k) - com(j)
              idof= ((k-1)*ndim + j -1)*n +i
                 lb(idof)= a(j,k)
                 ub(idof)= a(j,k)
@@ -665,9 +647,9 @@ end subroutine centreofmass
     iw=dof*(2*m+5) + 11*m**2 + 8*m
     allocate(work(iw), iwork(3*dof), isave(44), dsave(29))
     iflag=0
-    eps2= 1.0d-8
-    factr=1.0d3
-    maxiter=30
+    eps2= 1.0d-6 !gradient convergence
+    factr=1.0d5
+    maxiter=40
     f= UM(xtilde,a,b)
     call UMprime(xtilde,a,b,fprime)
     count=0
@@ -697,10 +679,10 @@ end subroutine centreofmass
 
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
-  subroutine detJ(xtilde, etasquared)
+  subroutine detJ(x, etasquared)
   character::                      jobz, range, uplo
   double precision::               vl, vu, abstol
-  double precision::               xtilde(:,:,:), etasquared(:)
+  double precision::               x(:,:,:), etasquared(:)
   integer::                        nout, ldz, lwork, liwork, info,i
   integer,allocatable::            isuppz(:), iwork(:)
   double precision, allocatable::  work(:), z(:,:), H(:,:)
@@ -719,7 +701,7 @@ end subroutine centreofmass
   allocate(isuppz(2*totdof), work(lwork), iwork(liwork), z(totdof,totdof), H(totdof,totdof))
   H=0.0d0
   etasquared=0.0d0
-  call UMhessian(xtilde,H)
+  call UMhessian(x,H)
   ! call dsyevr(jobz, range, uplo, totdof, H, totdof, vl, vu, totdof, totdof, abstol, nout, etasquared,&
   !      z, ldz, isuppz, work, lwork, iwork, liwork, info)
   call dsyevd(jobz, uplo, totdof, H, totdof, etasquared,work,lwork,iwork,liwork,info)

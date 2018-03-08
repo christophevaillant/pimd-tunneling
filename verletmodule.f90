@@ -21,7 +21,6 @@ module verletint
   type (vsl_stream_state)::         stream_poisson,stream_normal
   integer::                         errcode_normal, rmethod_normal, brng_normal
   integer::                         seed_normal, rk
-  character, allocatable::         label(:)
 
 contains
   !-----------------------------------------------------

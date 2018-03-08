@@ -1,14 +1,19 @@
 module mcmod_mass
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
-  double precision::               beta, betan, UMtilde, eps
+  double precision::               beta, betan, UMtilde, V0
+  double precision::               omegaforce, r0
   integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:), tst(:,:)
+  character, allocatable::         label(:)
 
   public :: QsortC
   private :: Partition
 contains
   subroutine V_init()
+    omegaforce=10000.0d0
+    r0=20.0d0
+    V0=0.0
     return
   end subroutine V_init
   !---------------------------------------------------------------------
@@ -18,8 +23,14 @@ contains
     integer::              i,j
 
     r= sqrt(x(1,1)**2 + x(2,1)**2)
-    answer= 1.0d0 -0.5*(exp(-2.0d0*(r-3.0d0)**2) + exp(-0.2d0*(r-3.0d0)**2))
-    V=answer
+    answer= 0.5d0*omegaforce**2*mass(1)*(r-r0)**2
+    ! answer= 1.0d0 -0.5*(exp(-2.0d0*(r-3.0d0)**2) + exp(-0.2d0*(r-3.0d0)**2))
+    if (answer.ne.answer) then
+       write(*,*) "NaN in pot!"
+       write(*,*) x
+       stop
+    end if
+    V=answer-V0
     return
   end function V
 
@@ -28,40 +39,79 @@ contains
     implicit none
     integer::              i,j
     double precision::     grad(:,:), x(:,:), r, u, dvdr
-    double precision::     gradplus, gradminus, xtest(2), eps
+    double precision::     eplus, Eminus, xtest(2), eps
+    double precision, allocatable:: gradtest(:,:)
 
     eps=1d-5
     r= sqrt(x(1,1)**2 + x(2,1)**2)
-    u= (r-3.0d0)**2
-    dvdr=sqrt(u)*(2.0d0*exp(-2.0d0*u) + 0.2d0*exp(-0.2d0*u))
-    ! grad(1,1)= x(1,1)*(1.0d0- 3.0d0/r)*(2.0d0*exp(-2.0d0*(r-3.0d0)**2) + 0.2d0*exp(-0.2d0*(r-3.0d0)**2))
-    ! grad(2,1)= x(2,1)*(1.0d0- 3.0d0/r)*(2.0d0*exp(-2.0d0*(r-3.0d0)**2) + 0.2d0*exp(-0.2d0*(r-3.0d0)**2))
-    grad(1,1)= -dvdr*x(1,1)/r
-    grad(2,1)= -dvdr*x(2,1)/r
-    ! do i=1,2
-    !    x(i,1)= x(i,1) + eps
-    !    gradplus= V(x)
-    !    x(i,1)= x(i,1) - 2.0d0*eps
-    !    gradminus= V(x)
-    !    x(i,1)= x(i,1) + eps
-    !    xtest(i)=(gradplus-gradminus)/(2.0d0*eps)
+    grad(1,1)= mass(1)*omegaforce**2*x(1,1)*(1.0d0 - r0/r)
+    grad(2,1)= mass(1)*omegaforce**2*x(2,1)*(1.0d0 - r0/r)
+    if (grad(1,1).ne.grad(1,1) .or.grad(2,1).ne.grad(2,1) ) then
+       write(*,*) "NaN in grad!"
+       write(*,*) x
+       write(*,*) grad
+       stop
+    end if
+
+    ! allocate(gradtest(ndim, natom))
+    ! eps=1d-6
+    ! do i= 1, ndim
+    !    do j= 1, natom
+    !       x(i,j)= x(i,j) + eps
+    !       eplus= V(x)
+    !       x(i,j)= x(i,j) - 2.0d0*eps
+    !       eminus= V(x)
+    !       x(i,j)= x(i,j) + eps
+    !       gradtest(i,j)= (Eplus-Eminus)/(2.0d0*eps)
+    !       write(*,*)"-----------"
+    !       write(*,*) i, j, gradtest(i,j)
+    !       write(*,*) i,j,grad(i,j)
+    !    end do
     ! end do
-    ! write(*,*) grad(1,1), xtest(1),grad(2,1), xtest(2)
+    ! deallocate(gradtest)
+
     return
   end subroutine Vprime
   !---------------------------------------------------------------------
   subroutine  Vdoubleprime(x,hess)
     implicit none
-    double precision::     hess(:,:,:,:), x(:,:), r,u, dvdr
+    double precision::     hess(:,:,:,:), x(:,:), r,u, dvdr, eps
+    double precision, allocatable::     gradplus(:, :), gradminus(:, :)
+    double precision, allocatable::   hesstest(:,:,:,:)
     integer::              i, j
 
     r= sqrt(x(1,1)**2 + x(2,1)**2)
-    u= (r-3.0d0)**2
-    dvdr=(2.0d0 - 4.0d0*u)*exp(-2.0d0*u) + (0.2d0 - 4.0d-2*u)*exp(-0.2d0*u)
-    hess(1,1,1,1)= dvdr*x(2,1)**2/r**3
-    hess(2,1,2,1)= dvdr*x(1,1)**2/r**3
-    hess(1,1,2,1)= dvdr*x(1,1)*x(2,1)/r**3
-    hess(2,1,1,1)= hess(1,1,2,1)
+    dvdr= omegaforce**2*mass(1)*(r-r0)
+    hess(1,1,1,1)= x(1,1)**2*omegaforce**2*mass(1)*r0/r**3
+    hess(1,1,2,1)= x(1,1)*x(2,1)*omegaforce**2*mass(1)*r0/r**3
+    hess(2,1,1,1)= x(1,1)*x(2,1)*omegaforce**2*mass(1)*r0/r**3
+    hess(2,1,2,1)= x(2,1)**2*omegaforce**2*mass(1)*r0/r**3
+
+    ! u= (r-3.0d0)**2
+    ! dvdr=(2.0d0 - 4.0d0*u)*exp(-2.0d0*u) + (0.2d0 - 4.0d-2*u)*exp(-0.2d0*u)
+    ! hess(1,1,1,1)= dvdr*x(2,1)**2/r**3
+    ! hess(2,1,2,1)= dvdr*x(1,1)**2/r**3
+    ! hess(1,1,2,1)= dvdr*x(1,1)*x(2,1)/r**3
+    ! hess(2,1,1,1)= hess(1,1,2,1)
+
+    ! eps=1d-4
+    ! allocate(hesstest(ndim, natom, ndim, natom))
+    ! allocate(gradplus(ndim, natom), gradminus(ndim, natom))
+    ! do i= 1, ndim
+    !    do j= 1, natom
+    !       x(i,j)= x(i,j) + eps
+    !       call Vprime(x, gradplus)
+    !       x(i,j)= x(i,j) - 2.0d0*eps
+    !       call Vprime(x, gradminus)
+    !       x(i,j)= x(i,j) + eps
+    !       hesstest(i,j,:,:)= (gradplus(:,:)-gradminus(:,:))/(2.0d0*eps)
+    !       write(*,*)"-----------"
+    !       write(*,*) i, j, hesstest(i,j,:,1)
+    !       write(*,*) i,j,hess(i,j,:,1)
+    !    end do
+    ! end do
+    ! deallocate(gradplus, gradminus, hesstest)
+    ! stop
 
     return
   end subroutine Vdoubleprime
@@ -71,28 +121,25 @@ contains
   function UM(x,a,b)
     implicit none
     integer::            i,j,k
-    double precision::   x(:,:,:), UM,a(:,:),b(:,:), answer, pot
+    double precision::   x(:,:,:), UM,a(:,:),b(:,:)
 
-    answer=0.0d0
-    do i=2, N-1, 1
-       pot=V(x(i,:,:))
-       ! write(*,*) x(i,1,1),x(i,2,1),pot
-       answer=answer+ pot
+    UM=0.0d0
+    do i=1, N-1, 1
+       UM=UM+ V(x(i,:,:))
        do j=1, ndim
           do k=1, natom
-             answer=answer+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
+             UM=UM+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
           end do
        end do
     end do
-    answer=answer+ V(x(n,:,:))+ V(x(1,:,:))
+    UM=UM+ V(a(:,:))+ V(b(:,:))+ V(x(N,:,:))
     do j=1, ndim
        do k=1, natom
-          answer=answer+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
-          answer=answer+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
+          UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
+          UM=UM+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
        end do
     end do
-    ! write(*,*) "UM:", answer
-    UM=answer
+
     return
   end function UM
 
@@ -104,8 +151,6 @@ contains
     double precision,allocatable:: grad(:,:)
 
     allocate(grad(ndim,natom))
-
-    eps=1d-5
     do i=1, N
        do j=1,ndim
           do k=1,natom
@@ -167,6 +212,7 @@ contains
     return
   end subroutine UMhessian
 
+
   !---------------------------------------------------------------------
   !Align a vector of atoms
 
@@ -209,14 +255,14 @@ contains
 
   subroutine rotate_atoms(atoms,axis,theta)
     implicit none
-    double precision::     rotmatrix(3,3), atoms(:,:)
+    double precision::     rotmatrix(2,2), atoms(:,:)
     double precision::     theta
     integer::              i, axis, j,k
 
     rotmatrix(1,1)= cos(theta)
     rotmatrix(2,2)= cos(theta)
-    rotmatrix(1,2)= -sin(theta)
-    rotmatrix(2,1)= sin(theta)
+    rotmatrix(1,2)= sin(theta)
+    rotmatrix(2,1)= -sin(theta)
     atoms(:,1)= matmul(rotmatrix(:,:), atoms(:,1))
     return
   end subroutine rotate_atoms
@@ -537,7 +583,7 @@ end subroutine centreofmass
     do i=1, n, 1
        do j=1,ndim
           do k=1,natom
-             ! xtilde(i,j,k)= a(j,k) + (b(j,k)-a(j,k))*dble(i-1)/dble(n-1)
+             xtilde(i,j,k)= a(j,k) + (b(j,k)-a(j,k))*dble(i-1)/dble(n-1)
              idof= ((k-1)*ndim + j -1)*n +i
              lb(idof)= a(j,k)
              ub(idof)= b(j,k)
@@ -550,14 +596,14 @@ end subroutine centreofmass
     !perform minimization
     task='START'
     maxiter=50
-    m=8
+    m=10
     iprint=-1
-    xtol= 1d-8
+    xtol= 1d-10
     iw=dof*(2*m+5) + 11*m**2 + 8*m
     allocate(work(iw), iwork(3*dof), isave(44), dsave(29))
     iflag=0
-    eps= 1.0d-8
-    factr=1.0d5
+    eps= 1.0d-10
+    factr=1.0d1
     f= UM(xtilde,a,b)
     call UMprime(xtilde,a,b,fprime)
     count=0
@@ -580,11 +626,11 @@ end subroutine centreofmass
     if (task(1:5) .eq. "ERROR" .or. task(1:4) .eq. "ABNO") then
        write(*,*) "Error:"
        write(*,*) task
-    ! write(*,*) "final UM:", f
-    do i=1,n
-       ! write(*,*) "final force:", i, fprime(i,1,1), fprime(i,2,1)
-       write(*,*) i,xtilde(i,1,1),xtilde(i,2,1)
-    end do
+       write(*,*) "final UM:", f
+       do i=1,n
+          ! write(*,*) "final force:", i, fprime(i,1,1), fprime(i,2,1)
+          write(*,*) i,xtilde(i,1,1),xtilde(i,2,1)
+       end do
     end if
     deallocate(work, lb, ub, fprime, fprimework,xwork)
     deallocate(iwork, nbd, isave, dsave)
