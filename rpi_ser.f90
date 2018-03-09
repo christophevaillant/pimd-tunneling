@@ -14,8 +14,9 @@ program rpi
   integer::                         i, j,k,npath, dummy, zerocount, npoints
   integer::                         ii,jj,kk
   character::                      dummylabel, dummystr(28)
-  logical::                        angular, output_instanton, readpath
-  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, angular, npoints, cutofftheta,cutoffphi, output_instanton, readpath
+  logical::                        angular, output_instanton, readpath, alignwell
+  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, angular, npoints, cutofftheta,cutoffphi, output_instanton, &
+       readpath, alignwell
 
   !-------------------------
   !Set default system parameters then read in namelist
@@ -29,6 +30,7 @@ program rpi
   angular=.false.
   output_instanton=.false.
   readpath=.true.
+  alignwell=.false.
 
   read(5, nml=RPIDATA)
   betan= beta/dble(n)
@@ -62,6 +64,7 @@ program rpi
   call get_align(well1,theta1, theta2, theta3, origin)
   wellinit(:,:)= well1(:,:)
   call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
+  if (alignwell) call get_align(well2,theta1, theta2, theta3, origin)
   wellinit(:,:)= well2(:,:)
   call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
   write(*,*) "Potential at wells:", V(well1), V(well2)

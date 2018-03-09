@@ -21,7 +21,7 @@ program pimd
   double precision, allocatable::  xi(:), dbdxi(:,:,:), y(:,:,:), pinit(:,:,:)
   double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:), Vpath(:)
   integer::                        ndofrb, dummy
-  logical::                        instapath, centre, readpath
+  logical::                        instapath, centre, readpath, alignwell
   character::                      dummylabel, dummystr(28)
   !gauss-legendre variables
   integer::                        nintegral,ii, time1, time2, imax, irate
@@ -41,7 +41,7 @@ program pimd
   integer, dimension(MPI_STATUS_SIZE) :: rstatus
   namelist /MCDATA/ n, beta, NMC, Noutput,dt, iprint,imin,tau,npath, gamma,&
        nintegral,nrep, use_mkl, thermostat, ndim, natom, xunit, instapath, centre,&
-       dHdrlimit, readpath
+       dHdrlimit, readpath, alignwell
 
   !initialize MPI
   nproc=0
@@ -76,6 +76,7 @@ program pimd
   centre=.false.
   dHdrlimit=-1.0
   readpath=.true.
+  alignwell=.false.
 
   !Read in namelist variables for root proc, and spread
   !it to other procs
@@ -207,6 +208,7 @@ program pimd
         call get_align(well1,theta1, theta2, theta3, origin)
         wellinit(:,:)= well1(:,:)
         call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
+        if (alignwell) call get_align(well2,theta1, theta2, theta3, origin)
         wellinit(:,:)= well2(:,:)
         call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
         V0=V(well1)

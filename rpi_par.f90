@@ -22,8 +22,9 @@ program rpi
   integer, dimension(MPI_STATUS_SIZE) :: rstatus
   double precision, allocatable::  endpoints(:,:,:), allendpoints(:,:,:)
   double precision, allocatable::  results(:), allresults(:)
+  logical::                        alignwell
 
-  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, npoints, cutofftheta,cutoffphi
+  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, npoints, cutofftheta,cutoffphi, alignwell
 
   !initialize MPI
   nproc=0
@@ -46,6 +47,8 @@ program rpi
   npoints=10
   cutofftheta=6.5d0
   cutoffphi=3.2d0
+  alignwell=.false.
+
   call V_init()
 
   if (iproc .eq. 0) then
@@ -100,6 +103,7 @@ program rpi
      call get_align(well1,theta1, theta2, theta3, origin)
      wellinit(:,:)= well1(:,:)
      call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
+     if (alignwell) call get_align(well2,theta1, theta2, theta3, origin)
      wellinit(:,:)= well2(:,:)
      call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
      V0=V(well1)
