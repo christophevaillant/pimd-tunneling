@@ -15,8 +15,8 @@ program rpi
   integer::                         ii,jj,kk
   character::                      dummylabel, dummystr(28)
   logical::                        angular, output_instanton, readpath, alignwell
-  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, angular, npoints, cutofftheta,cutoffphi, output_instanton, &
-       readpath, alignwell
+  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, angular, npoints, cutofftheta,cutoffphi,&
+       output_instanton,readpath, alignwell
 
   !-------------------------
   !Set default system parameters then read in namelist
@@ -67,8 +67,8 @@ program rpi
   if (alignwell) call get_align(well2,theta1, theta2, theta3, origin)
   wellinit(:,:)= well2(:,:)
   call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
-  write(*,*) "Potential at wells:", V(well1), V(well2)
   V0=V(well1)
+  write(*,*) "Potential at wells:", V(well1), V(well2)
   allocate(grad(ndim,natom))
   call Vprime(well1, grad)
   write(*,*) "With norm of grad:", norm2(reshape(grad, (/ndim*natom/)))
