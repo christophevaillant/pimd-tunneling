@@ -170,7 +170,6 @@ contains
                       if (i.gt.1) answer(ndof+1,fulldof1)=-1.0d0/betan**2
                    else
                       index=1 + fulldof2 -fulldof1
-                      write(*,*)index,fulldof1, fulldof2, idof1, idof2
                       if (index.lt.0) cycle
                       answer(index,fulldof1)= &
                         +hess(j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
