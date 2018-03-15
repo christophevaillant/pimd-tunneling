@@ -170,7 +170,7 @@ program rpi
   lndetj0= 0.0d0
   zerocount=0
   do i=1,totdof
-     ! write(*,*) i,etasquared(i)
+     write(*,*) i,etasquared(i)
      if (etasquared(i) .gt. 0.0d0) then
         lndetj0= lndetj0+ log(etasquared(i))
      else

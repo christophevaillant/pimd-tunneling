@@ -141,6 +141,7 @@ contains
   subroutine UMhessian(x, answer)
     implicit none
     integer::            i, j1, k1, j2, k2, idof1, idof2
+    integer::            fulldof1, fulldof2
     double precision::   x(:,:,:), answer(:,:)
     double precision, allocatable:: hess(:,:,:,:)
 
@@ -154,16 +155,22 @@ contains
           do k1=1,natom
              do j2=1,ndim
                 do k2=1,natom
+                   !The DoF label for the individual bead
                    idof1= (k1-1)*ndim + j1
                    idof2= (k2-1)*ndim + j2
-                   answer(n*(idof1-1) + i,n*(idof2-1) + i)= hess(j1,k1,j2,k2)/sqrt(mass(k1)*mass(k2))
+                   !The DoF label for the whole matrix
+                   fulldof1=n*(idof1-1) + i
+                   fulldof2=n*(idof2-1) + i
+
+                   if (fulldof2 .lt. fulldof1) continue
+
                    if (idof1.eq.idof2) then
-                      answer(n*(idof1-1) + i,n*(idof1-1) + i)= &
-                           answer(n*(idof1-1) + i,n*(idof1-1) + i) +2.0d0/betan**2
-                      if (i.gt.1) answer(n*(idof1-1) + i,n*(idof1-1) + i-1)=&
-                           answer(n*(idof1-1) + i,n*(idof1-1) + i-1) -1.0d0/betan**2
-                      if (i.lt.n) answer(n*(idof1-1) + i,n*(idof1-1) + i+1)=&
-                           answer(n*(idof1-1) + i,n*(idof1-1) + i+1)-1.0d0/betan**2
+                      answer(ndof+1,fulldof1)= 2.0d0/betan**2&
+                           +hess(j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
+                      if (i.gt.1) answer(1,fulldof1)=-1.0d0/betan**2
+                   else
+                   answer(ndof+1 + fulldof2 -fulldof1,fulldof1)= &
+                        +hess(j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
                    end if
                 end do
              end do
@@ -677,26 +684,21 @@ end subroutine centreofmass
   range='A'
   uplo='U'
   abstol=1.0d-8
-  lwork= 2*totdof +1!26*totdof !
-  liwork= 1!10*totdof !
+  lwork= 2*totdof
+  liwork= 1
   info=0
   ldz=totdof
   vl=0.0d0
   vu=0.0d0
   nout=0
-  allocate(isuppz(2*totdof), work(lwork), iwork(liwork), z(totdof,totdof), H(totdof,totdof))
+  allocate(work(lwork), iwork(liwork), H(ndof+1,totdof))
   H=0.0d0
   etasquared=0.0d0
   call UMhessian(x,H)
-  ! call dsyevr(jobz, range, uplo, totdof, H, totdof, vl, vu, totdof, totdof, abstol, nout, etasquared,&
-  !      z, ldz, isuppz, work, lwork, iwork, liwork, info)
-  call dsyevd(jobz, uplo, totdof, H, totdof, etasquared,work,lwork,iwork,liwork,info)
-  ! write(*,*) info
-  ! do i=1,totdof
-  ! write(*,*) i,etasquared(i)
-  ! end do
+  write(*,*) "Hessian is cooked."
 
-  deallocate(isuppz, work, iwork, z,H)
+  call DSBEVD('N', 'U', totdof, ndof, H, ndof+1, etasquared, z, 1, work, lwork, iwork, liwork, info)
+  deallocate(work, iwork, H)
   return
   end subroutine detJ
 
