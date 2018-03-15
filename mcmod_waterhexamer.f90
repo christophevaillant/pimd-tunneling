@@ -141,7 +141,7 @@ contains
   subroutine UMhessian(x, answer)
     implicit none
     integer::            i, j1, k1, j2, k2, idof1, idof2
-    integer::            fulldof1, fulldof2
+    integer::            fulldof1, fulldof2, index
     double precision::   x(:,:,:), answer(:,:)
     double precision, allocatable:: hess(:,:,:,:)
 
@@ -162,14 +162,17 @@ contains
                    fulldof1=n*(idof1-1) + i
                    fulldof2=n*(idof2-1) + i
 
-                   if (fulldof2 .lt. fulldof1) continue
+                   if (fulldof2 .gt. fulldof1) cycle
 
                    if (idof1.eq.idof2) then
                       answer(ndof+1,fulldof1)= 2.0d0/betan**2&
                            +hess(j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
                       if (i.gt.1) answer(1,fulldof1)=-1.0d0/betan**2
                    else
-                   answer(ndof+1 + fulldof2 -fulldof1,fulldof1)= &
+                      index=ndof+1 + fulldof2 -fulldof1
+                      if (index.lt.0) cycle
+                      ! write(*,*)fulldof1, fulldof2, index,k1,k2,j1,j2
+                      answer(index,fulldof1)= &
                         +hess(j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
                    end if
                 end do
