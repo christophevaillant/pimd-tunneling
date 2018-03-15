@@ -159,19 +159,19 @@ contains
                    idof1= (k1-1)*ndim + j1
                    idof2= (k2-1)*ndim + j2
                    !The DoF label for the whole matrix
-                   fulldof1=n*(idof1-1) + i
-                   fulldof2=n*(idof2-1) + i
+                   fulldof1=ndof*(i-1) + idof1
+                   fulldof2=ndof*(i-1) + idof2
 
-                   if (fulldof2 .gt. fulldof1) cycle
+                   if (fulldof2 .lt. fulldof1) cycle
 
                    if (idof1.eq.idof2) then
-                      answer(ndof+1,fulldof1)= 2.0d0/betan**2&
+                      answer(1,fulldof1)= 2.0d0/betan**2&
                            +hess(j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
-                      if (i.gt.1) answer(1,fulldof1)=-1.0d0/betan**2
+                      if (i.gt.1) answer(ndof+1,fulldof1)=-1.0d0/betan**2
                    else
-                      index=ndof+1 + fulldof2 -fulldof1
+                      index=1 + fulldof2 -fulldof1
+                      write(*,*)index,fulldof1, fulldof2, idof1, idof2
                       if (index.lt.0) cycle
-                      ! write(*,*)fulldof1, fulldof2, index,k1,k2,j1,j2
                       answer(index,fulldof1)= &
                         +hess(j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
                    end if
@@ -700,7 +700,7 @@ end subroutine centreofmass
   call UMhessian(x,H)
   write(*,*) "Hessian is cooked."
 
-  call DSBEVD('N', 'U', totdof, ndof, H, ndof+1, etasquared, z, 1, work, lwork, iwork, liwork, info)
+  call DSBEVD('N', 'L', totdof, ndof, H, ndof+1, etasquared, z, 1, work, lwork, iwork, liwork, info)
   deallocate(work, iwork, H)
   return
   end subroutine detJ
