@@ -71,7 +71,7 @@ program rpi
   ndof=ndim*natom
   totdof= n*ndof
   if (iproc.eq. nproc-1 .and. mod(npoints**3,nproc) > 0) then
-     ncalcs= mod(npoints**3,nproc)
+     ncalcs= ncalcs-mod(npoints**3,nproc)
   end if
 
   write(*,*) "ncalcs=", ncalcs, "on iproc", iproc
