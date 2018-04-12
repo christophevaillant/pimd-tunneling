@@ -11,17 +11,17 @@ module graphenemod
   !Parameters for the potential
   
   double precision:: r1, r2, gamma, A, B1, B2, alpha, beta1, beta2
-  double precision:: d, C1, C4, C6, L, kappa, P0, P1 !P0 and P1 are R0 and R1 in the paper
+  double precision:: dH, C1, C4, C6, LH, kappa, P0, P1 !P0 and P1 are R0 and R1 in the paper
   double precision:: r0, r1lr, r2lr, epsilon1, epsilon2, lambda1, lambda2
 
-  !Energy params (hartrees)
-  data A /1.310221556d3/, B1 /684.0826302d0/, B2 /1.176711092d0/
-  data epsilon1 /2.239185095d-4/, epsilon2 /9.620072267d-5/
+  !Energy params (eV)
+  data A /35652.94452d0/, B1 /18614.83652d0/, B2 /32.01993977d0/
+  data epsilon1 /6.093133d0/, epsilon2 /2.617755d0/
   !Distance params (angstroms)
   data r1 /1.7d0/, r2 /2.3d0/, gamma /1.8d0/
   data alpha /6.26781252d0/, beta1 /5.83045680/, beta2 /1.16864228d0/
-  data d /0.14d0/, C1 /3.3d0/, C4 /220.0d0/, C6 /-5434.715d0/
-  data L /0.688316d0/, kappa /1.619070d0/, P0 /1.612316d0/, P1 /5.485568d0/
+  data dH /0.14d0/, C1 /3.3d0/, C4 /220.0d0/, C6 /-5434.715d0/
+  data LH /0.688316d0/, kappa /1.619070d0/, P0 /1.612316d0/, P1 /5.485568d0/
   data r0 /3.716163d0/, r1lr /5.5d0/, r2lr /6.d0/
   data lambda1 /1.359381d0/, lambda2 /2.073944d0/
 
@@ -44,7 +44,7 @@ module graphenemod
 
   !-------------------------------------------------------------
   private
-  public::               pot, periodpot
+  public::               graphenepot, carbon_init
 
 contains
   !-------------------------------------------------------------
@@ -60,54 +60,126 @@ contains
   !-------------------------------------------------------------
   !Potential with periodic boundary conditions
   !Assumes 6 atoms per unit cell
-  subroutine periodpot(x, rcut, a, V)
-    double precision, intent(in):: x(:,:), rcut, a
+  subroutine graphenepot(x, rcut, V)
+    double precision, intent(inout):: x(18)
+    double precision, intent(in)::  rcut
     double precision, intent(out):: V
     double precision, allocatable:: superx(:,:), finalx(:,:), tempx(:,:)
-    double precision::   rij
-    integer:: ncells,cells, i, j,k
+    double precision::   rij, a1(3), a2(3), a, yl,yu, xcopy(18)
+    data a /2.4595d0/
+    data a1(:) /3.6893d0, -2.13d0, 0.0d0/
+    data a2(:) /3.6893d0, 2.13d0, 0.0d0/
+    integer:: ncells,cells, i, j,k, m
+    character(len=100)::  stringnumber, filename
 
+    xcopy(:)= x(:)
     V=0.0d0
+    !Work out if coordinates are in the unit cell
+    do i=1,6
+       if (x(3*(i-1)+1) .le. 0) then
+          yl= x(3*(i-1)+1)*(a1(2)/a1(1))+a1(2)
+          yu= x(3*(i-1)+1)*(a2(2)/a2(1))+a2(2)
+          ! write(*,*) "Left:"
+          ! write(*,*) x(3*(i-1)+1), x(3*(i-1)+2), yl, yu
+          !if upper left of unit cell
+          if (x(3*(i-1)+2) .gt. yu) x(3*(i-1)+1:3*(i-1)+3)= &
+               x(3*(i-1)+1:3*(i-1)+3)+ a1(1:3)
+          !if lower left of unit cell
+          if (x(3*(i-1)+2) .lt. yl) x(3*(i-1)+1:3*(i-1)+3)= &
+               x(3*(i-1)+1:3*(i-1)+3)+ a2(1:3)
+       else if (x(3*(i-1)+1) .gt. 0) then
+          yl= (x(3*(i-1)+1) - a2(1))*(a2(2)/a2(1)) + a1(2) + a2(2)
+          yu= (x(3*(i-1)+1) - a1(1))*(a1(2)/a1(1)) + a1(2) + a2(2)
+          ! write(*,*) "Right:"
+          ! write(*,*) x(3*(i-1)+1), x(3*(i-1)+2), yl, yu
+          !if upper right of unit cell
+          if (x(3*(i-1)+2) .gt. yu) x(3*(i-1)+1:3*(i-1)+3)= &
+               x(3*(i-1)+1:3*(i-1)+3)- a2(1:3)
+          !if lower right of unit cell
+          if (x(3*(i-1)+2) .lt. yl) x(3*(i-1)+1:3*(i-1)+3)= &
+               x(3*(i-1)+1:3*(i-1)+3)- a1(1:3)
+       end if
+    end do
 
-    !First, need to work out how many unit cells
+    ! open(121, file="unitcell.xyz")
+    ! write(121,*) 6
+    ! write(121,*) "unit cell"
+    ! do k=1, 6
+    !    write(121,*) "C", (x(3*(k-1)+j), j=1,3)
+    ! end do
+    ! close(121)
+
+    !Need to work out how many unit cells
     !ncells is total number of cells, cells is length of grid
-    !1 extra cell is a minimum, +2 because geometric progression
-    cells= (int(rcut/a) + 3)
+    cells= (nint(rcut/a) + 1)
+    if (mod(cells,2).eq.0.0) cells=cells+1
     ncells= cells**2
 
     !Now work out coordinates of all atoms and work out which ones are relevent
-    allocate(superx(cells*6,3))
+    allocate(superx(ncells*6,3))
     do i=1, cells
        do j=1,cells
           do k=1,6
-             superx(cells*(cells*(j-1) + i-1) + k, 1)= x(k,1) + i*a
-             superx(cells*(cells*(j-1) + i-1) + k, 2)= x(k,2) + j*a
-             superx(cells*(cells*(j-1) + i-1) + k, 3)= x(k,3) !considering only planar
+             superx(6*(cells*(j-1) + i-1)+k, 1)= x(3*(k-1)+1) + &
+                  (i-1-(cells/2))*a1(1) + (j-1-(cells/2))*a2(1)
+             superx(6*(cells*(j-1) + i-1)+k, 2)= x(3*(k-1)+2) + &
+                  (i-1-(cells/2))*a1(2) + (j-1-(cells/2))*a2(2)
+             superx(6*(cells*(j-1) + i-1)+k, 3)= x(3*(k-1) + 3) !considering only planar
           end do
        end do
     end do
 
+    ! open(120, file="supercell.xyz")
+    ! write(120,*) ncells*6
+    ! write(120,*) "unit cell"
+    ! do k=1, ncells*6
+    !    write(120,*) "C", (superx(k,j), j=1,3)
+    ! end do
+    ! close(120)
+    ! stop
+
     !Loop over cells in the unit cell
+    allocate(tempx(ncells*6,3))
     do i=1, 6
-       allocate(tempx(cells*6,3))
-       natoms=1
-       !loop over final atoms (starts at i to avoid double counting)
-       do j=i, 6*ncells
-          rij= distance(superx(i,:), superx(j,:))
-          if (rij .lt. rcut) then
-             tempx(natoms,:)= superx(j,:)
-             natoms=natoms+1
-          end if
+       tempx(:,:)=0.0d0
+       natoms=0
+       !loop over final atoms (starts at i+1 to avoid double counting)
+       do j=1, 6*ncells
+             rij= distance(x(3*(i-1)+1:3*(i-1)+3), superx(j,1:3))
+             ! write(*,*)i,j, "---------"
+             ! write(*,*) x(3*(i-1)+1:3*(i-1)+3)
+             ! write(*,*) superx(j,1:3)
+             if (rij .lt. rcut) then
+                natoms=natoms+1
+                tempx(natoms,:)= superx(j,:)
+             !    write(*,*) "Accepted:", rij
+             ! else
+             !    write(*,*) "Rejected:", rij
+             end if
        end do
+       ! write(*,*) i,natoms, rcut
        allocate(finalx(natoms, 3))
        finalx(1:natoms,:)= tempx(1:natoms,:)
-       V=V+ pot(finalx)
-       deallocate(finalx, tempx)
-    end do
 
-    deallocate(superx)
+       ! write(stringnumber,'(I1)') i
+       ! filename= trim("cell_" // trim(stringnumber) // ".xyz")
+       ! open(120, file=filename)
+       ! write(120,*) natoms
+       ! write(120,*) "supercell"
+       ! do k=1, natoms
+       !    write(120,*) "C", (finalx(k,j), j=1,3)
+       ! end do
+       ! close(120)
+
+       V=V+ pot(finalx)*23.061D0
+
+       deallocate(finalx)
+       x(:)=xcopy(:)
+    end do
+    ! stop
+    deallocate(superx,tempx)
     return
-  end subroutine periodpot
+  end subroutine graphenepot
     
   !-------------------------------------------------------------
   !Potential without periodic boundary conditions
@@ -120,11 +192,11 @@ contains
     pot=0.0d0
     !Ewald sum
     do i=1,natoms
-       do j=1, i
+       do j=i+1, natoms
+          r= distance(x(i,:), x(j,:))
           pot= pot + 0.5*potij(x, i,j)
        end do
     end do
-
     return
   end function pot
 
@@ -134,12 +206,12 @@ contains
     implicit none
     double precision, intent(in):: x(:,:)
     integer, intent(in)::          i,j
-    double precision::    cut, r, potij
+    integer::           k
+    double precision::    cut, r, potij, Elr, cut2, rlr
 
     r= distance(x(i,:), x(j,:))
     cut=cutoff(r)
     potij= cut*potsr(x,i,j) + (1.0d0-cut)*potlr(x,i,j)
-
     return
   end function potij
 
@@ -151,9 +223,13 @@ contains
     double precision:: x, cutoff
     
     x= (r-r1)/(r2-r1)
-
+    ! if (abs(x**3 -1.0d0) .gt. 5D-3) then
     cutoff= heaviside(-x) + &
          heaviside(x)*heaviside(1.0d0-x)*exp(gamma*x**3/(x**3 - 1.0d0))
+    ! else
+    !    cutoff=1.0d10*x
+    ! end if
+    ! write(*,*) x, (x**3 - 1.0d0),gamma*x**3
     return
   end function cutoff
 
@@ -181,6 +257,7 @@ contains
     potsr= A*exp(-alpha*r) - &
          0.5d0*(Bij(x,i,j)+ Bij(x,j,i) + Fconj(x,i,j))*&
          (B1*exp(-beta1*r) + B2*exp(-beta2*r))
+    return
   end function potsr
 
   !-------------------------------------------------------------
@@ -190,7 +267,7 @@ contains
     implicit none
     double precision, intent(in):: x(:,:)
     integer, intent(in)::          i,j
-    double precision::             r, rij, rik, thetaijk
+    double precision::             r, rij, rik, rjk,thetaijk
     double precision::             ksum, Bij
     integer::                      k
 
@@ -199,11 +276,13 @@ contains
     do k=1, natoms
        if ((k.eq.i) .or. (k.eq.j)) cycle
        rik= distance(x(i,:), x(k,:))
-       thetaijk= asin(0.5d0*rik/rij)
-       ksum=ksum+ cutoff(rik)*splint(costheta, gfunc,gspline, cos(thetaijk))&
+       rjk= distance(x(j,:), x(k,:))
+       thetaijk= 0.5d0*(rjk**2 + rij**2 - rik**2)/(rjk*rij) !cosine rule
+       ksum=ksum+ cutoff(rik)*splint(costheta, gfunc,gspline, thetaijk)&
             *Hfunc(rij-rik)
     end do
-    Bij= sqrt(1.0d0+ ksum)
+    Bij= 1.0d0/sqrt(1.0d0+ ksum)
+
     return
   end function Bij
 
@@ -216,13 +295,13 @@ contains
     
     Hfunc=0.0d0
 
-    if (x .lt. -d) then
-       Hfunc= (1.0/(1.0 + (kappa*(x+d))**10.0d0))**0.1d0
-       Hfunc= L*(1.0d0 + kappa*(x+d)*Hfunc)
-    else if ((-d .le. x) .and. (x.le.d)) then
+    if (x .lt. -dH) then
+       Hfunc= (1.0/(1.0 + (kappa*(x+dH))**10.0d0))**0.1d0
+       Hfunc= LH*(1.0d0 + kappa*(x+dH)*Hfunc)
+    else if ((-dH .le. x) .and. (x.le.dH)) then
        Hfunc= 1.0d0 + C1*x + 0.5d0*(C1*x)**2 + C4*x**4 + C6*x**6
     else
-       Hfunc= P0 + P1*(x-d)
+       Hfunc= P0 + P1*(x-dH)
     end if
     
     return
@@ -234,9 +313,21 @@ contains
     implicit none
     double precision, intent(in):: ri(:), rj(:)
     double precision:: distance
+    integer:: i
     
-    distance=sqrt(sum(ri(:)**2- rj(:)**2))
-
+    distance=0.0d0
+    do i=1,3
+       distance=distance + (ri(i)- rj(i))**2
+    end do
+    if (distance .ne. 0.0d0) distance=sqrt(distance)
+    ! if (distance .ne. distance) then
+    !    write(*,*) "Nan in distance"
+    !    write(*,*) ri(:)
+    !    write(*,*) rj(:)
+    !    do i=1,3
+    !       write(*,*) (ri(i)- rj(i))**2
+    !    end do
+    ! end if
     return
   end function distance
 
@@ -279,6 +370,7 @@ contains
     Nconj= (Nij+1.0d0)*(Nji+1.0d0)*(Nelij+Nelji) - 4.0d0*(Nij+Nji+2.0d0)
     Nconj= Nconj/(Nij*(3.0d0-Nij)*(Nji+1.0d0) + Nji*(3.0d0-Nji)*(Nij+1.0d0) + 1d-10)
 
+
     Fconj= (1.0d0- Nconj)*Fconjeval(Nij,Nji,0) + Nconj*Fconjeval(Nij,Nji,1)
   end function Fconj
   !-------------------------------------------------------------
@@ -294,24 +386,30 @@ contains
     k= int(Nij)
     l= int(Nji)
 
-    if (m.eq.0) then
-       Fconjeval= (1.0d0-y)*(1.0d0-x)*(Fconj0(k,l) + x**2*Fconjtilde(k,l,1,0,m) +&
-            y**2*Fconjtilde(k,l,0,1,m))
-       Fconjeval= Fconjeval + (1.0d0-y)*x*(Fconj0(k+1,l) + (1.0d0-x**2)*Fconjtilde(k,l,0,0,m) +&
-            y**2*Fconjtilde(k,l,1,1,m))
-       Fconjeval= Fconjeval + (1.0d0-x)*y*(Fconj0(k,l+1) + (1.0d0-y**2)*Fconjtilde(k,l,0,0,m) +&
-            x**2*Fconjtilde(k,l,1,1,m))
-       Fconjeval= Fconjeval + x*y*(Fconj0(k+1,l+1) + (1.0d0-y**2)*Fconjtilde(k,l,1,0,m) +&
-            (1.0d0-x**2)*Fconjtilde(k,l,0,1,m))
-    else
-       Fconjeval= (1.0d0-y)*(1.0d0-x)*(Fconj1(k,l) + x**2*Fconjtilde(k,l,1,0,m) +&
-            y**2*Fconjtilde(k,l,0,1,m))
-       Fconjeval= Fconjeval + (1.0d0-y)*x*(Fconj1(k+1,l) + (1.0d0-x**2)*Fconjtilde(k,l,0,0,m) +&
-            y**2*Fconjtilde(k,l,1,1,m))
-       Fconjeval= Fconjeval + (1.0d0-x)*y*(Fconj1(k,l+1) + (1.0d0-y**2)*Fconjtilde(k,l,0,0,m) +&
-            x**2*Fconjtilde(k,l,1,1,m))
-       Fconjeval= Fconjeval + x*y*(Fconj1(k+1,l+1) + (1.0d0-y**2)*Fconjtilde(k,l,1,0,m) +&
-            (1.0d0-x**2)*Fconjtilde(k,l,0,1,m))
+    if ((x.gt.0 .and. x.lt.1) .or. (y.gt.0 .and. y.lt.1)) then
+       if (m.eq.0) then
+          Fconjeval= (1.0d0-y)*(1.0d0-x)*(Fconj0(max(1,min(4,k+1)),max(1,min(4,l+1))) + x**2*Fconjtilde(k,l,1,0,m) +&
+               y**2*Fconjtilde(k,l,0,1,m))
+          Fconjeval= Fconjeval + (1.0d0-y)*x*(Fconj0(max(1,min(4,k+2)),max(1,min(4,l+1))) + (1.0d0-x**2)*Fconjtilde(k,l,0,0,m) +&
+               y**2*Fconjtilde(k,l,1,1,m))
+          Fconjeval= Fconjeval + (1.0d0-x)*y*(Fconj0(max(1,min(4,k+1)),max(1,min(4,l+2))) + (1.0d0-y**2)*Fconjtilde(k,l,0,0,m) +&
+               x**2*Fconjtilde(k,l,1,1,m))
+          Fconjeval= Fconjeval + x*y*(Fconj0(max(1,min(4,k+2)),max(1,min(4,l+2))) + (1.0d0-y**2)*Fconjtilde(k,l,1,0,m) +&
+               (1.0d0-x**2)*Fconjtilde(k,l,0,1,m))
+       else
+          Fconjeval= (1.0d0-y)*(1.0d0-x)*(Fconj1(max(1,min(4,k+1)),max(1,min(4,l+1))) + x**2*Fconjtilde(k,l,1,0,m) +&
+               y**2*Fconjtilde(k,l,0,1,m))
+          Fconjeval= Fconjeval + (1.0d0-y)*x*(Fconj1(max(1,min(4,k+2)),max(1,min(4,l+1))) + (1.0d0-x**2)*Fconjtilde(k,l,0,0,m) +&
+               y**2*Fconjtilde(k,l,1,1,m))
+          Fconjeval= Fconjeval + (1.0d0-x)*y*(Fconj1(max(1,min(4,k+1)),max(1,min(4,l+2))) + (1.0d0-y**2)*Fconjtilde(k,l,0,0,m) +&
+               x**2*Fconjtilde(k,l,1,1,m))
+          Fconjeval= Fconjeval + x*y*(Fconj1(max(1,min(4,k+2)),max(1,min(4,l+2))) + (1.0d0-y**2)*Fconjtilde(k,l,1,0,m) +&
+               (1.0d0-x**2)*Fconjtilde(k,l,0,1,m))
+       end if
+    else if (m.eq.0) then
+       Fconjeval= Fconj0(max(1,min(4,k+1)),max(1,min(4,l+1)))
+    else if (m.eq.1) then
+       Fconjeval= Fconj1(max(1,min(4,k+1)),max(1,min(4,l+1)))
     end if
     return
   end function Fconjeval
@@ -324,12 +422,17 @@ contains
     if ((k.eq.0) .or. (k.eq.3)) then
        Fconjtilde=0.0d0
     else if (p .eq. 0) then
-       Fconjtilde= 0.5d0*(Fconj0(k+1+n,l+m) - Fconj0(k-1+n,l+m))
-       Fconjtilde= Fconjtilde - Fconj0(k+1, l+m) + Fconj0(k, l+m)
+       Fconjtilde= 0.5d0*(Fconj0(max(1,min(4,k+2+n)),max(1,min(4,l+m))) - &
+            Fconj0(max(1,min(4,k-2+n)),max(1,min(4,l+m))))
+    else if (p.eq.1) then
+       Fconjtilde= 0.5d0*(Fconj1(max(1,min(4,k+2+n)),max(1,min(4,l+m))) - &
+            Fconj1(max(1,min(4,k-2+n)),max(1,min(4,l+m))))
+    end if
+    if (p .eq. 0) then
+       Fconjtilde= Fconjtilde - Fconj0(max(1,min(4,k+2)), max(1,min(4,l+m+1))) + Fconj0(max(1,min(4,k+1)), max(1,min(4,l+m+1)))
        Fconjtilde= Fconjtilde*(-1.0d0)**(k+n)
     else if (p.eq.1) then
-       Fconjtilde= 0.5d0*(Fconj1(k+1+n,l+m) - Fconj1(k-1+n,l+m))
-       Fconjtilde= Fconjtilde - Fconj1(k+1, l+m) + Fconj1(k, l+m)
+       Fconjtilde= Fconjtilde - Fconj1(max(1,min(4,k+2)), max(1,min(4,l+m+1))) + Fconj1(max(1,min(4,k+1)), max(1,min(4,l+m+1)))
        Fconjtilde= Fconjtilde*(-1.0d0)**(l+m)
     end if
 
