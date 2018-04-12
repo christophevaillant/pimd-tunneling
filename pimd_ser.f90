@@ -53,6 +53,7 @@ program pimd
   potential_test=.false.
   instapath=.false.
   gamma=1.0d0
+  dHdrlimit=-1.0
 
   read(5, nml=MCDATA)
   betan= beta/dble(n+1)
@@ -239,7 +240,8 @@ program pimd
   call random_seed()
   allocate(x(n,ndim,natom), vel(n),p(n,ndim,natom))
   allocate(tempp(n), tempv(n))
-  call alloc_nm()
+  allocate(transmatrix(n,n),beadmass(natom,n),beadvec(n,ndof), lam(n))
+  call alloc_nm(1)
 
   do ii=1, nintegral
      sigma(ii)=0.0d0

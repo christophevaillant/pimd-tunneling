@@ -487,7 +487,7 @@ contains
   subroutine alloc_nm(iproc)
     implicit none
     integer::    itime, irate, imax
-    integer, optional:: iproc
+    integer:: iproc
 
     call system_clock(itime,irate,imax)
     seed_normal= mod(itime+5*iproc,1000)
@@ -500,11 +500,7 @@ contains
     errcode_normal = vslnewstream( stream_normal, brng_normal, seed_normal )
     errcode_poisson = vslnewstream( stream_poisson, brng_poisson, seed_poisson )
     
-    if (present(iproc)) then
-       write(*,*)"proc", iproc, "running with seeds:", seed_normal, seed_poisson
-    else
-       write(*,*)"running with seeds:", seed_normal, seed_poisson
-    end if
+    write(*,*)"proc", iproc, "running with seeds:", seed_normal, seed_poisson
 
   end subroutine alloc_nm
   !-----------------------------------------------------
