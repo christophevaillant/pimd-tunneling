@@ -2,9 +2,10 @@ module mcmod_mass
   use pes,wp=>pes_wp
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
-  double precision::               beta, betan, UMtilde
+  double precision::               beta, betan, UMtilde, eps, V0
   integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
+  character, allocatable::         label(:)
 
   !PES variables
   integer(kind=4), parameter :: nki(0:2)=(/4,4,2/)
