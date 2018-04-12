@@ -65,6 +65,9 @@ WATMETHFILES= $(OBJDIR)/watermethane.o $(OBJDIR)/mcmod_watmeth.o
 #Methane Clathrate:
 CLATHFILES= $(OBJDIR)/watermethane.o $(OBJDIR)/mcmod_clathrate.o
 
+#Graphene:
+GRAPHENEFILES= $(OBJDIR)/graphene.o $(OBJDIR)/mcmod_graphene.o
+
 ###################################################################################
 #Compilation commands for object files
 $(OBJDIR)/%.o: %.f
@@ -180,7 +183,7 @@ crossover_watdim: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/crossover.o
 	$(FC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
 ################################
-#Water Dimer MB-pol
+#Water Hexamer MB-pol
 pimd_wathex_par: $(WATHEXFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
 	$(MPIFC) $(FFLAGS) $(COMFILES) $(WATHEXFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
 
@@ -203,6 +206,17 @@ pimd_clath_ser: $(CLATHFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
 
 rpi_clath_ser: $(CLATHFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
 	$(FC) $(FFLAGS) $(COMFILES) $(CLATHFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+
+################################
+#Graphene
+pimd_graphene_par: $(GRAPHENEFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(COMFILES) $(GRAPHENEFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+
+pimd_graphene_ser: $(GRAPHENEFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(GRAPHENEFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+
+rpi_graphene_ser: $(GRAPHENEFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(COMFILES) $(GRAPHENEFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 ################################
 #Water-methane (for Eszter!)

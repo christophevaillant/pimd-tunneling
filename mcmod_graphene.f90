@@ -1,4 +1,5 @@
 module mcmod_mass
+  use graphenemod
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
   double precision::               beta, betan, UMtilde, V0
@@ -28,8 +29,8 @@ contains
           xtemp((j-1)*3 +i)= x(i,j)*0.529177d0
        end do
     end do
-    call mbpolenergy(2, V, xtemp)
-    V= V*1.59362d-3 - V0
+    call graphenepot(xtemp, rcut, V)
+    V= V*0.0367493D0 - V0
     deallocate(xtemp)
     return
   end function V
@@ -38,22 +39,20 @@ contains
   subroutine Vprime(x, grad)
     implicit none
     integer::              i,j
-    double precision::     grad(:,:), x(:,:), dummy1
-    double precision, allocatable:: gradtemp(:), xtemp(:)
+    double precision::     grad(:,:), x(:,:)
+    double precision::     potplus, potminus, eps
 
-    allocate(gradtemp(ndof), xtemp(natom*ndim))
-    do i=1,ndim
-       do j=1,natom
-          xtemp((j-1)*ndim +i)= x(i,j)*0.529177d0
-       end do
-    end do
-    call mbpolenergygradient(2, dummy1, xtemp, gradtemp)
+    eps=1d-4
     do i= 1,ndim
        do j=1,natom
-          grad(i,j)= gradtemp(ndim*(j-1)+i)*1.59362d-3*0.529177d0
+          x(i,j)= x(i,j) + eps
+          potplus= V(x)
+          x(i,j)= x(i,j) - 2.0d0*eps
+          potminus= V(x)
+          x(i,j)= x(i,j) + eps
+          grad(i,j)= (potplus-potminus)/(2.0d0*eps)
        end do
     end do
-    deallocate(gradtemp, xtemp)
     return
   end subroutine Vprime
   !---------------------------------------------------------------------
