@@ -29,7 +29,6 @@ program pimd
   integer::                        nout, ldz, lwork, liwork, info
   integer,allocatable::            isuppz(:), iwork(:)
   double precision, allocatable::  diag(:), work(:), z(:,:)
-  character, allocatable::         label(:)
   namelist /MCDATA/ n, beta, NMC, Noutput,dt, iprint,imin,tau,npath,&
        nintegral,nrep, use_mkl, thermostat, ndim, natom, xunit,&
        potential_test, instapath, gamma
@@ -144,7 +143,7 @@ program pimd
      close(19)
   end if
   allocate(xtilde(n, ndim,natom))
-  xtilde(:,:,:)= path(:,:,)
+  xtilde(:,:,:)= path(:,:,:)
   !-------------------------
   !Find the centre to make sure this is symmetric
   ! allocate(splinepath(npath))

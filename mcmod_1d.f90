@@ -5,6 +5,7 @@ module mcmod_mass
   double precision, parameter::    Vheight=5.0d-3, x0=1.0d0
   integer::                        n, ndim, ndof, natom, xunit
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
+  character, allocatable::         label(:)
 
   public :: QsortC
   private :: Partition
