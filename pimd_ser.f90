@@ -119,6 +119,7 @@ program pimd
         well1(:,:)= well1(:,:)/0.529177d0
         well2(:,:)= well2(:,:)/0.529177d0
      end if
+     V0=V(well1)
      write(*,*) "Potential at wells:", V(well1), V(well2)
      !xunit=1 means bohr
      !xunit=2 means angstroms

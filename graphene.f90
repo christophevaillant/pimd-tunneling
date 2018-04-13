@@ -72,7 +72,7 @@ contains
     integer:: ncells,cells, i, j,k, m
     character(len=100)::  stringnumber, filename
 
-    xcopy(:)= x(:)
+    ! xcopy(:)= x(:)
     V=0.0d0
     !Work out if coordinates are in the unit cell
     do i=1,6
@@ -171,10 +171,10 @@ contains
        ! end do
        ! close(120)
 
-       V=V+ pot(finalx)*23.061D0
+       V=V+ pot(finalx)
 
        deallocate(finalx)
-       x(:)=xcopy(:)
+       ! x(:)=xcopy(:)
     end do
     ! stop
     deallocate(superx,tempx)

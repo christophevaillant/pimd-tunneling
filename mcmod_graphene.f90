@@ -20,10 +20,11 @@ contains
     implicit none
     double precision::     v, x(:,:)
     double precision, allocatable:: dummy1(:),dummy2(:), xtemp(:)
-    double precision, parameter:: rcut=3.0d0
+    double precision, parameter:: rcut=2.0d0
     integer::              i,j
 
-    allocate(xtemp(natom*ndim))
+    allocate(xtemp(natom*3))
+    xtemp(:)=0.0d0
     do i=1,2
        do j=1,natom
           xtemp((j-1)*3 +i)= x(i,j)*0.529177d0
@@ -31,6 +32,7 @@ contains
     end do
     call graphenepot(xtemp, rcut, V)
     V= V*0.0367493D0 - V0
+    if (V .ne. V) V=1.0d10
     deallocate(xtemp)
     return
   end function V
@@ -42,7 +44,7 @@ contains
     double precision::     grad(:,:), x(:,:)
     double precision::     potplus, potminus, eps
 
-    eps=1d-4
+    eps=1d-5
     do i= 1,ndim
        do j=1,natom
           x(i,j)= x(i,j) + eps
@@ -51,6 +53,7 @@ contains
           potminus= V(x)
           x(i,j)= x(i,j) + eps
           grad(i,j)= (potplus-potminus)/(2.0d0*eps)
+          if (grad(i,j) .ne. grad(i,j)) grad(i,j)=1.0d10
        end do
     end do
     return
@@ -62,7 +65,7 @@ contains
     integer::              i, j
     double precision, allocatable::     gradplus(:, :), gradminus(:, :)
 
-    eps=1d-4
+    eps=1d-5
     allocate(gradplus(ndim, natom), gradminus(ndim, natom))
     do i= 1, ndim
        do j= 1, natom
@@ -193,41 +196,44 @@ contains
     integer::              i,j,k, atom1, atom2, atom3
 
 
-    if (ndim .ne. 3) then
-       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
-       stop
-    end if
+    ! if (ndim .ne. 2) then
+    !    write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
+    !    stop
+    ! end if
 
-    atom1=1
-    atom2=2
-    atom3=3
+    ! atom1=1
+    ! atom2=2
+    ! atom3=3
 
-    !-----------------------------------------
-    !Put atom1 at origin
-    origin(:)= atomsin(:,atom1)
+    ! !-----------------------------------------
+    ! !Put atom1 at origin
+    ! origin(:)= atomsin(:,atom1)
 
-    do i=1, natom
-    atoms(:,i)= atomsin(:,i) - origin(:)
-    end do
-    !-----------------------------------------
-    !Align vector between atom1 and atom2 to x axis
-    !first rotate about z-axis to align with zx plane
-    workvec(:)= atoms(:,atom2) - atoms(:,atom1)
-    theta1= atan2(workvec(2),workvec(1))
-    call rotate_atoms(atoms, 3, theta1)
+    ! do i=1, natom
+    ! atoms(:,i)= atomsin(:,i) - origin(:)
+    ! end do
+    ! !-----------------------------------------
+    ! !Align vector between atom1 and atom2 to x axis
+    ! !first rotate about z-axis to align with zx plane
+    ! workvec(:)= atoms(:,atom2) - atoms(:,atom1)
+    ! theta1= atan2(workvec(2),workvec(1))
+    ! call rotate_atoms(atoms, 3, theta1)
 
-    !rotate about y-axis to align with z-axis
-    workvec(:)= atoms(:,atom2) - atoms(:,atom1)
-    theta2= atan2(workvec(3), workvec(1))
-    call rotate_atoms(atoms, 2, theta2)
+    ! !rotate about y-axis to align with z-axis
+    ! workvec(:)= atoms(:,atom2) - atoms(:,atom1)
+    ! theta2= atan2(workvec(3), workvec(1))
+    ! call rotate_atoms(atoms, 2, theta2)
 
-    !-----------------------------------------
-    !Align vector between atom1 and atom3 to xz plane
-    !rotate about x-axis
-    workvec(:)= atoms(:,atom3) - atoms(:,atom1)
-    theta3= -atan2(workvec(2),workvec(3))
+    ! !-----------------------------------------
+    ! !Align vector between atom1 and atom3 to xz plane
+    ! !rotate about x-axis
+    ! workvec(:)= atoms(:,atom3) - atoms(:,atom1)
+    ! theta3= -atan2(workvec(2),workvec(3))
     
-    
+    origin=(/0.0d0,0.0d0,0.0d0/)
+    theta1=0.0d0
+    theta2=0.0d0
+    theta3=0.0d0
     return
   end subroutine get_align
 
@@ -239,37 +245,38 @@ contains
     double precision::     atomsin(:,:), atomsout(:,:), workvec(3), origin(ndim)
     double precision::     theta1, theta2, theta3
     integer::              i,j,k, atom1, atom2, atom3
+    
 
+    ! if (ndim .ne. 3) then
+    !    write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
+    !    stop
+    ! end if
 
-    if (ndim .ne. 3) then
-       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
-       stop
-    end if
+    ! atom1=1
+    ! atom2=2
+    ! atom3=3
 
-    atom1=1
-    atom2=2
-    atom3=3
+    ! !-----------------------------------------
+    ! !Put atom1 at origin
+    ! do i=1, natom
+    ! atomsout(:,i)= atomsin(:,i) - atomsin(:,atom1)
+    ! end do
+    ! !-----------------------------------------
+    ! !Align vector between atom1 and atom2 to x axis
+    ! !first rotate about z-axis to align with zx plane
+    ! workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+    ! call rotate_atoms(atomsout, 3, theta1)
 
-    !-----------------------------------------
-    !Put atom1 at origin
-    do i=1, natom
-    atomsout(:,i)= atomsin(:,i) - atomsin(:,atom1)
-    end do
-    !-----------------------------------------
-    !Align vector between atom1 and atom2 to x axis
-    !first rotate about z-axis to align with zx plane
-    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
-    call rotate_atoms(atomsout, 3, theta1)
+    ! !rotate about y-axis to align with z-axis
+    ! workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+    ! call rotate_atoms(atomsout, 2, theta2)
 
-    !rotate about y-axis to align with z-axis
-    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
-    call rotate_atoms(atomsout, 2, theta2)
-
-    !-----------------------------------------
-    !Align vector between atom1 and atom3 to xz plane
-    !rotate about x-axis
-    workvec(:)= atomsout(:,atom3) - atomsout(:,atom1)
-    call rotate_atoms(atomsout, 1, theta3)
+    ! !-----------------------------------------
+    ! !Align vector between atom1 and atom3 to xz plane
+    ! !rotate about x-axis
+    ! workvec(:)= atomsout(:,atom3) - atomsout(:,atom1)
+    ! call rotate_atoms(atomsout, 1, theta3)
+    atomsout(:,:)= atomsin(:,:)
     
     return
   end subroutine align_atoms

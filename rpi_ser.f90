@@ -154,7 +154,7 @@ program rpi
      write(19,*) natom
      write(19,*) "Energy of minimum",i
      do j=1, natom
-        write(19,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim)
+        write(19,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim), (0.0d0, k=ndim+1,3)
      end do
   end do
   close(19)
