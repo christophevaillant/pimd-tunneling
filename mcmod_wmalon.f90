@@ -2,9 +2,10 @@ module mcmod_mass
   use pes,wp=>pes_wp
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
-  double precision::               beta, betan, UMtilde
+  double precision::               beta, betan, UMtilde, eps, V0
   integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
+  character, allocatable::         label(:)
 
   public :: QsortC
   private :: Partition
@@ -426,7 +427,7 @@ end subroutine Partition
   subroutine instanton(xtilde,a,b)
     implicit none
     integer::                        iprint, m, iflag, mp,idof
-    integer::                        i, lp, count, iw, j,k, dof
+    integer::                        i, lp, count, iw, j,k, dof, maxiter
     double precision::               eps, xtol, gtol, stpmin, stpmax
     double precision::               f, xtilde(:,:,:)
     double precision::               factr, a(:,:),b(:,:)
@@ -456,6 +457,7 @@ end subroutine Partition
 
     task='START'
     m=10
+    maxiter=50
     iprint=-1
     xtol= 1d-8
     iw=dof*(2*m+5) + 11*m**2 + 8*m
@@ -473,7 +475,7 @@ end subroutine Partition
        xwork=reshape(xtilde,(/dof/))
        fprimework= reshape(fprime,(/dof/))
        call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps,work&
-            ,iwork,task,iprint, csave,lsave,isave,dsave)
+            ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
        if (task(1:2) .eq. 'FG') then
           xtilde= reshape(xwork,(/n,ndim,natom/))
           f= UM(xtilde,a,b)
@@ -492,4 +494,163 @@ end subroutine Partition
     return
   end subroutine instanton
 
+  !---------------------------------------------------------------------
+  !Align a vector of atoms
+
+  subroutine get_align(atomsin,theta1, theta2, theta3, origin)
+    implicit none
+    double precision::     atomsin(:,:), workvec(3), atoms(ndim,natom)
+    double precision::     theta1, theta2, theta3, origin(ndim)
+    integer::              i,j,k, atom1, atom2, atom3
+
+
+    if (ndim .ne. 3) then
+       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
+       stop
+    end if
+
+    atom1=1
+    atom2=2
+    atom3=4
+
+    !-----------------------------------------
+    !Put atom1 at origin
+    origin(:)= atomsin(:,atom1)
+
+    do i=1, natom
+    atoms(:,i)= atomsin(:,i) - origin(:)
+    end do
+    !-----------------------------------------
+    !Align vector between atom1 and atom2 to x axis
+    !first rotate about z-axis to align with zx plane
+    workvec(:)= atoms(:,atom2) - atoms(:,atom1)
+    theta1= atan2(workvec(2),workvec(1))
+    call rotate_atoms(atoms, 3, theta1)
+
+    !rotate about y-axis to align with z-axis
+    workvec(:)= atoms(:,atom2) - atoms(:,atom1)
+    theta2= atan2(workvec(3), workvec(1))
+    call rotate_atoms(atoms, 2, theta2)
+
+    !-----------------------------------------
+    !Align vector between atom1 and atom3 to xz plane
+    !rotate about x-axis
+    workvec(:)= atoms(:,atom3) - atoms(:,atom1)
+    theta3= -atan2(workvec(2),workvec(3))
+    
+    
+    return
+  end subroutine get_align
+
+  !---------------------------------------------------------------------
+  !Align a vector of atoms
+
+  subroutine align_atoms(atomsin, theta1,theta2,theta3, origin, atomsout)
+    implicit none
+    double precision::     atomsin(:,:), atomsout(:,:), workvec(3), origin(ndim)
+    double precision::     theta1, theta2, theta3
+    integer::              i,j,k, atom1, atom2, atom3
+
+
+    if (ndim .ne. 3) then
+       write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
+       stop
+    end if
+
+    atom1=1
+    atom2=2
+    atom3=4
+
+    !-----------------------------------------
+    !Put atom1 at origin
+    do i=1, natom
+    atomsout(:,i)= atomsin(:,i) - atomsin(:,atom1)
+    end do
+    !-----------------------------------------
+    !Align vector between atom1 and atom2 to x axis
+    !first rotate about z-axis to align with zx plane
+    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+    call rotate_atoms(atomsout, 3, theta1)
+
+    !rotate about y-axis to align with z-axis
+    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+    call rotate_atoms(atomsout, 2, theta2)
+
+    !-----------------------------------------
+    !Align vector between atom1 and atom3 to xz plane
+    !rotate about x-axis
+    workvec(:)= atomsout(:,atom3) - atomsout(:,atom1)
+    call rotate_atoms(atomsout, 1, theta3)
+    
+    return
+  end subroutine align_atoms
+
+  subroutine rotate_vec(vec,axis,theta)
+    implicit none
+    double precision::     rotmatrix(3,3), vec(:)
+    double precision::     theta
+    integer::              i, axis, j,k
+
+    if (axis.eq. 1) then
+       j=2
+       k=3
+    else if(axis.eq.2) then
+       j=1
+       k=3
+    else
+       j=1
+       k=2
+    end if
+    rotmatrix(:,:)=0.0d0
+    rotmatrix(axis,axis)=1.0d0
+    rotmatrix(j,j)= cos(theta)
+    rotmatrix(k,k)= cos(theta)
+    rotmatrix(k,j)= -sin(theta)
+    rotmatrix(j,k)= sin(theta)
+    vec(:)= matmul(rotmatrix(:,:), vec(:))
+    return
+  end subroutine rotate_vec
+
+  subroutine rotate_atoms(atoms,axis,theta)
+    implicit none
+    double precision::     rotmatrix(3,3), atoms(:,:)
+    double precision::     theta
+    integer::              i, axis, j,k
+
+    if (axis.eq. 1) then
+       j=2
+       k=3
+    else if(axis.eq.2) then
+       j=1
+       k=3
+    else
+       j=1
+       k=2
+    end if
+    rotmatrix(:,:)=0.0d0
+    rotmatrix(axis,axis)=1.0d0
+    rotmatrix(j,j)= cos(theta)
+    rotmatrix(k,k)= cos(theta)
+    rotmatrix(k,j)= -sin(theta)
+    rotmatrix(j,k)= sin(theta)
+    do i=1, natom
+       atoms(:,i)= matmul(rotmatrix(:,:), atoms(:,i))
+    end do
+    return
+  end subroutine rotate_atoms
+
+subroutine centreofmass(x, com)
+  implicit none
+  double precision::    x(:,:), com(:)
+  integer::             i,j
+
+  com(:)=0.0d0
+  do i=1,ndim
+     do j=1,natom
+        com(i)= com(i) + mass(j)*x(i,j)
+     end do
+  end do
+  com(:)=com(:)/sum(mass(:))
+  return
+end subroutine centreofmass
 end module mcmod_mass

@@ -141,9 +141,9 @@ program pimd
      !-------------------------
      !-------------------------
      !Read in initial wells, and masses
+     allocate(origin(ndim))
      if (readpath) then
         allocate(initpath(ndim, natom),path(npath, ndim, natom), lampath(npath))
-        allocate(origin(ndim))
         open(15, file="path.xyz")
         do i=1, npath
            read(15,*) dummy

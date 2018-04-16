@@ -2,7 +2,7 @@ module mcmod_mass
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
   double precision::               beta, betan, UMtilde, V0
-  double precision, parameter::    Vheight=5.0d-3, x0=1.0d0
+  double precision, parameter::    Vheight=1.0d0, x0=1.0d0
   integer::                        n, ndim, ndof, natom, xunit
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
   character, allocatable::         label(:)
@@ -507,6 +507,7 @@ end subroutine Partition
     iflag=0
     eps= 1.0d-8
     factr=1.0d7
+    maxiter=50
     f= UM(xtilde,a,b)
     call UMprime(xtilde,a,b,fprime)
     count=0
