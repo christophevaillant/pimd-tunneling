@@ -297,7 +297,7 @@ program rpi
      call detJ(xtilde, etasquared)
      lndetj= 0.0d0
      zerocount=0
-! write(*,*) 1,etasquared(1)
+write(*,*) 1,etasquared(1)
      do i=2,totdof
         ! write(*,*) i,etasquared(i)
         if (etasquared(i) .gt. 0.0d0) then

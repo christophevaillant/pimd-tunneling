@@ -12,6 +12,7 @@ module mcmod_mass
 contains
 
   subroutine V_init()
+    call carbon_init()
     V0=0.0d0
     return
   end subroutine V_init
