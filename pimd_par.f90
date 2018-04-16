@@ -143,7 +143,7 @@ program pimd
      !Read in initial wells, and masses
      allocate(origin(ndim))
      if (readpath) then
-        allocate(initpath(ndim, natom),path(npath, ndim, natom), lampath(npath))
+        allocate(initpath(ndim, natom),path(npath, ndim, natom), lampath(npath), Vpath(npath))
         open(15, file="path.xyz")
         do i=1, npath
            read(15,*) dummy
@@ -162,6 +162,7 @@ program pimd
               call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
               lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))
            end if
+           Vpath(i)= V(path(i,:,:))
         end do
         lampath(:)= lampath(:)/lampath(npath)
         deallocate(initpath)
@@ -185,11 +186,10 @@ program pimd
               end do
            end do
         end do
-        deallocate(lampath,path, splinepath)
+        deallocate(splinepath)
      end if
-     !xunit=1 means bohr
-     !xunit=2 means angstroms
      if (instapath) then
+        !Read in wells and work out the instanton path in order to interpolate
         allocate(well1(ndim,natom), well2(ndim,natom), wellinit(ndim,natom))
         open(15, file="well1.dat", status="old")
         open(16, file="well2.dat", status="old")
@@ -215,7 +215,8 @@ program pimd
         write(*,*) "Potential at wells:", V(well1), V(well2)
         call instanton(xtilde,well1,well2)
         npath=n
-        allocate(lampath(npath), Vpath(npath), path(npath,ndim,natom))
+        deallocate(lampath,path, Vpath)
+        allocate(Vpath(npath),path(npath,ndim,natom), lampath(npath))
         path(:,:,:)=xtilde(:,:,:)
         write(*,*) "Found instanton."
         open(19, file="instanton.xyz")
