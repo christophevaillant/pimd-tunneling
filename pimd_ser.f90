@@ -78,6 +78,7 @@ program pimd
   !-------------------------
   !-------------------------
   !Read in initial wells, and masses
+  allocate(origin(ndim))
   allocate(mass(natom),label(natom),xtilde(n, ndim, natom))
   open(18, file="masses.dat", status="old")
   do j=1,natom
@@ -86,13 +87,35 @@ program pimd
   close(18)
 
   ndof=ndim*natom
+  allocate(well1(ndim,natom), well2(ndim,natom), wellinit(ndim,natom))
+  open(15, file="well1.dat", status="old")
+  open(16, file="well2.dat", status="old")
+  do j=1,natom
+     read(15,*) (well1(i,j),i=1,ndim)
+     read(16,*) (well2(i,j),i=1,ndim)
+  end do
+  close(15)
+  close(16)
+  ! xunit=1 means bohr
+  ! xunit=2 means angstroms
+  if (xunit .eq. 2) then
+     well1(:,:)= well1(:,:)/0.529177d0
+     well2(:,:)= well2(:,:)/0.529177d0
+  end if
+  call get_align(well1,theta1, theta2, theta3, origin)
+  wellinit(:,:)= well1(:,:)
+  call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
+  if (alignwell) call get_align(well2,theta1, theta2, theta3, origin)
+  wellinit(:,:)= well2(:,:)
+  call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
+  V0=V(well1)
+  write(*,*) "Potential at wells:", V(well1), V(well2)
 
   !-------------------------
   !-------------------------
   !Read in initial wells, and masses
-  allocate(origin(ndim))
   if (readpath) then
-     allocate(initpath(ndim, natom),path(npath, ndim, natom), lampath(npath))
+     allocate(initpath(ndim, natom),path(npath, ndim, natom), lampath(npath), Vpath(npath))
      open(15, file="path.xyz")
      do i=1, npath
         read(15,*) dummy
@@ -111,6 +134,7 @@ program pimd
            call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
            lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))
         end if
+        Vpath(i)= V(path(i,:,:))
      end do
      lampath(:)= lampath(:)/lampath(npath)
      deallocate(initpath)
@@ -134,30 +158,14 @@ program pimd
            end do
         end do
      end do
-     deallocate(lampath,path, splinepath)
+     deallocate(splinepath)
   end if
   !xunit=1 means bohr
   !xunit=2 means angstroms
   if (instapath) then
-     allocate(well1(ndim,natom), well2(ndim,natom), wellinit(ndim,natom))
-     open(15, file="well1.dat", status="old")
-     open(16, file="well2.dat", status="old")
-     do j=1,natom
-        read(15,*) (well1(i,j),i=1,ndim)
-        read(16,*) (well2(i,j),i=1,ndim)
-     end do
-     close(15)
-     close(16)
-     ! xunit=1 means bohr
-     ! xunit=2 means angstroms
-     if (xunit .eq. 2) then
-        well1(:,:)= well1(:,:)/0.529177d0
-        well2(:,:)= well2(:,:)/0.529177d0
-     end if
-     V0=V(well1)
-     write(*,*) "Potential at wells:", V(well1), V(well2)
      call instanton(xtilde,well1,well2)
      npath=n
+     deallocate(lampath,path, Vpath)
      allocate(lampath(npath), Vpath(npath), path(npath,ndim,natom))
      path(:,:,:)=xtilde(:,:,:)
      write(*,*) "Found instanton."
