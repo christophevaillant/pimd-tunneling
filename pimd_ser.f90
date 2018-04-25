@@ -16,7 +16,7 @@ program pimd
   double precision::               dHdr, dx, finalI,sigmaA, pot, grad, rmspath
   double precision::               a,b,c, xmiddle
   double precision::               theta1, theta2, theta3
-  double precision, allocatable::  origin(:), wellinit(:,:)
+  double precision, allocatable::  origin(:), wellinit(:,:), vgrad(:,:)
   double precision, allocatable::  x(:,:,:), vel(:), tempv(:), tempp(:), initpath(:,:)
   double precision, allocatable::  p(:,:,:), xi(:), dbdxi(:,:,:), Vpath(:)
   double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:), y(:,:,:)
@@ -110,6 +110,9 @@ program pimd
   call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
   V0=V(well1)
   write(*,*) "Potential at wells:", V(well1), V(well2)
+  allocate(vgrad(ndim,natom))
+  call Vprime(well1, vgrad)
+  write(*,*) "With norm of grad:", norm2(reshape(vgrad, (/ndim*natom/)))
 
   !-------------------------
   !-------------------------
