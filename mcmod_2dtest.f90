@@ -5,6 +5,7 @@ module mcmod_mass
   integer::                        n, ndim, ndof, natom, xunit, m, potcount, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:), x0(:), y0(:)
   double precision::               a0, b0, rho0
+  character, allocatable::         label(:)
 
   public :: QsortC
   private :: Partition
