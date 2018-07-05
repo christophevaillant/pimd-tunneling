@@ -678,14 +678,6 @@ end subroutine centreofmass
        write(*,*) task
     end if
 
-    do i=1,N
-       do j=1,ndim
-          do k=1,natom
-             write(*,*) i,j,k,fprime(i,j,k)
-          end do
-       end do
-    end do
-
     deallocate(work, lb, ub, fprime, fprimework,xwork)
     deallocate(iwork, nbd, isave, dsave)
 
