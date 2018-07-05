@@ -24,7 +24,8 @@ program rpi
   double precision, allocatable::  results(:), allresults(:)
   logical::                        alignwell
 
-  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, npoints, cutofftheta,cutoffphi, alignwell
+  namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, npoints, cutofftheta,cutoffphi, alignwell,&
+       fixedends
 
   !initialize MPI
   nproc=0
@@ -48,6 +49,7 @@ program rpi
   cutofftheta=6.5d0
   cutoffphi=3.2d0
   alignwell=.false.
+  fixedends=.true.
 
   call V_init()
 
@@ -68,6 +70,7 @@ program rpi
   call MPI_Bcast(N, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(ndim, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(fixedends, 1, MPI_LOGICAL, 0,MPI_COMM_WORLD, ierr)
   ndof=ndim*natom
   totdof= n*ndof
   if (iproc.eq. nproc-1 .and. mod(npoints**3,nproc) > 0) then

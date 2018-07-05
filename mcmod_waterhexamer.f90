@@ -5,6 +5,7 @@ module mcmod_mass
   integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
   character, allocatable::         label(:)
+  logical::                        fixedends
 
   public :: QsortC
   private :: Partition
@@ -94,14 +95,17 @@ contains
           end do
        end do
     end do
-    UM=UM+ V(a(:,:))+ V(b(:,:))+ V(x(N,:,:))
-    do j=1, ndim
-       do k=1, natom
-          UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
-          UM=UM+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
+    UM=UM+ V(x(N,:,:))
+    if (fixedends) then
+       UM=UM+ V(a(:,:))+ V(b(:,:))
+       do j=1, ndim
+          do k=1, natom
+             UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
+             UM=UM+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
+          end do
        end do
-    end do
-
+    end if
+    
     return
   end function UM
 
@@ -117,9 +121,17 @@ contains
        do j=1,ndim
           do k=1,natom
              if (i.eq.1) then
-                answer(1,j,k)=mass(k)*(2.0*x(1,j,k) - a(j,k) - x(2,j,k))/betan**2
+                if (fixedends) then
+                   answer(1,j,k)=mass(k)*(2.0*x(1,j,k) - a(j,k) - x(2,j,k))/betan**2
+                else
+                   answer(1,j,k)=mass(k)*(x(1,j,k) - x(2,j,k))/betan**2                   
+                end if
              else if (i.eq.N) then
-                answer(N,j,k)=mass(k)*(2.0*x(N,j,k) - x(N-1,j,k) - b(j,k))/betan**2
+                if (fixedends) then
+                   answer(N,j,k)=mass(k)*(2.0*x(N,j,k) - x(N-1,j,k) - b(j,k))/betan**2
+                else
+                   answer(N,j,k)=mass(k)*(x(N,j,k) - x(N-1,j,k))/betan**2
+                end if
              else
                 answer(i,j,k)= mass(k)*(2.0*x(i,j,k) - x(i-1,j,k) - x(i+1,j,k))/betan**2
              end if
@@ -643,7 +655,7 @@ end subroutine centreofmass
     allocate(work(iw), iwork(3*dof), isave(44), dsave(29))
     iflag=0
     eps2= 1.0d-6 !gradient convergence
-    factr=1.0d5
+    factr=1.0d3
     maxiter=40
     f= UM(xtilde,a,b)
     call UMprime(xtilde,a,b,fprime)
@@ -665,6 +677,14 @@ end subroutine centreofmass
        write(*,*) "Error:"
        write(*,*) task
     end if
+
+    do i=1,N
+       do j=1,ndim
+          do k=1,natom
+             write(*,*) i,j,k,fprime(i,j,k)
+          end do
+       end do
+    end do
 
     deallocate(work, lb, ub, fprime, fprimework,xwork)
     deallocate(iwork, nbd, isave, dsave)

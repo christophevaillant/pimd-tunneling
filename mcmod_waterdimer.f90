@@ -5,6 +5,7 @@ module mcmod_mass
   integer::                        n, ndim, ndof, natom, xunit, totdof
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
   character, allocatable::         label(:)
+  logical::                        fixedends
 
   public :: QsortC
   private :: Partition
@@ -95,12 +96,14 @@ contains
        end do
     end do
     UM=UM+ V(a(:,:))+ V(b(:,:))+ V(x(N,:,:))
-    do j=1, ndim
-       do k=1, natom
-          UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
-          UM=UM+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
+    if (fixedends) then
+       do j=1, ndim
+          do k=1, natom
+             UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
+             UM=UM+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
+          end do
        end do
-    end do
+    end if
 
     return
   end function UM
@@ -117,9 +120,17 @@ contains
        do j=1,ndim
           do k=1,natom
              if (i.eq.1) then
-                answer(1,j,k)=mass(k)*(2.0*x(1,j,k) - a(j,k) - x(2,j,k))/betan**2
+                if (fixedends) then
+                   answer(1,j,k)=mass(k)*(2.0*x(1,j,k) - a(j,k) - x(2,j,k))/betan**2
+                else
+                   answer(1,j,k)=mass(k)*(x(1,j,k) - x(2,j,k))/betan**2                   
+                end if
              else if (i.eq.N) then
-                answer(N,j,k)=mass(k)*(2.0*x(N,j,k) - x(N-1,j,k) - b(j,k))/betan**2
+                if (fixedends) then
+                   answer(N,j,k)=mass(k)*(2.0*x(N,j,k) - x(N-1,j,k) - b(j,k))/betan**2
+                else
+                   answer(N,j,k)=mass(k)*(x(N,j,k) - x(N-1,j,k))/betan**2
+                end if
              else
                 answer(i,j,k)= mass(k)*(2.0*x(i,j,k) - x(i-1,j,k) - x(i+1,j,k))/betan**2
              end if

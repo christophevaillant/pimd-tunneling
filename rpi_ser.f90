@@ -16,7 +16,7 @@ program rpi
   character::                      dummylabel, dummystr(28)
   logical::                        angular, output_instanton, readpath, alignwell
   namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, angular, npoints, cutofftheta,cutoffphi,&
-       output_instanton,readpath, alignwell
+       output_instanton,readpath, alignwell, fixedends
 
   !-------------------------
   !Set default system parameters then read in namelist
@@ -31,6 +31,7 @@ program rpi
   output_instanton=.false.
   readpath=.true.
   alignwell=.false.
+  fixedends=.true.
 
   read(5, nml=RPIDATA)
   betan= beta/dble(n)
@@ -297,7 +298,7 @@ program rpi
      call detJ(xtilde, etasquared)
      lndetj= 0.0d0
      zerocount=0
-write(*,*) 1,etasquared(1)
+     write(*,*) 1,etasquared(1)
      do i=2,totdof
         ! write(*,*) i,etasquared(i)
         if (etasquared(i) .gt. 0.0d0) then

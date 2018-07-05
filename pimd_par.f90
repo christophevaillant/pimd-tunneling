@@ -41,7 +41,7 @@ program pimd
   integer, dimension(MPI_STATUS_SIZE) :: rstatus
   namelist /MCDATA/ n, beta, NMC, Noutput,dt, iprint,imin,tau,npath, gamma,&
        nintegral,nrep, use_mkl, thermostat, ndim, natom, xunit, instapath, centre,&
-       dHdrlimit, readpath, alignwell
+       dHdrlimit, readpath, alignwell, fixedends
 
   !initialize MPI
   nproc=0
@@ -77,6 +77,7 @@ program pimd
   dHdrlimit=-1.0
   readpath=.true.
   alignwell=.false.
+  fixedends=.true.
 
   !Read in namelist variables for root proc, and spread
   !it to other procs
@@ -141,6 +142,7 @@ program pimd
   call MPI_Bcast(imin, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(ndim, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(fixedends, 1, MPI_LOGICAL, 0,MPI_COMM_WORLD, ierr)
 
   allocate(xtilde(n, ndim, natom),mass(natom), label(natom))
   if (iproc.eq.0) then

@@ -33,7 +33,7 @@ program pimd
   double precision, allocatable::  diag(:), work(:), z(:,:)
   namelist /MCDATA/ n, beta, NMC, Noutput,dt, iprint,imin,tau,npath,&
        nintegral,nrep, use_mkl, thermostat, ndim, natom, xunit,&
-       potential_test, instapath, gamma,centre, alignwell
+       potential_test, instapath, gamma,centre, alignwell, fixedends
   !-------------------------
   !Set default system parameters then read in namelist
   iprint=.false.
@@ -59,6 +59,7 @@ program pimd
   dHdrlimit=-1.0
   alignwell=.false.
   readpath=.true.
+  fixedends=.true.
 
   read(5, nml=MCDATA)
   betan= beta/dble(n+1)
