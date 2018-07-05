@@ -42,6 +42,8 @@ program rpi
   end do
   close(18)
 
+  if (angular) fixedends=.true.
+
   ndof=ndim*natom
   totdof= n*ndof
   call V_init()
