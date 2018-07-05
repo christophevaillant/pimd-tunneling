@@ -649,7 +649,7 @@ end subroutine centreofmass
     !perform minimization
     task='START'
     m=8
-    iprint=0
+    iprint=-1
     xtol= 1d-8
     iw=dof*(2*m+5) + 11*m**2 + 8*m
     allocate(work(iw), iwork(3*dof), isave(44), dsave(29))
