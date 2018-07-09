@@ -1,6 +1,7 @@
 !Program to calculate crossover temperatures for a given transition state
 !on a classical minimum energy path (i.e. the top of the barrier)
 program crossover
+use instantonmod
 use mcmod_mass
 implicit none
 

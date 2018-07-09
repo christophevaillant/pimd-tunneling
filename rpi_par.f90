@@ -1,6 +1,7 @@
 program rpi
   use mcmod_mass
   use verletint
+  use instantonmod
   implicit none
 
   include 'mpif.h'

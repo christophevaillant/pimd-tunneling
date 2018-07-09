@@ -3,6 +3,7 @@ program pimd
   use verletint
   use MKL_VSL_TYPE
   use MKL_VSL
+  use instantonmod
   implicit none
 
   include 'mpif.h'

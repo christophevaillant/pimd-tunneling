@@ -8,13 +8,13 @@ FLIBS_SEQ=-L${MKLROOT}/lib/intel64 -mkl=sequential -lmkl_rt -lpthread -lm -ldl
 INCLUDE= -I${MKLROOT}/include
 BUILDDIR= ../build
 OBJDIR= ../build/objects
-
+MODDIR= ../build/modules
 ###################################################################################
 #List the object files and their dependencies
 #Define some variables with common files
 COMFILES= $(OBJDIR)/blas.o $(OBJDIR)/linpack.o $(OBJDIR)/timer.o \
 	$(OBJDIR)/lbfgsb.o $(OBJDIR)/nr_fft.o \
-	$(OBJDIR)/verletmodule.o
+	$(OBJDIR)/instantonmod.o $(OBJDIR)/verletmodule.o
 
 #1D double well potential:
 1DFILES= $(OBJDIR)/mcmod_1d.o
@@ -88,141 +88,141 @@ $(OBJDIR)/rpi_par.o: rpi_par.f90
 
 ################################
 #1D double well potential:
-pimd_1d_par: $(1DFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
-	$(MPIFC) $(FFLAGS) $(COMFILES) $(1DFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+pimd_1d_par: $(1DFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(1DFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
 
-pimd_1d_ser: $(1DFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(1DFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+pimd_1d_ser:  $(1DFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(1DFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 ################################
 #2D C_6 potential:
-pimd_2dtest_par: $(2DFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
-	$(MPIFC) $(FFLAGS) $(COMFILES) $(2DFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+pimd_2dtest_par: $(2DFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(2DFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
 
-pimd_2dtest_ser: $(2DFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(2DFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+pimd_2dtest_ser: $(2DFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(2DFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
-rpi_2dtest_ser: $(2DFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(2DFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+rpi_2dtest_ser: $(2DFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(2DFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 ################################
 #SO(2) potential:
-pimd_so2_par: $(SO2FILES) $(COMFILES) $(OBJDIR)/pimd_par.o
-	$(MPIFC) $(FFLAGS) $(COMFILES) $(SO2FILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+pimd_so2_par:  $(SO2FILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(SO2FILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
 
-pimd_so2_ser: $(SO2FILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(SO2FILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+pimd_so2_ser: $(SO2FILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(SO2FILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
-rpi_so2_ser: $(SO2FILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(SO2FILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+rpi_so2_ser: $(SO2FILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(SO2FILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 ################################
 #Malonaldehyde:
-pimd_malon_par: $(MALONFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
-	$(MPIFC) $(FFLAGS) $(COMFILES) $(MALONFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+pimd_malon_par: $(MALONFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(MALONFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
 
-pimd_malon_ser: $(MALONFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(MALONFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+pimd_malon_ser: $(MALONFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(MALONFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
-rpi_malon_ser: $(MALONFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(MALONFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+rpi_malon_ser: $(MALONFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(MALONFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 ################################
 #Wang Malonaldehyde:
-pimd_wmalon_par: $(WMALONFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
-	$(MPIFC) $(FFLAGS) $(WMALONFLAGS) $(COMFILES) $(WMALONFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@  $(WMALONLIBS) $(FLIBS_PAR)
+pimd_wmalon_par: $(WMALONFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(WMALONFLAGS) $(WMALONFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@  $(WMALONLIBS) $(FLIBS_PAR)
 
-pimd_wmalon_ser: $(WMALONFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
-	$(FC) $(FFLAGS) $(WMALONFLAGS) $(COMFILES) $(WMALONFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(WMALONLIBS) $(FLIBS_SEQ)
+pimd_wmalon_ser: $(WMALONFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(WMALONFLAGS) $(WMALONFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(WMALONLIBS) $(FLIBS_SEQ)
 
 ################################
 #Formic Acid Dimer
-pimd_formic_par: $(FORMICFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
-	$(MPIFC) $(FFLAGS) $(FORMICFLAGS) $(COMFILES) $(FORMICFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@  $(FORMICLIBS) $(FLIBS_PAR)
+pimd_formic_par: $(FORMICFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(FORMICFLAGS) $(FORMICFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@  $(FORMICLIBS) $(FLIBS_PAR)
 
-pimd_formic_ser: $(FORMICFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
-	$(FC) $(FFLAGS) $(FORMICFLAGS) $(COMFILES) $(FORMICFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FORMICLIBS) $(FLIBS_SEQ)
+pimd_formic_ser: $(FORMICFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(FORMICFLAGS) $(FORMICFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FORMICLIBS) $(FLIBS_SEQ)
 
 ################################
 #Water Dimer HBB2
-pimd_hbb2_par: $(HBB2FILES) $(COMFILES) $(OBJDIR)/pimd_par.o
-	$(MPIFC) $(FFLAGS) $(HBB2FLAGS) $(COMFILES) $(HBB2FILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@  $(HBB2LIBS) $(FLIBS_PAR)
+pimd_hbb2_par: $(HBB2FILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(HBB2FLAGS) $(HBB2FILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@  $(HBB2LIBS) $(FLIBS_PAR)
 
-pimd_hbb2_ser: $(HBB2FILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
-	$(FC) $(FFLAGS) $(HBB2FLAGS) $(COMFILES) $(HBB2FILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(HBB2LIBS) $(FLIBS_SEQ)
+pimd_hbb2_ser: $(HBB2FILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(HBB2FLAGS) $(HBB2FILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(HBB2LIBS) $(FLIBS_SEQ)
 
-rpi_hbb2_ser: $(HBB2FILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
-	$(FC) $(FFLAGS) $(HBB2FLAGS) $(COMFILES) $(HBB2FILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(HBB2LIBS) $(FLIBS_SEQ)
+rpi_hbb2_ser: $(HBB2FILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(HBB2FLAGS) $(HBB2FILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(HBB2LIBS) $(FLIBS_SEQ)
 
 ################################
 #Water Dimer CCPol
-pimd_ccpol_par: $(CCPOLFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
-	$(MPIFC) $(FFLAGS) $(CCPOLFLAGS) $(COMFILES) $(CCPOLFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@  $(FLIBS_PAR)
+pimd_ccpol_par: $(CCPOLFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(CCPOLFLAGS) $(CCPOLFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@  $(FLIBS_PAR)
 
-pimd_ccpol_ser: $(CCPOLFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
-	$(FC) $(FFLAGS) $(CCPOLFLAGS) $(COMFILES) $(CCPOLFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+pimd_ccpol_ser: $(CCPOLFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(CCPOLFLAGS) $(CCPOLFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
-rpi_ccpol_ser: $(CCPOLFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
-	$(FC) $(FFLAGS) $(CCPOLFLAGS) $(COMFILES) $(CCPOLFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+rpi_ccpol_ser: $(CCPOLFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(CCPOLFLAGS) $(CCPOLFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 ################################
 #Water Dimer MB-pol
-pimd_watdim_par: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
-	$(MPIFC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
+pimd_watdim_par: $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
 
-pimd_watdim_ser: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+pimd_watdim_ser: $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
-rpi_watdim_ser: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+rpi_watdim_ser: $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
-rpi_watdim_par: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/rpi_par.o
-	$(MPIFC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
+rpi_watdim_par: $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o
+	$(MPIFC) $(FFLAGS) $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
 
-crossover_watdim: $(WATDIMFILES) $(COMFILES) $(OBJDIR)/crossover.o
-	$(FC) $(FFLAGS) $(COMFILES) $(WATDIMFILES) $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+crossover_watdim: $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/crossover.o
+	$(FC) $(FFLAGS) $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
 ################################
 #Water Hexamer MB-pol
-pimd_wathex_par: $(WATHEXFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
-	$(MPIFC) $(FFLAGS) $(COMFILES) $(WATHEXFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
+pimd_wathex_par: $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
 
-pimd_wathex_ser: $(WATHEXFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(WATHEXFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+pimd_wathex_ser: $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
-rpi_wathex_ser: $(WATHEXFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(WATHEXFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+rpi_wathex_ser: $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
-rpi_wathex_par: $(WATHEXFILES) $(COMFILES) $(OBJDIR)/rpi_par.o
-	$(MPIFC) $(FFLAGS) $(COMFILES) $(WATHEXFILES) $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
+rpi_wathex_par: $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o
+	$(MPIFC) $(FFLAGS) $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
 
 ################################
 #Clathrate
-pimd_clath_par: $(CLATHFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
-	$(MPIFC) $(FFLAGS) $(COMFILES) $(CLATHFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
+pimd_clath_par: $(CLATHFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(CLATHFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
 
-pimd_clath_ser: $(CLATHFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(CLATHFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+pimd_clath_ser: $(CLATHFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(CLATHFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
-rpi_clath_ser: $(CLATHFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(CLATHFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+rpi_clath_ser: $(CLATHFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(CLATHFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
 ################################
 #Graphene
-pimd_graphene_par: $(GRAPHENEFILES) $(COMFILES) $(OBJDIR)/pimd_par.o
-	$(MPIFC) $(FFLAGS) $(COMFILES) $(GRAPHENEFILES) $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+pimd_graphene_par: $(GRAPHENEFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(GRAPHENEFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
 
-pimd_graphene_ser: $(GRAPHENEFILES) $(COMFILES) $(OBJDIR)/pimd_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(GRAPHENEFILES) $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+pimd_graphene_ser: $(GRAPHENEFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(GRAPHENEFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
-rpi_graphene_ser: $(GRAPHENEFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(GRAPHENEFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+rpi_graphene_ser: $(GRAPHENEFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(GRAPHENEFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 ################################
 #Water-methane (for Eszter!)
 
-rpi_watmeth_ser: $(WATMETHFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
-	$(FC) $(FFLAGS) $(COMFILES) $(WATMETHFILES) $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+rpi_watmeth_ser: $(WATMETHFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(WATMETHFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
 ###################################################################################
 #Rules for cleanup
@@ -230,4 +230,6 @@ rpi_watmeth_ser: $(WATMETHFILES) $(COMFILES) $(OBJDIR)/rpi_ser.o
 .PHONY: clean
 
 clean:
-	rm -f $(OBJDIR)/*.o $(OBJDIR)/modules/*.mod
+	rm -f $(OBJDIR)/*.o $(MODDIR)/*.mod $(MODDIR)/*.f90
+
+all: pimd_1d_par pimd_1d_ser pimd_2dtest_par pimd_2dtest_ser rpi_2dtest_ser pimd_so2_par pimd_so2_ser rpi_so2_ser pimd_malon_par pimd_malon_ser rpi_malon_ser pimd_wmalon_par pimd_wmalon_ser pimd_formic_par pimd_formic_ser pimd_ccpol_par pimd_ccpol_ser rpi_ccpol_ser pimd_watdim_par pimd_watdim_ser rpi_watdim_ser rpi_watdim_par crossover_watdim pimd_wathex_par pimd_wathex_ser rpi_wathex_ser pimd_clath_par pimd_clath_ser rpi_clath_ser pimd_graphene_par pimd_graphene_ser rpi_graphene_ser rpi_watmeth_ser

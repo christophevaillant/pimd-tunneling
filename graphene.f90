@@ -6,7 +6,6 @@ module graphenemod
 
   !general purpose variables
   integer::              natoms
-  double precision, parameter::    pi=3.14159265358979d0
   !-------------------------------------------------------------
   !Parameters for the potential
   
@@ -459,6 +458,7 @@ contains
     implicit none
     double precision, intent(in):: r
     double precision:: Fij
+    double precision, parameter::    pi=3.14159265358979d0
 
     Fij= heaviside(r-3.0d0) + 0.5d0*heaviside(r-2.0d0)*&
          heaviside(3.0d0-r)*(1.0d0-cos(pi*r-2.0d0))

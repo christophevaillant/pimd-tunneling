@@ -4,7 +4,7 @@ module verletint
   use MKL_VSL_TYPE
   use MKL_VSL
   use nr_fft, only : sinft
-
+  use instantonmod
   implicit none
 
   integer::                         NMC, Noutput, imin, iproc
@@ -995,7 +995,7 @@ contains
     implicit none
     integer::          i, j, k, dofi
     double precision:: omegak, newpi(n, ndim, natom)
-    double precision:: q(n, ndim, natom), pi(n, ndim, natom)
+    double precision:: q(n, ndim, natom), pip(n, ndim, natom)
     double precision:: x(:,:,:), p(:,:,:) , time
     logical::          transform
 
@@ -1003,10 +1003,10 @@ contains
           do j=1,natom
              dofi= (j-1)*ndim+i
              if (.not. use_mkl) then
-                call nmtransform_forward(p(:,i,j), pi(:,i,j), 0)
+                call nmtransform_forward(p(:,i,j), pip(:,i,j), 0)
                 call nmtransform_forward(x(:,i,j), q(:,i,j), dofi)
              else
-                call nmtransform_forward_nr(p(:,i,j), pi(:,i,j), 0)
+                call nmtransform_forward_nr(p(:,i,j), pip(:,i,j), 0)
                 call nmtransform_forward_nr(x(:,i,j), q(:,i,j), dofi)
              end if
           end do
@@ -1016,10 +1016,10 @@ contains
        do j=1,ndim
           do k=1,natom
              omegak= sqrt(mass(k)/beadmass(k,i))*lam(i)
-             newpi(i,j,k)= pi(i,j,k)*cos(time*omegak) - &
+             newpi(i,j,k)= pip(i,j,k)*cos(time*omegak) - &
                   q(i,j,k)*omegak*beadmass(k,i)*sin(omegak*time)
              q(i,j,k)= q(i,j,k)*cos(time*omegak) + &
-                  pi(i,j,k)*sin(omegak*time)/(omegak*beadmass(k,i))
+                  pip(i,j,k)*sin(omegak*time)/(omegak*beadmass(k,i))
              if (newpi(i,j,k) .ne. newpi(i,j,k)) then
                 write(*,*) "NaN in 1st NM propagation"
                 stop
@@ -1027,24 +1027,24 @@ contains
           end do
        end do
     end do
-    pi(:,:,:)=newpi(:,:,:)
+    pip(:,:,:)=newpi(:,:,:)
     
     if (transform) then
     do i=1,ndim
        do j=1,natom
           dofi=(j-1)*ndim + i
           if (.not. use_mkl) then
-             call nmtransform_backward(pi(:,i,j), p(:,i,j), 0)
+             call nmtransform_backward(pip(:,i,j), p(:,i,j), 0)
              call nmtransform_backward(q(:,i,j), x(:,i,j),dofi)
           else
-             call nmtransform_backward_nr(pi(:,i,j), p(:,i,j),0)
+             call nmtransform_backward_nr(pip(:,i,j), p(:,i,j),0)
              call nmtransform_backward_nr(q(:,i,j), x(:,i,j),dofi)
           end if
        end do
     end do
     else
        x(:,:,:)= q(:,:,:)
-       p(:,:,:)= pi(:,:,:)
+       p(:,:,:)= pip(:,:,:)
     end if
 
        

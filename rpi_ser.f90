@@ -1,6 +1,7 @@
 program rpi
   use mcmod_mass
   use verletint
+  use instantonmod
   implicit none
   double precision, allocatable::   theta(:),phi(:), xharm(:,:,:), H(:,:)
   double precision, allocatable::   weightstheta(:),weightsphi(:), origin(:)
