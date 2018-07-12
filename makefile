@@ -1,5 +1,6 @@
 ###################################################################################
 #Define all the compilers and their options
+CC=icc
 FC= ifort
 MPIFC= mpif90
 FFLAGS= -warn -g -O2 -i8 -r8 -w -no-wrap-margin -module ../build/modules
@@ -68,8 +69,19 @@ CLATHFILES= $(OBJDIR)/watermethane.o $(OBJDIR)/mcmod_clathrate.o
 #Graphene:
 GRAPHENEFILES= $(OBJDIR)/graphene.o $(OBJDIR)/mcmod_graphene.o
 
+#GDML
+GDMLFILES= $(OBJDIR)/mcmod_gdml.o $(OBJDIR)/gdml_interface.o $(OBJDIR)/gdml.o
+PYPATH= $(PYTHONPATH)
+PYLIB= $(PYTHONLIB)
+pimd_gdml_par: FFLAGS+= -I$(PYPATH) -L$(PYLIB) -lpython2.7
+pimd_gdml_ser: FFLAGS+= -I$(PYPATH) -L$(PYLIB) -lpython2.7
+rpi_gdml_ser: FFLAGS+= -I$(PYPATH) -L$(PYLIB) -lpython2.7
+
 ###################################################################################
 #Compilation commands for object files
+$(OBJDIR)/%.o: %.c
+	$(CC) -c $(FFLAGS) $< -o $@
+
 $(OBJDIR)/%.o: %.f
 	$(FC) -c $(FFLAGS) $< -o $@
 
@@ -217,6 +229,17 @@ pimd_graphene_ser: $(GRAPHENEFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
 
 rpi_graphene_ser: $(GRAPHENEFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
 	$(FC) $(FFLAGS) $(GRAPHENEFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+
+################################
+#GDML
+pimd_gdml_par: $(GDMLFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(GDMLFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+
+pimd_gdml_ser: $(GDMLFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(GDMLFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+
+rpi_gdml_ser: $(GDMLFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(GDMLFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 ################################
 #Water-methane (for Eszter!)
