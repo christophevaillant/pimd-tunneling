@@ -137,6 +137,7 @@ contains
     integer::              i,j,k, atom1, atom2, atom3
 
 
+    atoms(:,:)=0.0d0 
     if (ndim .ne. 3) then
        write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
        stop
@@ -146,7 +147,7 @@ contains
     origin(:)= atomsin(:,atom1)
 
     do i=1, natom
-    atoms(:,i)= atomsin(:,i) - origin(:)
+       atoms(:,i)= atomsin(:,i) - origin(:)
     end do
     !-----------------------------------------
     !Align vector between atom1 and atom2 to x axis

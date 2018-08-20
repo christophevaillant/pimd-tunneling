@@ -198,7 +198,7 @@ program pimd
         open(20, file="aligned.xyz")
         do i=1,npath
            write(20,*) natom
-           write(20,*) "Energy of minimum",i
+           write(20,*) "rotation angles:", theta1, theta2, theta3
            do j=1, natom
               write(20,*)  label(j), (path(i,k,j)*0.529177d0, k=1,ndim)
            end do
