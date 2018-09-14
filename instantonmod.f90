@@ -169,7 +169,6 @@ contains
     !rotate about x-axis
     workvec(:)= atoms(:,atom3) - atoms(:,atom1)
     theta3= -atan2(workvec(2),workvec(3))
-    write(*,*) "Alignment angles:", theta1, theta2, theta3
     
     return
   end subroutine get_align
