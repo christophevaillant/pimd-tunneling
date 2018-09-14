@@ -172,6 +172,8 @@ program pimd
      !Read in initial wells, and masses
      if (readpath) then
         allocate(initpath(ndim, natom),path(npath, ndim, natom), lampath(npath), Vpath(npath))
+        path(:,:,:)= 0.0d0
+        initpath(:,:)=0.0d0
         open(15, file="path.xyz")
         do i=1, npath
            read(15,*) dummy
@@ -195,6 +197,7 @@ program pimd
         lampath(:)= lampath(:)/lampath(npath)
         deallocate(initpath)
         close(15)
+        close(16)
         open(20, file="aligned.xyz")
         do i=1,npath
            write(20,*) natom

@@ -138,6 +138,9 @@ contains
 
 
     atoms(:,:)=0.0d0 
+    theta1=0.0d0
+    theta2=0.0d0
+    theta3=0.0d0
     if (ndim .ne. 3) then
        write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
        stop
@@ -166,7 +169,7 @@ contains
     !rotate about x-axis
     workvec(:)= atoms(:,atom3) - atoms(:,atom1)
     theta3= -atan2(workvec(2),workvec(3))
-    
+    write(*,*) "Alignment angles:", theta1, theta2, theta3
     
     return
   end subroutine get_align
@@ -176,11 +179,13 @@ contains
 
   subroutine align_atoms(atomsin, theta1,theta2,theta3, origin, atomsout)
     implicit none
-    double precision::     atomsin(:,:), atomsout(:,:), workvec(3), origin(ndim)
-    double precision::     theta1, theta2, theta3
+    double precision,intent(in)::     atomsin(:,:),theta1, theta2, theta3 , origin(ndim)
+    double precision, intent(out):: atomsout(:,:)
+    double precision::     workvec(3)
     integer::              i,j,k, atom1, atom2, atom3
 
-
+    atomsout(:,:)=0.0d0
+    workvec(:)=0.0d0
     if (ndim .ne. 3) then
        write(*,*) "Wrong number of dimensions; change align_atoms subroutine!"
        stop
@@ -189,7 +194,7 @@ contains
     !-----------------------------------------
     !Put atom1 at origin
     do i=1, natom
-    atomsout(:,i)= atomsin(:,i) - atomsin(:,atom1)
+       atomsout(:,i)= atomsin(:,i) - atomsin(:,atom1)
     end do
     !-----------------------------------------
     !Align vector between atom1 and atom2 to x axis
@@ -242,25 +247,27 @@ contains
     double precision::     theta
     integer::              i, axis, j,k
 
-    if (axis.eq. 1) then
-       j=2
-       k=3
-    else if(axis.eq.2) then
-       j=1
-       k=3
-    else
-       j=1
-       k=2
+    if (abs(theta) .gt. 1D-10) then
+       if (axis.eq. 1) then
+          j=2
+          k=3
+       else if(axis.eq.2) then
+          j=1
+          k=3
+       else
+          j=1
+          k=2
+       end if
+       rotmatrix(:,:)=0.0d0
+       rotmatrix(axis,axis)=1.0d0
+       rotmatrix(j,j)= cos(theta)
+       rotmatrix(k,k)= cos(theta)
+       rotmatrix(k,j)= -sin(theta)
+       rotmatrix(j,k)= sin(theta)
+       do i=1, natom
+          atoms(:,i)= matmul(rotmatrix(:,:), atoms(:,i))
+       end do
     end if
-    rotmatrix(:,:)=0.0d0
-    rotmatrix(axis,axis)=1.0d0
-    rotmatrix(j,j)= cos(theta)
-    rotmatrix(k,k)= cos(theta)
-    rotmatrix(k,j)= -sin(theta)
-    rotmatrix(j,k)= sin(theta)
-    do i=1, natom
-       atoms(:,i)= matmul(rotmatrix(:,:), atoms(:,i))
-    end do
     return
   end subroutine rotate_atoms
   !---------------------------------------------------------------------
@@ -592,7 +599,7 @@ end subroutine centreofmass
     iw=dof*(2*m+5) + 11*m**2 + 8*m
     allocate(work(iw), iwork(3*dof), isave(44), dsave(29))
     iflag=0
-    eps2= 1.0d-6 !gradient convergence
+    eps2= 1.0d-5 !gradient convergence
     factr=1.0d5
     maxiter=40
     f= UM(xtilde,a,b)
@@ -691,7 +698,8 @@ end subroutine centreofmass
 
   function eucliddist(x1, x2)
     implicit none
-    double precision::   x1(:,:), x2(:,:), eucliddist
+    double precision,intent(in)::   x1(:,:), x2(:,:)
+    double precision::  eucliddist
     integer::            i,j
     
     eucliddist=0.0d0
