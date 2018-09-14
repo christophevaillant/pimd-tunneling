@@ -197,7 +197,6 @@ program pimd
         lampath(:)= lampath(:)/lampath(npath)
         deallocate(initpath)
         close(15)
-        close(16)
         open(20, file="aligned.xyz")
         do i=1,npath
            write(20,*) natom

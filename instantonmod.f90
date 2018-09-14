@@ -191,27 +191,30 @@ contains
        stop
     end if
 
-    !-----------------------------------------
-    !Put atom1 at origin
-    do i=1, natom
-       atomsout(:,i)= atomsin(:,i) - atomsin(:,atom1)
-    end do
-    !-----------------------------------------
-    !Align vector between atom1 and atom2 to x axis
-    !first rotate about z-axis to align with zx plane
-    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
-    call rotate_atoms(atomsout, 3, theta1)
+    if (any((/abs(theta1).gt.1D-10,abs(theta2).gt.1D-10,abs(theta3).gt.1D-10/))) then
+       !-----------------------------------------
+       !Put atom1 at origin
+       do i=1, natom
+          atomsout(:,i)= atomsin(:,i) - atomsin(:,atom1)
+       end do
+       !-----------------------------------------
+       !Align vector between atom1 and atom2 to x axis
+       !first rotate about z-axis to align with zx plane
+       workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+       call rotate_atoms(atomsout, 3, theta1)
 
-    !rotate about y-axis to align with z-axis
-    workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
-    call rotate_atoms(atomsout, 2, theta2)
+       !rotate about y-axis to align with z-axis
+       workvec(:)= atomsout(:,atom2) - atomsout(:,atom1)
+       call rotate_atoms(atomsout, 2, theta2)
 
-    !-----------------------------------------
-    !Align vector between atom1 and atom3 to xz plane
-    !rotate about x-axis
-    workvec(:)= atomsout(:,atom3) - atomsout(:,atom1)
-    call rotate_atoms(atomsout, 1, theta3)
-    
+       !-----------------------------------------
+       !Align vector between atom1 and atom3 to xz plane
+       !rotate about x-axis
+       workvec(:)= atomsout(:,atom3) - atomsout(:,atom1)
+       call rotate_atoms(atomsout, 1, theta3)
+    else
+       atomsout(:,:)= atomsin(:,:)
+    end if
     return
   end subroutine align_atoms
 
@@ -243,9 +246,11 @@ contains
 
   subroutine rotate_atoms(atoms,axis,theta)
     implicit none
-    double precision::     rotmatrix(3,3), atoms(:,:)
-    double precision::     theta
-    integer::              i, axis, j,k
+    double precision,intent(in):: theta
+    integer, intent(in)::  axis
+    double precision, intent(inout):: atoms(:,:)
+    double precision::     rotmatrix(3,3)
+    integer::              i,j,k
 
     if (abs(theta) .gt. 1D-10) then
        if (axis.eq. 1) then
