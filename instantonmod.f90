@@ -600,12 +600,12 @@ end subroutine centreofmass
     task='START'
     m=8
     iprint=-1
-    xtol= 1d-8
+    xtol= 1d-6
     iw=dof*(2*m+5) + 11*m**2 + 8*m
     allocate(work(iw), iwork(3*dof), isave(44), dsave(29))
     iflag=0
     eps2= 1.0d-5 !gradient convergence
-    factr=1.0d5
+    factr=1.0d7
     maxiter=40
     f= UM(xtilde,a,b)
     call UMprime(xtilde,a,b,fprime)
