@@ -169,18 +169,22 @@ program pimd
   !xunit=2 means angstroms
   if (instapath) then
      call instanton(xtilde,well1,well2)
-     npath=n
+     npath=n+2
      deallocate(lampath,path, Vpath)
      allocate(lampath(npath), Vpath(npath), path(npath,ndim,natom))
-     path(:,:,:)=xtilde(:,:,:)
+     path(2:n+1,:,:)=xtilde(:,:,:)
+     path(1,:,:)= well1(:,:)
+     path(npath,:,:)= well2(:,:)
      write(*,*) "Found instanton."
      open(19, file="instanton.xyz")
-     do i=1,npath
+     do i=1,n
         write(19,*) natom
         write(19,*) "Energy of minimum",i
         do j=1, natom
            write(19,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim)
         end do
+     end do
+     do i=1,npath
         if (i.eq.1) then
            lampath(1)=0.0d0
         else
