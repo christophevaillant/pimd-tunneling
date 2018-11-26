@@ -169,12 +169,17 @@ program pimd
   !xunit=2 means angstroms
   if (instapath) then
      call instanton(xtilde,well1,well2)
-     npath=n+2
      deallocate(lampath,path, Vpath)
-     allocate(lampath(npath), Vpath(npath), path(npath,ndim,natom))
-     path(2:n+1,:,:)=xtilde(:,:,:)
-     path(1,:,:)= well1(:,:)
-     path(npath,:,:)= well2(:,:)
+     if (fixedends) then
+        npath=n+2
+        allocate(lampath(npath), Vpath(npath), path(npath,ndim,natom))
+        path(1,:,:)= well1(:,:)
+        path(npath,:,:)= well2(:,:)
+     else
+        npath=n
+        allocate(Vpath(npath),path(npath,ndim,natom), lampath(npath))
+        path(:,:,:)= xtilde(:,:,:)
+     end if
      write(*,*) "Found instanton."
      open(19, file="instanton.xyz")
      do i=1,n
