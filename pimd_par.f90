@@ -152,6 +152,20 @@ program pimd
         read(18,*)label(j), mass(j)
      end do
      close(18)
+     if (alignwell) then
+        open(25, file="aligned_wells.xyz")
+        write(25,*) natom
+        write(25,*) "rotation angles:", theta1, theta2, theta3
+        do j=1, natom
+           write(25,*)  label(j), (well1(k,j)*0.529177d0, k=1,ndim)
+        end do
+        write(25,*) natom
+        write(25,*) "rotation angles:", theta1, theta2, theta3
+        do j=1, natom
+           write(25,*)  label(j), (well2(k,j)*0.529177d0, k=1,ndim)
+        end do
+        close(25)
+     end if
   end if
 
   ! call MPI_Bcast(mpi_double_send, 5, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
@@ -164,7 +178,7 @@ program pimd
   call MPI_Bcast(dHdrlimit, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(label, natom, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
   ndof=ndim*natom
-
+  totdof=n*ndim*natom
   !Set up integration path and integration points/weights
   if (iproc .eq. 0) then
      !-------------------------
@@ -197,15 +211,6 @@ program pimd
         lampath(:)= lampath(:)/lampath(npath)
         deallocate(initpath)
         close(15)
-        open(20, file="aligned.xyz")
-        do i=1,npath
-           write(20,*) natom
-           write(20,*) "rotation angles:", theta1, theta2, theta3
-           do j=1, natom
-              write(20,*)  label(j), (path(i,k,j)*0.529177d0, k=1,ndim)
-           end do
-        end do
-        close(20)
         allocate(splinepath(npath))
         do i=1,ndim
            do j=1,natom
@@ -216,6 +221,16 @@ program pimd
               end do
            end do
         end do
+        open(20, file="aligned.xyz")
+        do i=1,n
+           write(20,*) natom
+           write(20,*) "rotation angles:", theta1, theta2, theta3
+           do j=1, natom
+              write(20,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim)
+           end do
+        end do
+        close(20)
+
         deallocate(splinepath)
      end if
      if (instapath) then

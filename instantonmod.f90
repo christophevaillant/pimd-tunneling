@@ -28,8 +28,9 @@ contains
           end do
        end do
     end do
-    UM=UM+ V(a(:,:))+ V(b(:,:))+ V(x(N,:,:))
+    UM=UM+ V(x(N,:,:))
     if (fixedends) then
+       UM=UM + V(a(:,:))+ V(b(:,:))
        do j=1, ndim
           do k=1, natom
              UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
@@ -134,7 +135,7 @@ contains
     implicit none
     double precision::     atomsin(:,:), workvec(3), atoms(ndim,natom)
     double precision::     theta1, theta2, theta3, origin(ndim)
-    integer::              i,j,k, atom1, atom2, atom3
+    integer::              i,j,k
 
 
     atoms(:,:)=0.0d0 
@@ -181,7 +182,7 @@ contains
     double precision,intent(in)::     atomsin(:,:),theta1, theta2, theta3 , origin(ndim)
     double precision, intent(out):: atomsout(:,:)
     double precision::     workvec(3)
-    integer::              i,j,k, atom1, atom2, atom3
+    integer::              i,j,k
 
     atomsout(:,:)=0.0d0
     workvec(:)=0.0d0
@@ -556,8 +557,8 @@ end subroutine centreofmass
   subroutine instanton(xtilde,a,b)
     implicit none
     integer::                        iprint, m, iflag, mp,idof, maxiter
-    integer::                        i, lp, count, iw, j,k, dof
-    double precision::               eps2, xtol, gtol, stpmin, stpmax
+    integer::                        i, lp, count, iw, j,k
+    double precision::               xtol, gtol, stpmin, stpmax
     double precision::               f, xtilde(:,:,:), xtemp(ndim,natom)
     double precision::               factr, a(:,:),b(:,:), com(ndim)
     double precision, allocatable::  fprime(:,:,:), work(:), fprimework(:)
@@ -566,30 +567,15 @@ end subroutine centreofmass
     logical::                        lsave(4)
     character(len=60)::              task, csave
 
-    dof= n*ndim*natom
-    allocate(lb(dof), ub(dof),fprime(n,ndim,natom), nbd(dof))
-    allocate(fprimework(dof), xwork(dof))
-    ! call centreofmass(a, com)
-    ! do i=1,ndim
-    !    do j=1,natom
-    !       a(i,j)= a(i,j)- com(i)
-    !    end do
-    ! end do
-    ! call centreofmass(b, com)
-    ! do i=1,ndim
-    !    do j=1,natom
-    !       b(i,j)= b(i,j)- com(i)
-    !    end do
-    ! end do 
+    allocate(lb(totdof), ub(totdof),fprime(n,ndim,natom), nbd(totdof))
+    allocate(fprimework(totdof), xwork(totdof))
     do i=1, n, 1
-       ! call centreofmass(xtilde(i,:,:), com)
        do j=1,ndim
           do k=1,natom
-             ! xtilde(i,j,k)= xtilde(i,j,k) - com(j)
              idof= ((k-1)*ndim + j -1)*n +i
-                lb(idof)= a(j,k)
-                ub(idof)= a(j,k)
-                nbd(idof)=0
+             lb(idof)= a(j,k)
+             ub(idof)= a(j,k)
+             nbd(idof)=0
           end do
        end do
     end do
@@ -600,8 +586,8 @@ end subroutine centreofmass
     m=8
     iprint=-1
     xtol= 1d-6
-    iw=dof*(2*m+5) + 11*m**2 + 8*m
-    allocate(work(iw), iwork(3*dof), isave(44), dsave(29))
+    iw=totdof*(2*m+5) + 11*m**2 + 8*m
+    allocate(work(iw), iwork(3*totdof), isave(44), dsave(29))
     iflag=0
     eps2= 1.0d-5 !gradient convergence
     factr=1.0d7
@@ -612,14 +598,15 @@ end subroutine centreofmass
     do while( task(1:2).eq.'FG'.or.task.eq.'NEW_X'.or. &
          task.eq.'START')
        count=count+1
-       xwork=reshape(xtilde,(/dof/))
-       fprimework= reshape(fprime,(/dof/))
-       call setulb(dof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
+       xwork=reshape(xtilde,(/totdof/))
+       fprimework= reshape(fprime,(/totdof/))
+       call setulb(totdof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
             ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
        if (task(1:2) .eq. 'FG') then
           xtilde= reshape(xwork,(/n,ndim,natom/))
           f= UM(xtilde,a,b)
           call UMprime(xtilde,a,b,fprime)
+          ! write(*,*) count, f
        end if
     end do
     if (task(1:5) .eq. "ERROR" .or. task(1:4) .eq. "ABNO") then

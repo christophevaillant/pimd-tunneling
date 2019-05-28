@@ -1,6 +1,6 @@
 module mcmod_mass
   implicit none
-  double precision::               V0
+  double precision::               V0, eps2=1.0d-5
   integer,parameter::              atom1=1, atom2=2, atom3=3
   integer::                        n, ndim, ndof, natom, xunit, totdof
 

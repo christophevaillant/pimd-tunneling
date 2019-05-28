@@ -1,7 +1,7 @@
 module mcmod_mass
   use malonaldehyde
   implicit none
-  double precision::               V0
+  double precision::               V0, eps2=1.0d-5
   integer,parameter::              atom1=1, atom2=2, atom3=4
   integer::                        n, ndim, ndof, natom, xunit, totdof
 
