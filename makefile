@@ -44,6 +44,9 @@ FORMICLIBS= -L. -lpes_formic
 WATDIMFILES= $(OBJDIR)/mcmod_waterdimer.o
 WATDIMLIBS= -L. -lmbpol -cxxlib
 
+#Water trimer (MB-pol):
+WATTRIMFILES= $(OBJDIR)/mcmod_watertrimer.o
+
 #Water hexamer (MB-pol):
 WATHEXFILES= $(OBJDIR)/mcmod_waterhexamer.o
 
@@ -181,6 +184,23 @@ rpi_watdim_par: $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o
 
 crossover_watdim: $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/crossover.o
 	$(FC) $(FFLAGS) $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+
+################################
+#Water Trimer MB-pol
+pimd_wattrim_par: $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
+
+pimd_wattrim_ser: $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+
+rpi_wattrim_ser: $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
+
+rpi_wattrim_par: $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o
+	$(MPIFC) $(FFLAGS) $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
+
+crossover_wattrim: $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/crossover.o
+	$(FC) $(FFLAGS) $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
 ################################
 #Water Hexamer MB-pol
