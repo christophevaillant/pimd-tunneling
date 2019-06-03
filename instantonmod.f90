@@ -606,7 +606,7 @@ end subroutine centreofmass
     allocate(work(iw), iwork(3*totdof), isave(44), dsave(29))
     iflag=0
     eps2= 1.0d-5 !gradient convergence
-    factr=1.0d7
+    factr=1.0d10
     maxiter=40
     if (fixedends) then
        f= UM(xtilde,a,b)

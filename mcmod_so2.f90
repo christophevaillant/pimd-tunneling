@@ -4,6 +4,7 @@ module mcmod_mass
   integer,parameter::              atom1=1, atom2=2, atom3=3
   double precision::               omegaforce, r0
   integer::                        n, ndim, ndof, natom, xunit, totdof
+  character, allocatable::         label(:)
 
 contains
   subroutine V_init()

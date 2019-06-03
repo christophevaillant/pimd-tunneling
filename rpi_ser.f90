@@ -7,7 +7,7 @@ program rpi
   double precision, allocatable::   weightstheta(:),weightsphi(:), origin(:)
   double precision, allocatable::   eta(:),weightseta(:)
   double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:), wellinit(:,:)
-  double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:), grad(:,:)
+  double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:), grad1(:,:), grad2(:,:)
   double precision, allocatable::   initpath(:,:), xtilderot(:,:,:), wellrot(:,:)
   double precision::                lndetj, lndetj0, skink, psi, cutofftheta, cutoffphi
   double precision::                delta, omega, gammetilde, Ibeta
@@ -164,13 +164,28 @@ program rpi
   do i=1,n
      write(*,*) i, V(xtilde(i,:,:))
      write(19,*) natom
-     write(19,*) "Energy of minimum",i
+     write(19,*) "Energy of minimum", V(xtilde(i,:,:))
      do j=1, natom
         write(19,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim), (0.0d0, k=ndim+1,3)
      end do
   end do
   close(19)
 
+  allocate(lampath(n))
+  open(21, file="instantonpathenergy.csv")
+  do i=1,n
+     if (i.eq.1) then
+        lampath(1)=0.0d0
+     else
+        lampath(i)= lampath(i-1) + eucliddist(xtilde(i-1,:,:), xtilde(i,:,:))
+     end if
+  end do
+  lampath(:)= lampath(:)/lampath(n)
+  do i=1,n
+     write(21,*) lampath(i),V(xtilde(i,:,:))
+  end do
+  close(21)
+  deallocate(lampath)
   !------------------------------------
   !work out Q_0
   allocate(xharm(n,ndim, natom), etasquared(totdof))

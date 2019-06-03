@@ -71,6 +71,12 @@ CLATHFILES= $(OBJDIR)/watermethane.o $(OBJDIR)/mcmod_clathrate.o
 #Graphene:
 GRAPHENEFILES= $(OBJDIR)/graphene.o $(OBJDIR)/mcmod_graphene.o
 
+#Water dimer and halide:
+WATHALFILES= $(OBJDIR)/mcmod_waterhalide.o
+WATHALLIBS= -L. -lpot_halides -ltools_halides -cxxlib
+pimd_wathal_par: FFLAGS+= -lstdc++
+pimd_wathal_ser: FFLAGS+= -lstdc++ 
+
 ###################################################################################
 #Compilation commands for object files
 $(OBJDIR)/%.o: %.f
@@ -244,6 +250,24 @@ rpi_graphene_ser: $(GRAPHENEFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
 rpi_watmeth_ser: $(WATMETHFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
 	$(FC) $(FFLAGS) $(WATMETHFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
+################################
+#Water Dimer and Halide
+pimd_wathal_par: $(WATHALFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(WATHALFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATHALLIBS)
+
+pimd_wathal_ser: $(WATHALFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(WATHALFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATHALLIBS)
+
+rpi_wathal_ser: $(WATHALFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(WATHALFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATHALLIBS)
+
+rpi_wathal_par: $(WATHALFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o
+	$(MPIFC) $(FFLAGS) $(WATHALFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATHALLIBS)
+
+crossover_wathal: $(WATHALFILES) $(COMFILES)  $(OBJDIR)/crossover.o
+	$(FC) $(FFLAGS) $(WATHALFILES) $(COMFILES)  $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATHALLIBS)
+
+
 ###################################################################################
 #Rules for cleanup
 
@@ -252,4 +276,4 @@ rpi_watmeth_ser: $(WATMETHFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
 clean:
 	rm -f $(OBJDIR)/*.o $(MODDIR)/*.mod $(MODDIR)/*.f90
 
-all: pimd_1d_par pimd_1d_ser pimd_2dtest_par pimd_2dtest_ser rpi_2dtest_ser pimd_so2_par pimd_so2_ser rpi_so2_ser pimd_malon_par pimd_malon_ser rpi_malon_ser pimd_wmalon_par pimd_wmalon_ser pimd_formic_par pimd_formic_ser pimd_ccpol_par pimd_ccpol_ser rpi_ccpol_ser pimd_watdim_par pimd_watdim_ser rpi_watdim_ser rpi_watdim_par crossover_watdim pimd_wathex_par pimd_wathex_ser rpi_wathex_ser pimd_clath_par pimd_clath_ser rpi_clath_ser pimd_graphene_par pimd_graphene_ser rpi_graphene_ser rpi_watmeth_ser
+all: pimd_1d_par pimd_1d_ser pimd_2dtest_par pimd_2dtest_ser rpi_2dtest_ser pimd_so2_par pimd_so2_ser rpi_so2_ser pimd_malon_par pimd_malon_ser rpi_malon_ser pimd_wmalon_par pimd_wmalon_ser pimd_formic_par pimd_formic_ser pimd_ccpol_par pimd_ccpol_ser rpi_ccpol_ser pimd_watdim_par pimd_watdim_ser rpi_watdim_ser rpi_watdim_par crossover_watdim pimd_wathex_par pimd_wathex_ser rpi_wathex_ser pimd_clath_par pimd_clath_ser rpi_clath_ser pimd_graphene_par pimd_graphene_ser rpi_graphene_ser rpi_watmeth_ser pimd_wathal_par pimd_wathal_ser rpi_wathal_ser rpi_wathal_par crossover_wathal
