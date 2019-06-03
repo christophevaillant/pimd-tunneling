@@ -234,7 +234,11 @@ program pimd
         deallocate(splinepath)
      end if
      if (instapath) then
-        call instanton(xtilde,well1,well2)
+        if (fixedends) then
+           call instanton(xtilde,well1,well2)
+        else
+           call instanton(xtilde)
+        end if
         deallocate(lampath,path, Vpath)
         if (fixedends) then
            npath=n+2

@@ -17,7 +17,9 @@ contains
   function UM(x,a,b)
     implicit none
     integer::            i,j,k
-    double precision::   x(:,:,:), UM,a(:,:),b(:,:)
+    double precision,intent(in)::   x(:,:,:)
+    double precision,intent(in),optional:: a(:,:),b(:,:)
+    double precision:: UM
 
     UM=0.0d0
     do i=1, N-1, 1
@@ -43,10 +45,12 @@ contains
   end function UM
 
   !---------------------------------------------------------------------
-  subroutine UMprime(x,a,b, answer)
+  subroutine UMprime(x, answer,a,b)
     implicit none
     integer::            i,j,k
-    double precision::   x(:,:,:), answer(:,:,:),a(:,:),b(:,:)
+    double precision, intent(in)::   x(:,:,:)
+    double precision, intent(out)::  answer(:,:,:)
+    double precision, intent(in), optional:: a(:,:),b(:,:)
     double precision,allocatable:: grad(:,:)
 
     allocate(grad(ndim,natom))
@@ -87,7 +91,8 @@ contains
     implicit none
     integer::            i, j1, k1, j2, k2, idof1, idof2
     integer::            fulldof1, fulldof2, index
-    double precision::   x(:,:,:), answer(:,:)
+    double precision, intent(in)::   x(:,:,:)
+    double precision, intent(out):: answer(:,:)
     double precision, allocatable:: hess(:,:,:,:)
 
     allocate(hess(ndim, natom, ndim, natom))
@@ -556,11 +561,14 @@ end subroutine centreofmass
 
   subroutine instanton(xtilde,a,b)
     implicit none
+    double precision, intent(inout)::xtilde(:,:,:)
+    double precision, intent(in), optional:: a(:,:),b(:,:)
     integer::                        iprint, m, iflag, mp,idof, maxiter
     integer::                        i, lp, count, iw, j,k
     double precision::               xtol, gtol, stpmin, stpmax
-    double precision::               f, xtilde(:,:,:), xtemp(ndim,natom)
-    double precision::               factr, a(:,:),b(:,:), com(ndim)
+    double precision::               f, xtemp(ndim,natom)
+
+    double precision::               factr, com(ndim)
     double precision, allocatable::  fprime(:,:,:), work(:), fprimework(:)
     double precision, allocatable::  lb(:), ub(:), dsave(:), xwork(:)
     integer, allocatable::           nbd(:), iwork(:), isave(:)
@@ -573,8 +581,13 @@ end subroutine centreofmass
        do j=1,ndim
           do k=1,natom
              idof= ((k-1)*ndim + j -1)*n +i
-             lb(idof)= a(j,k)
-             ub(idof)= a(j,k)
+             if (fixedends) then
+                lb(idof)= a(j,k)
+                ub(idof)= a(j,k)
+             else
+                lb(idof)= 0.0d0
+                ub(idof)= 0.0d0
+             end if
              nbd(idof)=0
           end do
        end do
@@ -592,8 +605,13 @@ end subroutine centreofmass
     eps2= 1.0d-5 !gradient convergence
     factr=1.0d7
     maxiter=40
-    f= UM(xtilde,a,b)
-    call UMprime(xtilde,a,b,fprime)
+    if (fixedends) then
+       f= UM(xtilde,a,b)
+       call UMprime(xtilde,fprime,a,b)
+    else
+       f= UM(xtilde)
+       call UMprime(xtilde,fprime)
+    end if
     count=0
     do while( task(1:2).eq.'FG'.or.task.eq.'NEW_X'.or. &
          task.eq.'START')
@@ -604,8 +622,13 @@ end subroutine centreofmass
             ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
        if (task(1:2) .eq. 'FG') then
           xtilde= reshape(xwork,(/n,ndim,natom/))
-          f= UM(xtilde,a,b)
-          call UMprime(xtilde,a,b,fprime)
+          if (fixedends) then
+             f= UM(xtilde,a,b)
+             call UMprime(xtilde,fprime,a,b)
+          else
+             f= UM(xtilde)
+             call UMprime(xtilde,fprime)
+          end if
           ! write(*,*) count, f
        end if
     end do
