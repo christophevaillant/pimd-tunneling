@@ -89,6 +89,7 @@ program pimd
   close(18)
 
   ndof=ndim*natom
+  totdof=n*ndim*natom
   allocate(well1(ndim,natom), well2(ndim,natom), wellinit(ndim,natom))
   open(15, file="well1.dat", status="old")
   open(16, file="well2.dat", status="old")
