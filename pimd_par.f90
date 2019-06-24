@@ -122,8 +122,20 @@ program pimd
         well1(:,:)= well1(:,:)/0.529177d0
         well2(:,:)= well2(:,:)/0.529177d0
      end if
-
   end if
+  call MPI_Barrier(MPI_COMM_WORLD,ierr)
+  ierr=0
+  ! call MPI_Bcast(mpi_int_send, 8, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(ncalcs, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(N, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(NMC, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(Noutput, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(thermostat, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(imin, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(ndim, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(fixedends, 1, MPI_LOGICAL, 0,MPI_COMM_WORLD, ierr)
+
   allocate(xtilde(n, ndim, natom),mass(natom), label(natom))
   if (iproc.eq.0) then
      open(18, file="masses.dat", status="old")
@@ -141,21 +153,7 @@ program pimd
      V0=V(well1)
      write(*,*) "Potential at wells:", V(well1), V(well2)
      deallocate(wellinit)
-  end if
-  call MPI_Barrier(MPI_COMM_WORLD,ierr)
-  ierr=0
-  ! call MPI_Bcast(mpi_int_send, 8, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(ncalcs, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(N, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(NMC, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(Noutput, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(thermostat, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(imin, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(ndim, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(fixedends, 1, MPI_LOGICAL, 0,MPI_COMM_WORLD, ierr)
 
-  if (iproc.eq.0) then
      if (alignwell) then
         open(25, file="aligned_wells.xyz")
         write(25,*) natom
