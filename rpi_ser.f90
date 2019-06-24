@@ -49,44 +49,43 @@ program rpi
   totdof= n*ndof
   call V_init()
   allocate(well1(ndim,natom),well2(ndim,natom), wellinit(ndim,natom))
+  open(30, file="well1.dat", status='old')
+  open(40, file="well2.dat", status='old')
+  do j=1, natom
+     read(30,*)(well1(i,j), i=1,ndim)
+     read(40,*)(well2(i,j), i=1,ndim)
+  end do
+  close(30)
+  close(40)
 
-     open(30, file="well1.dat", status='old')
-     open(40, file="well2.dat", status='old')
-     do j=1, natom
-        read(30,*)(well1(i,j), i=1,ndim)
-        read(40,*)(well2(i,j), i=1,ndim)
-     end do
-     close(30)
-     close(40)
+  if (xunit .eq. 2) then
+     well1(:,:)= well1(:,:)/0.529177d0
+     well2(:,:)= well2(:,:)/0.529177d0
+  end if
+  allocate(origin(ndim))
 
-     if (xunit .eq. 2) then
-        well1(:,:)= well1(:,:)/0.529177d0
-        well2(:,:)= well2(:,:)/0.529177d0
-     end if
-     allocate(origin(ndim))
-
-     call get_align(well1,theta1, theta2, theta3, origin)
-     wellinit(:,:)= well1(:,:)
-     call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
-     if (alignwell) call get_align(well2,theta1, theta2, theta3, origin)
-     wellinit(:,:)= well2(:,:)
-     call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
-     V0=V(well1)
-     write(*,*) "Potential at wells:", V(well1), V(well2)
-     allocate(grad(ndim,natom))
-     call Vprime(well1, grad)
-     write(*,*) "With norm of grad:", norm2(reshape(grad, (/ndim*natom/)))
-     open(21, file="aligned_ends.xyz")
-     write(21,*) natom
-     write(21,*) "Well1"
-     do i=1, natom
-        write(21,*)  label(i), (well1(k,i)*0.529177d0, k=1,ndim)
-     end do
-     write(21,*) natom
-     write(21,*) "Well2"
-     do i=1, natom
-        write(21,*)  label(i), (well2(k,i)*0.529177d0, k=1,ndim)
-     end do
+  call get_align(well1,theta1, theta2, theta3, origin)
+  wellinit(:,:)= well1(:,:)
+  call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
+  if (alignwell) call get_align(well2,theta1, theta2, theta3, origin)
+  wellinit(:,:)= well2(:,:)
+  call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
+  V0=V(well1)
+  write(*,*) "Potential at wells:", V(well1), V(well2)
+  allocate(grad(ndim,natom))
+  call Vprime(well1, grad)
+  write(*,*) "With norm of grad:", norm2(reshape(grad, (/ndim*natom/)))
+  open(21, file="aligned_ends.xyz")
+  write(21,*) natom
+  write(21,*) "Well1"
+  do i=1, natom
+     write(21,*)  label(i), (well1(k,i)*0.529177d0, k=1,ndim)
+  end do
+  write(21,*) natom
+  write(21,*) "Well2"
+  do i=1, natom
+     write(21,*)  label(i), (well2(k,i)*0.529177d0, k=1,ndim)
+  end do
   write(*,*) "beta=", beta, "n=", n
   write(*,*) "beta_n=", betan
 
@@ -105,7 +104,6 @@ program rpi
            read(15,*) dummylabel, (initpath(k,j), k=1,ndim)
         end do
         if (i.eq.1) then
-           ! call align_atoms(
            lampath(1)=0.0d0
            call get_align(initpath,theta1, theta2, theta3, origin)
            call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
@@ -149,12 +147,22 @@ program rpi
         end do
      end do
      deallocate(lampath,Vpath, path, splinepath)
+  else
+     !do a quick and dirty linear interpolation
+     do i=1,ndim
+        do j=1,natom
+           do k=1,n
+              xtilde(k,i,j)= well1(i,j) + dble(i-1)*well2(i,j)/dble(n-1)
+           end do
+        end do
+     end do
   end if
 
   call instanton(xtilde,well1,well2)
   write(*,*) "Found instanton."
   open(19, file="instanton.xyz")
   do i=1,n
+     write(*,*) i, V(xtilde(i,:,:))
      write(19,*) natom
      write(19,*) "Energy of minimum",i
      do j=1, natom

@@ -1,7 +1,7 @@
 module mcmod_mass
   implicit none
   double precision::               V0, eps2=1.0d-5
-  integer,parameter::              atom1=1, atom2=2, atom3=3
+  integer,parameter::              atom1=1, atom2=4, atom3=7
   character, allocatable::         label(:)
   integer::                        n, ndim, ndof, natom, xunit, totdof
 
@@ -26,6 +26,13 @@ contains
     end do
     call mbpolenergy(3, V, xtemp)
     V= V*1.59362d-3 - V0
+    if (V0 .ne. 0.0 .and. (V .lt. -0.5 .or. V.gt. 5.0)) then
+       write(*,*) "Possible hole detected"
+       do i=1, natom
+          write(*,*) label(i), (x(j,i)*0.529177d0, j=1,ndim)
+       end do
+       stop
+    end if
     deallocate(xtemp)
     return
   end function V

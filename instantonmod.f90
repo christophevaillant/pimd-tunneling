@@ -4,7 +4,6 @@ module instantonmod
   double precision, parameter::    pi=3.14159265358979d0
   double precision::               beta, betan, UMtilde
   double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
-  character, allocatable::         label(:)
   logical::                        fixedends
 
   public :: QsortC
@@ -220,6 +219,10 @@ contains
     else
        atomsout(:,:)= atomsin(:,:)
     end if
+    call centreofmass(atomsout, workvec)
+    do i=1,natom
+       atomsout(:,i)=atomsout(:,i) - workvec(:)
+    end do
     return
   end subroutine align_atoms
 
