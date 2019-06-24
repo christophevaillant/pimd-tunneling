@@ -122,7 +122,17 @@ program pimd
         well1(:,:)= well1(:,:)/0.529177d0
         well2(:,:)= well2(:,:)/0.529177d0
      end if
+
+  end if
+  allocate(xtilde(n, ndim, natom),mass(natom), label(natom))
+  if (iproc.eq.0) then
+     open(18, file="masses.dat", status="old")
+     do j=1,natom
+        read(18,*)label(j), mass(j)
+     end do
+     close(18)
      call get_align(well1,theta1, theta2, theta3, origin)
+
      wellinit(:,:)= well1(:,:)
      call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
      if (alignwell) call get_align(well2,theta1, theta2, theta3, origin)
@@ -145,13 +155,7 @@ program pimd
   call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(fixedends, 1, MPI_LOGICAL, 0,MPI_COMM_WORLD, ierr)
 
-  allocate(xtilde(n, ndim, natom),mass(natom), label(natom))
   if (iproc.eq.0) then
-     open(18, file="masses.dat", status="old")
-     do j=1,natom
-        read(18,*)label(j), mass(j)
-     end do
-     close(18)
      if (alignwell) then
         open(25, file="aligned_wells.xyz")
         write(25,*) natom
