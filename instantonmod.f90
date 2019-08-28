@@ -632,7 +632,7 @@ end subroutine centreofmass
              f= UM(xtilde)
              call UMprime(xtilde,fprime)
           end if
-          ! write(*,*) count, f
+          write(*,*) count, f
        end if
     end do
     if (task(1:5) .eq. "ERROR" .or. task(1:4) .eq. "ABNO") then

@@ -1,6 +1,6 @@
 module mcmod_mass
   implicit none
-  double precision::               V0
+  double precision::               V0, eps2=1.0d-5
   integer,parameter::              atom1=1, atom2=4, atom3=7 !pick the big atoms, O, O and Ha
   integer::                        n, ndim, ndof, natom, xunit, totdof
   character(len=5), allocatable::               at_name(:)
@@ -33,7 +33,8 @@ contains
        end do
     end do
     call calc_pot_link2f90(xtemp, at_name, natom, V)
-    V= V*1.59362d-3! - V0
+    ! write(*,*) "V0=",V0
+    V= V*1.59362d-3 - V0
     deallocate(xtemp, dummy1)
     return
   end function V

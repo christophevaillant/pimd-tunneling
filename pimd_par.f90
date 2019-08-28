@@ -122,7 +122,6 @@ program pimd
         well1(:,:)= well1(:,:)/0.529177d0
         well2(:,:)= well2(:,:)/0.529177d0
      end if
-
   end if
   allocate(xtilde(n, ndim, natom),mass(natom), label(natom))
   if (iproc.eq.0) then

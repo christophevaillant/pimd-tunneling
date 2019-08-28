@@ -7,7 +7,7 @@ program rpi
   double precision, allocatable::   weightstheta(:),weightsphi(:), origin(:)
   double precision, allocatable::   eta(:),weightseta(:)
   double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:), wellinit(:,:)
-  double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:), grad1(:,:), grad2(:,:)
+  double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:), grad(:,:)
   double precision, allocatable::   initpath(:,:), xtilderot(:,:,:), wellrot(:,:)
   double precision::                lndetj, lndetj0, skink, psi, cutofftheta, cutoffphi
   double precision::                delta, omega, gammetilde, Ibeta
@@ -129,7 +129,6 @@ program rpi
      close(20)
 
      deallocate(initpath, origin)
-
      if (xunit .eq. 2) then
         path(:,:,:) = path(:,:,:)/0.529177d0
      end if
@@ -147,6 +146,7 @@ program rpi
         end do
      end do
      deallocate(lampath,Vpath, path, splinepath)
+
   else
      !do a quick and dirty linear interpolation
      do i=1,ndim
@@ -157,12 +157,13 @@ program rpi
         end do
      end do
   end if
-
+  write(*,*) "Locating instanton"
   call instanton(xtilde,well1,well2)
   write(*,*) "Found instanton."
   open(19, file="instanton.xyz")
   do i=1,n
-     write(*,*) i, V(xtilde(i,:,:))
+     call Vprime(xtilde(i,:,:), grad)
+     write(*,*) i, V(xtilde(i,:,:)),norm2(reshape(grad, (/ndim*natom/)))
      write(19,*) natom
      write(19,*) "Energy of minimum", V(xtilde(i,:,:))
      do j=1, natom
