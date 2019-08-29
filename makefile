@@ -1,7 +1,7 @@
 ###################################################################################
 #Define all the compilers and their options
 FC= ifort
-MPIFC= mpif90
+MPIFC= mpiifort
 FFLAGS= -warn -g -O2 -i8 -r8 -w -no-wrap-margin -module ../build/modules
 FLIBS_PAR=-L${MKLROOT}/lib/intel64 -mkl=sequential -lmkl_rt -lpthread -lm -ldl
 FLIBS_SEQ=-L${MKLROOT}/lib/intel64 -mkl=sequential -lmkl_rt -lpthread -lm -ldl

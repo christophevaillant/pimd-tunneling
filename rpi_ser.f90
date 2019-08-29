@@ -162,7 +162,7 @@ program rpi
   write(*,*) "Found instanton."
   open(19, file="instanton.xyz")
   do i=1,n
-     write(*,*) i, V(xtilde(i,:,:))
+     ! write(*,*) i, V(xtilde(i,:,:))
      write(19,*) natom
      write(19,*) "Energy of minimum",i
      do j=1, natom
