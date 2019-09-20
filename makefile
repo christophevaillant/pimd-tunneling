@@ -80,16 +80,16 @@ pimd_wathal_ser: FFLAGS+= -lstdc++
 ###################################################################################
 #Compilation commands for object files
 $(OBJDIR)/%.o: %.f
-	$(FC) -c $(FFLAGS) $< -o $@
+	$(FC) $(INCLUDE) -c $(FFLAGS) $< -o $@
 
 $(OBJDIR)/%.o: %.f90
-	$(FC) -c $(FFLAGS) $< -o $@
+	$(FC)  $(INCLUDE) -c $(FFLAGS) $< -o $@
 
 $(OBJDIR)/pimd_par.o: pimd_par.f90
-	$(MPIFC) -c $(FFLAGS) $< -o $@
+	$(MPIFC) $(INCLUDE) -c $(FFLAGS) $< -o $@
 
 $(OBJDIR)/rpi_par.o: rpi_par.f90
-	$(MPIFC) -c $(FFLAGS) $< -o $@
+	$(MPIFC) $(INCLUDE) -c $(FFLAGS) $< -o $@
 
 
 ###################################################################################
