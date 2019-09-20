@@ -32,9 +32,9 @@ contains
           xtemp((j-1)*ndim +i)= x(i,j)*0.529177d0
        end do
     end do
-    call calc_pot_link2f90(xtemp, at_name, natom, V)
+    call calc_pot_link2f90_g(xtemp, at_name, natom, V, dummy1)
     ! write(*,*) "V0=",V0
-    V= V*1.59362d-3 - V0
+    V= V*1.59362d-3 -V0
     deallocate(xtemp, dummy1)
     return
   end function V

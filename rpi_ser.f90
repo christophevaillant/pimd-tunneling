@@ -70,8 +70,9 @@ program rpi
   if (alignwell) call get_align(well2,theta1, theta2, theta3, origin)
   wellinit(:,:)= well2(:,:)
   call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
+  write(*,*) "Potential at wells:", V(well1), V(well2), V0
   V0=V(well1)
-  write(*,*) "Potential at wells:", V(well1), V(well2)
+  write(*,*) "Potential at wells:", V(well1), V(well2), V0
   allocate(grad(ndim,natom))
   call Vprime(well1, grad)
   write(*,*) "With norm of grad:", norm2(reshape(grad, (/ndim*natom/)))
@@ -111,6 +112,7 @@ program rpi
            call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
            lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
         end if
+        Vpath(i)= V(path(i,:,:))
      end do
      lampath(:)= lampath(:)/lampath(npath)
      close(15)
@@ -132,7 +134,6 @@ program rpi
      if (xunit .eq. 2) then
         path(:,:,:) = path(:,:,:)/0.529177d0
      end if
-
      allocate(splinepath(npath))
      xtilde=0.0d0
      splinepath=0.0d0
@@ -161,6 +162,20 @@ program rpi
   call instanton(xtilde,well1,well2)
   write(*,*) "Found instanton."
   open(19, file="instanton.xyz")
+  
+  allocate(Vpath(n))
+  do i=1, n
+     Vpath(i)= V(xtilde(i,:,:))
+  end do
+  if (minval(Vpath) .lt. 0.0d0) then
+     i= minloc(Vpath, dim=1)
+     V0=0
+     V0= V(xtilde(i,:,:))
+     write(*,*) "New V0=", V0
+     write(*,*) "New wells=", V(well1), V(well2)
+  end if
+  deallocate(Vpath)
+
   do i=1,n
      call Vprime(xtilde(i,:,:), grad)
      write(*,*) i, V(xtilde(i,:,:)),norm2(reshape(grad, (/ndim*natom/)))
@@ -171,6 +186,7 @@ program rpi
      end do
   end do
   close(19)
+
 
   allocate(lampath(n))
   open(21, file="instantonpathenergy.csv")
