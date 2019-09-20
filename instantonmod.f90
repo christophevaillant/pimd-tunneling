@@ -605,8 +605,9 @@ end subroutine centreofmass
     iw=totdof*(2*m+5) + 11*m**2 + 8*m
     allocate(work(iw), iwork(3*totdof), isave(44), dsave(29))
     iflag=0
-    eps2= 1.0d-5 !gradient convergence
-    factr=1.0d7
+    write(*,*) "Convergence=", eps2
+    ! eps2= 1.0d-5 !gradient convergence
+    factr=1.0d10
     maxiter=40
     if (fixedends) then
        f= UM(xtilde,a,b)
@@ -632,7 +633,7 @@ end subroutine centreofmass
              f= UM(xtilde)
              call UMprime(xtilde,fprime)
           end if
-          ! write(*,*) count, f
+          write(*,*) count, f
        end if
     end do
     if (task(1:5) .eq. "ERROR" .or. task(1:4) .eq. "ABNO") then
