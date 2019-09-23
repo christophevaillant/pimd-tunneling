@@ -4,6 +4,7 @@ module mcmod_mass
   double precision::               V0
   integer,parameter::              atom1=1, atom2=2, atom3=4
   integer::                        n, ndim, ndof, natom, xunit, totdof
+  character, allocatable::         label(:)
 
 contains
   subroutine V_init()
