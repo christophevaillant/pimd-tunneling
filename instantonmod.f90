@@ -607,7 +607,7 @@ end subroutine centreofmass
     iflag=0
     write(*,*) "Convergence=", eps2
     ! eps2= 1.0d-5 !gradient convergence
-    factr=1.0d10
+    factr=1.0d6
     maxiter=40
     if (fixedends) then
        f= UM(xtilde,a,b)

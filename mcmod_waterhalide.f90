@@ -1,6 +1,6 @@
 module mcmod_mass
   implicit none
-  double precision::               V0, eps2=1.0d-5
+  double precision::               V0, eps2=1.0d-6
   integer,parameter::              atom1=1, atom2=4, atom3=7 !pick the big atoms, O, O and Ha
   integer::                        n, ndim, ndof, natom, xunit, totdof
   character(len=5), allocatable::               at_name(:)
@@ -75,7 +75,7 @@ contains
     integer::              i, j
     double precision, allocatable::     gradplus(:, :), gradminus(:, :)
 
-    eps=1d-4
+    eps=1d-5
     allocate(gradplus(ndim, natom), gradminus(ndim, natom))
     do i= 1, ndim
        do j= 1, natom

@@ -26,13 +26,13 @@ contains
     end do
     call mbpolenergy(3, V, xtemp)
     V= V*1.59362d-3 - V0
-    if (V0 .ne. 0.0 .and. (V .lt. -0.5 .or. V.gt. 5.0)) then
-       write(*,*) "Possible hole detected"
-       do i=1, natom
-          write(*,*) label(i), (x(j,i)*0.529177d0, j=1,ndim)
-       end do
-       stop
-    end if
+    ! if (V0 .ne. 0.0 .and. (V .lt. -0.5 .or. V.gt. 5.0)) then
+    !    write(*,*) "Possible hole detected"
+    !    do i=1, natom
+    !       write(*,*) label(i), (x(j,i)*0.529177d0, j=1,ndim)
+    !    end do
+    !    stop
+    ! end if
     deallocate(xtemp)
     return
   end function V

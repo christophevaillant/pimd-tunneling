@@ -15,9 +15,9 @@ program rpi
   integer::                         i, j,k,npath, dummy, zerocount, npoints
   integer::                         ii,jj,kk
   character::                      dummylabel, dummystr(28)
-  logical::                        angular, output_instanton, readpath, alignwell
+  logical::                        angular, output_instanton, readpath, alignwell, alignpath
   namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, angular, npoints, cutofftheta,cutoffphi,&
-       output_instanton,readpath, alignwell, fixedends
+       output_instanton,readpath, alignwell, fixedends, alignpath
 
   !-------------------------
   !Set default system parameters then read in namelist
@@ -33,6 +33,7 @@ program rpi
   readpath=.true.
   alignwell=.false.
   fixedends=.true.
+  alignpath=.true.
 
   read(5, nml=RPIDATA)
   betan= beta/dble(n)
@@ -104,13 +105,18 @@ program rpi
         do j=1, natom
            read(15,*) dummylabel, (initpath(k,j), k=1,ndim)
         end do
-        if (i.eq.1) then
-           lampath(1)=0.0d0
-           call get_align(initpath,theta1, theta2, theta3, origin)
-           call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
+        if (alignpath) then
+           if (i.eq.1) then
+              lampath(1)=0.0d0
+              call get_align(initpath,theta1, theta2, theta3, origin)
+              call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
+           else
+              call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
+              lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
+           end if
         else
-           call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
-           lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
+           path(i,:,:)= initpath(:,:)
+           if (i.gt.1) lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))
         end if
         Vpath(i)= V(path(i,:,:))
      end do
