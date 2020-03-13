@@ -50,6 +50,8 @@ WATTRIMFILES= $(OBJDIR)/mcmod_watertrimer.o
 #Water hexamer (MB-pol):
 WATHEXFILES= $(OBJDIR)/mcmod_waterhexamer.o
 
+#MOLPRO interface
+MOLPROFILES= $(OBJDIR)/mcmod_molpro.o
 
 #Water dimer (HBB2):
 HBB2FILES= $(OBJDIR)/mcmod_waterdimer_hbb2.o
@@ -266,6 +268,23 @@ rpi_wathal_par: $(WATHALFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o
 
 crossover_wathal: $(WATHALFILES) $(COMFILES)  $(OBJDIR)/crossover.o
 	$(FC) $(FFLAGS) $(WATHALFILES) $(COMFILES)  $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATHALLIBS)
+
+################################
+#Water Dimer and Halide
+pimd_molpro_par: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o
+	$(MPIFC) $(FFLAGS) $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/pimd_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+
+pimd_molpro_ser: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
+	$(FC) $(FFLAGS) $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+
+rpi_molpro_ser: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
+	$(FC) $(FFLAGS) $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
+
+rpi_molpro_par: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o
+	$(MPIFC) $(FFLAGS) $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+
+crossover_molpro: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/crossover.o
+	$(FC) $(FFLAGS) $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
 
 ###################################################################################

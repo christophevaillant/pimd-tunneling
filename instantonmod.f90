@@ -84,6 +84,67 @@ contains
 
     return
   end subroutine UMprime
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  subroutine UMforceenergy(x, answer,UM,a,b)
+    implicit none
+    integer::            i,j,k
+    double precision,intent(in)::   x(:,:,:)
+    double precision,intent(in),optional:: a(:,:),b(:,:)
+    double precision, intent(out)::  answer(:,:,:), UM
+    double precision,allocatable:: grad(:,:)
+    double precision:: energy
+
+    allocate(grad(ndim,natom))
+    UM=0.0d0
+    do i=1, N, 1
+       call potforce(x(i,:,:),grad,energy)
+       UM=UM+ energy
+       do j=1, ndim
+          do k=1, natom
+             if (i .lt. N) UM=UM+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
+          end do
+       end do
+       do j=1,ndim
+          do k=1,natom
+             if (i.eq.1) then
+                if (fixedends) then
+                   answer(1,j,k)=mass(k)*(2.0*x(1,j,k) - a(j,k) - x(2,j,k))/betan**2
+                else
+                   answer(1,j,k)=mass(k)*(x(1,j,k) - x(2,j,k))/betan**2                   
+                end if
+             else if (i.eq.N) then
+                if (fixedends) then
+                   answer(N,j,k)=mass(k)*(2.0*x(N,j,k) - x(N-1,j,k) - b(j,k))/betan**2
+                else
+                   answer(N,j,k)=mass(k)*(x(N,j,k) - x(N-1,j,k))/betan**2
+                end if
+             else
+                answer(i,j,k)= mass(k)*(2.0*x(i,j,k) - x(i-1,j,k) - x(i+1,j,k))/betan**2
+             end if
+          end do
+       end do
+       do j=1, ndim
+          do k=1, natom
+             answer(i,j,k)= answer(i,j,k)+ grad(j,k)
+          end do
+       end do
+    end do
+
+    if (fixedends) then
+       ! UM=UM + V(a(:,:))+ V(b(:,:))
+       do j=1, ndim
+          do k=1, natom
+             UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
+             UM=UM+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
+          end do
+       end do
+    end if
+
+    deallocate(grad)
+
+    return
+  end subroutine UMforceenergy
 
   !---------------------------------------------------------------------
   subroutine UMhessian(x, answer)
@@ -609,11 +670,19 @@ end subroutine centreofmass
     factr=1.0d6
     maxiter=40
     if (fixedends) then
-       f= UM(xtilde,a,b)
-       call UMprime(xtilde,fprime,a,b)
+       if (potforcepresent) then
+          call UMforceenergy(xtilde,fprime,f,a,b)
+       else
+          f= UM(xtilde,a,b)
+          call UMprime(xtilde,fprime,a,b)
+       end if
     else
-       f= UM(xtilde)
-       call UMprime(xtilde,fprime)
+       if (potforcepresent) then
+          call UMforceenergy(xtilde,fprime,f)
+       else
+          f= UM(xtilde)
+          call UMprime(xtilde,fprime)
+       end if
     end if
     count=0
     do while( task(1:2).eq.'FG'.or.task.eq.'NEW_X'.or. &
@@ -624,15 +693,23 @@ end subroutine centreofmass
        call setulb(totdof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
             ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
        if (task(1:2) .eq. 'FG') then
+          write(*,*) "iteration", count
           xtilde= reshape(xwork,(/n,ndim,natom/))
           if (fixedends) then
-             f= UM(xtilde,a,b)
-             call UMprime(xtilde,fprime,a,b)
+             if (potforcepresent) then
+                call UMforceenergy(xtilde,fprime,f,a,b)
+             else
+                f= UM(xtilde,a,b)
+                call UMprime(xtilde,fprime,a,b)
+             end if
           else
-             f= UM(xtilde)
-             call UMprime(xtilde,fprime)
+             if (potforcepresent) then
+                call UMforceenergy(xtilde,fprime,f)
+             else
+                f= UM(xtilde)
+                call UMprime(xtilde,fprime)
+             end if
           end if
-          ! write(*,*) count, f
        end if
     end do
     if (task(1:5) .eq. "ERROR" .or. task(1:4) .eq. "ABNO") then

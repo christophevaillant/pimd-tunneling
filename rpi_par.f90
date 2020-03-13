@@ -52,7 +52,7 @@ program rpi
   alignwell=.false.
   fixedends=.true.
 
-  call V_init()
+  call V_init(iproc)
 
   if (iproc .eq. 0) then
      read(5, nml=RPIDATA)

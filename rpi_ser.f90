@@ -10,7 +10,7 @@ program rpi
   double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:), grad(:,:)
   double precision, allocatable::   initpath(:,:), xtilderot(:,:,:), wellrot(:,:)
   double precision::                lndetj, lndetj0, skink, psi, cutofftheta, cutoffphi
-  double precision::                delta, omega, gammetilde, Ibeta
+  double precision::                delta, omega, gammetilde, Ibeta, Vwell1, Vwell2
   double precision::                theta1, theta2, theta3
   integer::                         i, j,k,npath, dummy, zerocount, npoints
   integer::                         ii,jj,kk
@@ -34,7 +34,8 @@ program rpi
   alignwell=.false.
   fixedends=.true.
   alignpath=.true.
-
+  potforcepresent=.false.
+  
   read(5, nml=RPIDATA)
   betan= beta/dble(n)
   allocate(mass(natom),label(natom))
@@ -45,10 +46,10 @@ program rpi
   close(18)
 
   if (angular) fixedends=.true.
-
   ndof=ndim*natom
   totdof= n*ndof
-  call V_init()
+
+  call V_init(0)
   allocate(well1(ndim,natom),well2(ndim,natom), wellinit(ndim,natom))
   open(30, file="well1.dat", status='old')
   open(40, file="well2.dat", status='old')
@@ -71,9 +72,11 @@ program rpi
   if (alignwell) call get_align(well2,theta1, theta2, theta3, origin)
   wellinit(:,:)= well2(:,:)
   call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
-  write(*,*) "Potential at wells:", V(well1), V(well2), V0
+  ! write(*,*) "Potential at wells:", V(well1), V(well2), V0
   V0=V(well1)
-  write(*,*) "Potential at wells:", V(well1), V(well2), V0
+  Vwell1= 0.0d0
+  Vwell2= V(well2)
+  write(*,*) "Potential at wells:", Vwell1, Vwell2, V0
   allocate(grad(ndim,natom))
   call Vprime(well1, grad)
   write(*,*) "With norm of grad:", norm2(reshape(grad, (/ndim*natom/)))
@@ -90,7 +93,7 @@ program rpi
   end do
   write(*,*) "beta=", beta, "n=", n
   write(*,*) "beta_n=", betan
-
+  
   !-------------------------
   !obtain instanton solution, x_tilde
   allocate(xtilde(n, ndim, natom))
@@ -98,10 +101,11 @@ program rpi
      allocate(initpath(ndim, natom), lampath(npath), Vpath(npath))
      allocate(path(npath, ndim, natom))
      path=0.0d0
+     lampath(:)=0.0d0
      open(15, file="path.xyz")
      do i=1, npath
-        read(15,*) dummy
-        read(15,'(28A)') dummystr!, dummyE !'(A,G25.15)'
+        read(15,*)
+        read(15,*)
         do j=1, natom
            read(15,*) dummylabel, (initpath(k,j), k=1,ndim)
         end do
@@ -114,11 +118,19 @@ program rpi
               call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
               lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
            end if
+           if (xunit .eq. 2) then
+              path(:,:,:) = path(:,:,:)/0.529177d0
+           end if
         else
-           path(i,:,:)= initpath(:,:)
+           if (xunit.eq.1) then
+              path(i,:,:)= initpath(:,:)
+           else
+              path(i,:,:)= initpath(:,:)/0.529177d0
+           end if
            if (i.gt.1) lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))
         end if
         Vpath(i)= V(path(i,:,:))
+        write(*,*) i, Vpath(i)
      end do
      lampath(:)= lampath(:)/lampath(npath)
      close(15)
@@ -137,9 +149,6 @@ program rpi
      close(20)
 
      deallocate(initpath, origin)
-     if (xunit .eq. 2) then
-        path(:,:,:) = path(:,:,:)/0.529177d0
-     end if
      allocate(splinepath(npath))
      xtilde=0.0d0
      splinepath=0.0d0
@@ -168,7 +177,7 @@ program rpi
   call instanton(xtilde,well1,well2)
   write(*,*) "Found instanton."
   open(19, file="instanton.xyz")
-  
+
   allocate(Vpath(n))
   do i=1, n
      Vpath(i)= V(xtilde(i,:,:))
@@ -180,12 +189,11 @@ program rpi
      write(*,*) "New V0=", V0
      write(*,*) "New wells=", V(well1), V(well2)
   end if
-  deallocate(Vpath)
 
   do i=1,n
      ! write(*,*) i, V(xtilde(i,:,:))
      write(19,*) natom
-     write(19,*) "Energy of minimum", V(xtilde(i,:,:))
+     write(19,*) "Energy of minimum", Vpath(i)
      do j=1, natom
         write(19,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim), (0.0d0, k=ndim+1,3)
      end do
@@ -204,7 +212,7 @@ program rpi
   end do
   lampath(:)= lampath(:)/lampath(n)
   do i=1,n
-     write(21,*) lampath(i),V(xtilde(i,:,:))
+     write(21,*) lampath(i),Vpath(i)
   end do
   close(21)
   deallocate(lampath)
@@ -369,6 +377,8 @@ program rpi
      write(*,*) "h_ij=", omega/betan, 219475.0d0*omega/betan
      write(*,*) "RPI delta=", delta, delta*219475.0d0
   end if
+
+  deallocate(Vpath)
 
   deallocate(xharm, etasquared, xtilde)
 end program rpi

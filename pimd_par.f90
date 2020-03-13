@@ -84,7 +84,7 @@ program pimd
   !it to other procs
   allocate(mpi_int_send(8), mpi_double_send(5))
   
-  call V_init()
+  call V_init(iproc)
   if (iproc .eq. 0) then
      read(*, nml=MCDATA)
      betan= beta/dble(n+1)
