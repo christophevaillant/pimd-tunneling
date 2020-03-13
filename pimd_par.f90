@@ -42,7 +42,7 @@ program pimd
   integer, dimension(MPI_STATUS_SIZE) :: rstatus
   namelist /MCDATA/ n, beta, NMC, Noutput,dt, iprint,imin,tau,npath, gamma,&
        nintegral,nrep, use_mkl, thermostat, ndim, natom, xunit, instapath, centre,&
-       dHdrlimit, readpath, alignwell, fixedends
+       dHdrlimit, readpath, alignwell, fixedends, cayley
 
   !initialize MPI
   nproc=0
@@ -79,7 +79,8 @@ program pimd
   readpath=.true.
   alignwell=.false.
   fixedends=.true.
-
+  cayley=.false.
+  
   !Read in namelist variables for root proc, and spread
   !it to other procs
   allocate(mpi_int_send(8), mpi_double_send(5))

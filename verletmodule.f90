@@ -15,7 +15,7 @@ module verletint
   double precision, allocatable::   c1(:,:), c2(:,:)
   double precision::                alpha1, alpha2, alpha3, alpha4
   double precision::                beta1, beta2, beta3, tau, gamma
-  logical::                         iprint, use_mkl
+  logical::                         iprint, use_mkl, cayley
   integer::                         errcode_poisson, rmethod_poisson
   integer::                         brng_poisson, seed_poisson, stat
   type (vsl_stream_state)::         stream_poisson,stream_normal
@@ -1016,10 +1016,19 @@ contains
        do j=1,ndim
           do k=1,natom
              omegak= sqrt(mass(k)/beadmass(k,i))*lam(i)
-             newpi(i,j,k)= pip(i,j,k)*cos(time*omegak) - &
-                  q(i,j,k)*omegak*beadmass(k,i)*sin(omegak*time)
-             q(i,j,k)= q(i,j,k)*cos(time*omegak) + &
-                  pip(i,j,k)*sin(omegak*time)/(omegak*beadmass(k,i))
+             if (cayley) then
+                newpi(i,j,k)= pip(i,j,k)*(4.0d0- omegak**2*time**2) &
+                     - 4.0d0*q(i,j,k)*beadmass(k,i)*omegak**2*time
+                newpi(i,j,k)=newpi(i,j,k)/(4.0d0+ omegak**2*time**2)
+                q(i,j,k)= q(i,j,k)*(4.0d0- omegak**2*time**2) &
+                     + 4.0d0*pip(i,j,k)*time/beadmass(k,i)
+                q(i,j,k)=q(i,j,k)/(4.0d0+ omegak**2*time**2)
+             else
+                newpi(i,j,k)= pip(i,j,k)*cos(time*omegak) - &
+                     q(i,j,k)*omegak*beadmass(k,i)*sin(omegak*time)
+                q(i,j,k)= q(i,j,k)*cos(time*omegak) + &
+                     pip(i,j,k)*sin(omegak*time)/(omegak*beadmass(k,i))
+             end if
              if (newpi(i,j,k) .ne. newpi(i,j,k)) then
                 write(*,*) "NaN in 1st NM propagation"
                 stop
