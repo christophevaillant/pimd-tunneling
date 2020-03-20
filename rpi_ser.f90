@@ -3,7 +3,7 @@ program rpi
   use verletint
   use instantonmod
   implicit none
-  double precision, allocatable::   theta(:),phi(:), xharm(:,:,:), H(:,:)
+  double precision, allocatable::   theta(:),phi(:), xharm(:,:,:), H(:,:,:,:)
   double precision, allocatable::   weightstheta(:),weightsphi(:), origin(:)
   double precision, allocatable::   eta(:),weightseta(:)
   double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:), wellinit(:,:)
@@ -13,9 +13,13 @@ program rpi
   double precision::                delta, omega, gammetilde, Ibeta, Vwell1, Vwell2
   double precision::                theta1, theta2, theta3
   integer::                         i, j,k,npath, dummy, zerocount, npoints
-  integer::                         ii,jj,kk
+  integer::                         ii,jj,kk,l
   character::                      dummylabel, dummystr(28)
   logical::                        angular, output_instanton, readpath, alignwell, alignpath
+    integer::                        nout, ldz, lwork, liwork, info
+  integer,allocatable::            isuppz(:), iwork(:)
+  double precision, allocatable::  work(:)
+
   namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, angular, npoints, cutofftheta,cutoffphi,&
        output_instanton,readpath, alignwell, fixedends, alignpath
 
@@ -93,7 +97,28 @@ program rpi
   end do
   write(*,*) "beta=", beta, "n=", n
   write(*,*) "beta_n=", betan
-  
+
+  write(*,*)"Calculating Hessian as test"
+  allocate(H(ndim,natom,ndim,natom), etasquared(ndof))
+  call Vdoubleprime(well1,H)
+  open(22, file="hessian_well1.dat")
+  do j=1,natom
+     do i=1,ndim
+        write(22,*) ((H(i,j,k,l), k=1,ndim),l=1,natom)           
+     end do
+     do l=1,natom
+        H(:,j,:,l) = H(:,j,:,l)/sqrt(mass(j)*mass(l))
+     end do
+  end do
+    ! !get diagonal hessian
+  lwork= 2*ndof+1
+  liwork= 1
+  info=0
+  allocate(work(lwork), iwork(liwork))
+  call DSYEVD('N', 'L', ndof, reshape(H, (/ndof,ndof/)), ndof, etasquared, work, lwork, iwork, liwork, info)
+  write(*,*) etasquared
+  deallocate(H,etasquared)
+  ! stop
   !-------------------------
   !obtain instanton solution, x_tilde
   allocate(xtilde(n, ndim, natom))
