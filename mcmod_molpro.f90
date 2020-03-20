@@ -25,10 +25,10 @@ contains
     end if
     
     if (force) then
-       call SYSTEM("cp " //trim(basename)// "_force.com "//trim(fulldir))
+       call EXECUTE_COMMAND_LINE("cp " //trim(basename)// "_force.com "//trim(fulldir))
        open(50, file=trim(fulldir)//"/"//trim(basename)//"_force.com", status="old", position="append")
     else
-       call SYSTEM("cp " //trim(basename)// ".com "//trim(fulldir))
+       call EXECUTE_COMMAND_LINE("cp " //trim(basename)// ".com "//trim(fulldir))
        open(50, file=trim(fulldir)//"/"//trim(basename)//".com", status="old", position="append")
     end if
     ! if (present(i)) then
@@ -82,7 +82,7 @@ contains
     !make directory structure
     inquire(file=procdir, exist=ex)
     if (.not. ex) then
-       call SYSTEM("mkdir "//procdir)
+       call EXECUTE_COMMAND_LINE("mkdir "//procdir)
     end if
 
     allocate(character(len=8)::beaddir(n))
@@ -95,7 +95,7 @@ contains
           format_string = "(A4,I3)"
        end if
        write(beaddir(i),format_string) "bead", i
-       call SYSTEM("mkdir "//procdir//"/"//beaddir(i))
+       call EXECUTE_COMMAND_LINE("mkdir "//procdir//"/"//beaddir(i))
     end do
     
     return
@@ -135,7 +135,7 @@ contains
     close(1000)
     !--------------------------------
     !Run Molpro
-    call SYSTEM("molpro -s -n "//procstring//" "//trim(basename)//".com")
+    call EXECUTE_COMMAND_LINE("molpro -W . -s -n "//procstring//" "//trim(basename)//".com")
     !--------------------------------
     !Search through output and find the energy
     open(unit=2000, file=trim(basename)//".out", status="OLD", access="SEQUENTIAL")
@@ -207,7 +207,7 @@ contains
     ! close(1000)
     ! !--------------------------------
     ! !Run Molpro
-    ! call SYSTEM("molpro -s -n "//procstring//" "//trim(basename)//"_force.com")
+    ! call EXECUTE_COMMAND_LINE("molpro -s -n "//procstring//" "//trim(basename)//"_force.com")
     ! !--------------------------------
     ! !Search through output and find the energy
     ! open(unit=3000, file="forces.xyz", status="OLD", access="SEQUENTIAL")
@@ -257,7 +257,7 @@ contains
     close(1000)
     !--------------------------------
     !Run Molpro
-    call SYSTEM("molpro -s -n "//procstring//" "//trim(basename)//"_force.com")
+    call EXECUTE_COMMAND_LINE("molpro -W . -s -n "//procstring//" "//trim(basename)//"_force.com")
     !--------------------------------
     !Search through output and find the energy
     open(unit=2000, file=trim(basename)//"_force.out", status="OLD", access="SEQUENTIAL")
@@ -351,7 +351,7 @@ contains
 
   subroutine V_finalize()
     deallocate(procdir)
-    call SYSTEM("cd ..")
+    call EXECUTE_COMMAND_LINE("cd ..")
   end subroutine V_finalize
   
 end module mcmod_mass
