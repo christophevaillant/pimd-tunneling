@@ -4,11 +4,14 @@ module mcmod_mass
   integer,parameter::              atom1=1, atom2=2, atom3=3
   character, allocatable::         label(:)
   integer::                        n, ndim, ndof, natom, xunit, totdof
+  logical::                        potforcepresent
 
 contains
 
-  subroutine V_init()
+  subroutine V_init(iproc)
+    integer, intent(in):: iproc
     V0=0.0d0
+    potforcepresent=.false.
     return
   end subroutine V_init
   !---------------------------------------------------------------------
@@ -74,5 +77,11 @@ contains
     deallocate(gradplus, gradminus)
     return
   end subroutine Vdoubleprime
+    !---------------------------------------------------------------------
+  subroutine potforce(x,grad,energy)
+    double precision,intent(in)::     x(:,:)
+    double precision, intent(out)::  grad(:,:), energy
+    return
+  end subroutine Potforce
 
 end module mcmod_mass
