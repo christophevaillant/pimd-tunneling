@@ -18,20 +18,22 @@ contains
     integer::            i,j,k
     double precision,intent(in)::   x(:,:,:)
     double precision,intent(in),optional:: a(:,:),b(:,:)
-    double precision:: UM
+    double precision:: UM, pot
 
     UM=0.0d0
     do i=1, N-1, 1
-       UM=UM+ V(x(i,:,:))
+       pot= V(x(i,:,:),i)
+       write(*,*) i, pot
+       UM=UM + pot
        do j=1, ndim
           do k=1, natom
              UM=UM+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
           end do
        end do
     end do
-    UM=UM+ V(x(N,:,:))
+    UM=UM+ V(x(N,:,:),i)
     if (fixedends) then
-       UM=UM + V(a(:,:))+ V(b(:,:))
+       !UM=UM + V(a(:,:))+ V(b(:,:)) !already set these to 0!
        do j=1, ndim
           do k=1, natom
              UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
@@ -73,7 +75,7 @@ contains
              end if
           end do
        end do
-       call Vprime(x(i,:,:),grad(:,:))
+       call Vprime(x(i,:,:),grad(:,:),i)
        do j=1, ndim
           do k=1, natom
              answer(i,j,k)= answer(i,j,k)+ grad(j,k)
@@ -98,7 +100,7 @@ contains
     allocate(grad(ndim,natom))
     UM=0.0d0
     do i=1, N, 1
-       call potforce(x(i,:,:),grad,energy)
+       call potforce(x(i,:,:),grad,energy,i)
        UM=UM+ energy
        do j=1, ndim
           do k=1, natom
@@ -160,7 +162,7 @@ contains
     answer=0.0d0
     do i=1, n, 1
        hess=0.0d0
-       call Vdoubleprime(x(i,:,:), hess)
+       call Vdoubleprime(x(i,:,:), hess,i)
        do j1=1,ndim
           do k1=1,natom
              do j2=1,ndim

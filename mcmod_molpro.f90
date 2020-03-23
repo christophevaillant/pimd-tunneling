@@ -31,20 +31,8 @@ contains
        call EXECUTE_COMMAND_LINE("cp " //trim(basename)// ".com "//trim(fulldir))
        open(50, file=trim(fulldir)//"/"//trim(basename)//".com", status="old", position="append")
     end if
-    ! if (present(i)) then
-    !    write(wfufilename,"(A14,I3,A4)") "acetylcyanide_", i, ".wfu"
-    !    write(50,*) "FILE,2," // trim(wfufilename) // ",UNKNOWN"
-       ! write(50,"(A6,I4,A2)")"start,", 7000+i,".2"
-       ! write(50,*)
-       ! write(50,"(A8,I4,A2)")"orbital,",7000+i,".2"
-    ! else
-    !    wfufilename="acetylcyanide.wfu"
-    !    write(50,*) "FILE,2," // trim(wfufilename) // ",UNKNOWN"
-    !    ! write(50,"(A6,I4,A2)")"start,", 7000,".2"
-    !    ! write(50,*)
-    !    ! write(50,"(A8,I4,A2)")"orbital,",7000,".2"
-    ! end if
-    ! close(50)
+
+    close(50)
     return
   end subroutine file_init
   
@@ -60,7 +48,7 @@ contains
     atom1=1
     atom2=2
     atom3=3
-    potforcepresent= .false.
+    potforcepresent= .true.
     informat="(A22,3X,F18.12)"
     potprocs=1
     
@@ -115,15 +103,12 @@ contains
     !Output geometry to geometry file
     if (present(bead)) then
        call file_init(.false., bead)
-    else
-       call file_init(.false.)
-    end if
-    
-    if (present(bead)) then
        fulldir= trim(procdir) // "/" // trim(beaddir(bead))
     else
+       call file_init(.false.)
        fulldir= trim(procdir)
     end if
+    
     
     call CHDIR(trim(fulldir))
     open(1000, file="geometry.xyz")
@@ -159,9 +144,12 @@ contains
     close(2000)
 
     V=V-V0
-    write(*,*)V
-    call CHDIR("..")
-    
+    ! write(*,*)V
+    if (present(bead)) then
+       call CHDIR("../..")
+    else
+       call CHDIR("..")
+    end if
     return
   end function V
 
@@ -173,54 +161,62 @@ contains
     double precision, intent(out):: grad(:,:)
     integer::              i,j,k,linecount
     character::            throw0
+    character(len=25)::    fulldir
     double precision::     dummy1, eps, potplus, potminus
-    ! double precision::     throw1,throw2,throw3,throw4
+    double precision::     throw1,throw2,throw3,throw4
     double precision, allocatable:: xtemp(:,:)
 
-    allocate(xtemp(ndim,natom))
-    eps=1d-2
-    do i= 1, ndim
-       do j= 1, natom
-          xtemp(:,:)= x(:,:)
-          xtemp(i,j)= xtemp(i,j) + eps
-          potplus=V(xtemp,bead)
-          xtemp(i,j)= xtemp(i,j) - 2.0d0*eps
-          potminus=V(xtemp,bead)
-          grad(i,j)= (potplus-potminus)/(2.0d0*eps)          
-       end do
+    ! allocate(xtemp(ndim,natom))
+    ! eps=1d-2
+    ! do i= 1, ndim
+    !    do j= 1, natom
+    !       xtemp(:,:)= x(:,:)
+    !       xtemp(i,j)= xtemp(i,j) + eps
+    !       potplus=V(xtemp,bead)
+    !       xtemp(i,j)= xtemp(i,j) - 2.0d0*eps
+    !       potminus=V(xtemp,bead)
+    !       grad(i,j)= (potplus-potminus)/(2.0d0*eps)          
+    !    end do
+    ! end do
+    ! deallocate(xtemp)
+    if (present(bead)) then
+       call file_init(.true., bead)
+       fulldir= trim(procdir) // "/" // trim(beaddir(bead))
+    else
+       call file_init(.true.)
+       fulldir= trim(procdir)
+    end if
+    
+    !--------------------------------
+    !Output geometry to geometry file
+    call CHDIR(fulldir)
+    open(1000, file="geometry.xyz")
+    write(1000,*) natom
+    write(1000,*) "Geometry of current point"
+    do j=1, natom
+       write(1000,*)  label(j), (x(k,j), k=1,ndim)
     end do
-    deallocate(xtemp)
-    ! if (present(bead)) then
-    !    call file_init(.true., bead)
-    ! else
-    !    call file_init(.true.)
-    ! end if
-    ! !--------------------------------
-    ! !Output geometry to geometry file
-    ! call CHDIR(procdir)
-    ! open(1000, file="geometry.xyz")
-    ! write(1000,*) natom
-    ! write(1000,*) "Geometry of current point"
-    ! do j=1, natom
-    !    write(1000,*)  label(j), (x(k,j), k=1,ndim)
-    ! end do
-    ! close(1000)
-    ! !--------------------------------
-    ! !Run Molpro
-    ! call EXECUTE_COMMAND_LINE("molpro -s -n "//procstring//" "//trim(basename)//"_force.com")
-    ! !--------------------------------
-    ! !Search through output and find the energy
-    ! open(unit=3000, file="forces.xyz", status="OLD", access="SEQUENTIAL")
-    ! read(3000,*)
-    ! read(3000,*)
-    ! do i=1,natom
-    !    read(3000,*) throw0,throw1,throw2,throw3,throw4, grad(1,i), grad(2,i), grad(3,i)
-    !    grad(1,i)=-grad(1,i)!*0.529177d0*3.6749d-2
-    !    grad(2,i)=-grad(2,i)!*0.529177d0*3.6749d-2
-    !    grad(3,i)=-grad(3,i)!*0.529177d0*3.6749d-2
-    ! end do
-    ! close(3000)
-    ! call CHDIR("..")
+    close(1000)
+    !--------------------------------
+    !Run Molpro
+    call EXECUTE_COMMAND_LINE("molpro -s -n "//procstring//" "//trim(basename)//"_force.com")
+    !--------------------------------
+    !Search through output and find the energy
+    open(unit=3000, file="forces.xyz", status="OLD", access="SEQUENTIAL")
+    read(3000,*)
+    read(3000,*)
+    do i=1,natom
+       read(3000,*) throw0,throw1,throw2,throw3,throw4, grad(1,i), grad(2,i), grad(3,i)
+       grad(1,i)=-grad(1,i)*0.529177d0*3.6749d-2
+       grad(2,i)=-grad(2,i)*0.529177d0*3.6749d-2
+       grad(3,i)=-grad(3,i)*0.529177d0*3.6749d-2
+    end do
+    close(3000)
+    if (present(bead)) then
+       call CHDIR("../..")
+    else
+       call CHDIR("..")
+    end if
     
     return
   end subroutine Vprime
@@ -234,20 +230,22 @@ contains
     double precision::               throwaway
     double precision, allocatable::  dummy1(:),dummy2(:), xtemp(:)
     character(len=200)::   intext
-    character(len=20)::    inword1, inword2, inword3
+    character(len=25)::    inword1, inword2, inword3,fulldir
     integer::              i,j,k, ierr, linecount
     character::            throw0
     double precision::     throw1,throw2,throw3,throw4
 
     if (present(bead)) then
        call file_init(.true., bead)
+       fulldir= trim(procdir) // "/" // trim(beaddir(bead))
     else
        call file_init(.true.)
+       fulldir= trim(procdir)
     end if
 
     !--------------------------------
     !Output geometry to geometry file
-    call CHDIR(procdir)
+    call CHDIR(fulldir)
     open(1000, file="geometry.xyz")
     write(1000,*) natom
     write(1000,*) "Geometry of current point"
@@ -280,7 +278,7 @@ contains
     read(2000,informat) intext,energy
     close(2000)
     energy=energy-V0
-    write(*,*)energy
+    write(*,*) energy
     !--------------------------------
     !Search through output and find the energy
     open(unit=3000, file="forces.xyz", status="OLD", access="SEQUENTIAL")
@@ -288,12 +286,16 @@ contains
     read(3000,*)
     do i=1,natom
        read(3000,*) throw0,throw1,throw2,throw3,throw4, grad(1,i), grad(2,i), grad(3,i)
-       grad(1,i)=grad(1,i)*0.529177d0*3.6749d-2
-       grad(2,i)=grad(2,i)*0.529177d0*3.6749d-2
-       grad(3,i)=grad(3,i)*0.529177d0*3.6749d-2
+       grad(1,i)=-grad(1,i)*0.529177d0*3.6749d-2
+       grad(2,i)=-grad(2,i)*0.529177d0*3.6749d-2
+       grad(3,i)=-grad(3,i)*0.529177d0*3.6749d-2
     end do
     close(3000)
-    call CHDIR("..")
+    if (present(bead)) then
+       call CHDIR("../..")
+    else
+       call CHDIR("..")
+    end if
     
     return
   end subroutine Potforce
@@ -304,53 +306,53 @@ contains
     double precision::     hess(:,:,:,:), x(:,:), dummy1, eps
     integer::              i, j,k,l
     double precision:: pot1, pot2, pot3, pot4
-    double precision, allocatable:: xtemp(:,:)
-    ! double precision, allocatable::     gradplus(:, :), gradminus(:, :)
+    ! double precision, allocatable:: xtemp(:,:)
+    double precision, allocatable::     gradplus(:, :), gradminus(:, :)
 
-    allocate(xtemp(ndim,natom))
-    eps=1d-2
-    do i= 1, ndim
-       do j= 1, natom
-          do k=i, ndim
-             do l=j,natom
-                xtemp(:,:)= x(:,:)
-                xtemp(i,j)= xtemp(i,j) + eps
-                xtemp(k,l)= xtemp(k,l)+ eps
-                pot1=V(xtemp,bead)
-                xtemp(k,l)= xtemp(k,l) - 2.0d0*eps
-                pot2=V(xtemp,bead)
-                xtemp(i,j)= xtemp(i,j) - 2.0d0*eps
-                xtemp(k,l)= xtemp(k,l) + 2.0d0*eps
-                pot3=V(xtemp,bead)                
-                xtemp(k,l)= xtemp(k,l) - 2.0d0*eps
-                pot4=V(xtemp,bead)                
-                hess(i,j,k,l)= (pot1 - pot2- pot3 + pot4)/(4.0d0*eps)
-                hess(k,l,i,j)= hess(i,j,k,l)
-             end do
-          end do
-       end do
-    end do
-
-    deallocate(xtemp)
-    ! allocate(gradplus(ndim,natom), gradminus(ndim,natom))
+    ! allocate(xtemp(ndim,natom))
     ! eps=1d-2
     ! do i= 1, ndim
     !    do j= 1, natom
-    !       x(i,j)= x(i,j) + eps
-    !       call Vprime(x, gradplus)
-    !       x(i,j)= x(i,j) - 2.0d0*eps
-    !       call Vprime(x, gradminus)
-    !       x(i,j)= x(i,j) + eps
-    !       hess(i,j,:,:)= (gradplus(:,:)-gradminus(:,:))/(2.0d0*eps)          
+    !       do k=i, ndim
+    !          do l=j,natom
+    !             xtemp(:,:)= x(:,:)
+    !             xtemp(i,j)= xtemp(i,j) + eps
+    !             xtemp(k,l)= xtemp(k,l)+ eps
+    !             pot1=V(xtemp,bead)
+    !             xtemp(k,l)= xtemp(k,l) - 2.0d0*eps
+    !             pot2=V(xtemp,bead)
+    !             xtemp(i,j)= xtemp(i,j) - 2.0d0*eps
+    !             xtemp(k,l)= xtemp(k,l) + 2.0d0*eps
+    !             pot3=V(xtemp,bead)                
+    !             xtemp(k,l)= xtemp(k,l) - 2.0d0*eps
+    !             pot4=V(xtemp,bead)                
+    !             hess(i,j,k,l)= (pot1 - pot2- pot3 + pot4)/(4.0d0*eps)
+    !             hess(k,l,i,j)= hess(i,j,k,l)
+    !          end do
+    !       end do
     !    end do
     ! end do
+    ! deallocate(xtemp)
 
-    ! deallocate(gradplus,gradminus)
+    allocate(gradplus(ndim,natom), gradminus(ndim,natom))
+    eps=1d-2
+    do i= 1, ndim
+       do j= 1, natom
+          x(i,j)= x(i,j) + eps
+          call Vprime(x, gradplus)
+          x(i,j)= x(i,j) - 2.0d0*eps
+          call Vprime(x, gradminus)
+          x(i,j)= x(i,j) + eps
+          hess(i,j,:,:)= (gradplus(:,:)-gradminus(:,:))/(2.0d0*eps)          
+       end do
+    end do
+
+    deallocate(gradplus,gradminus)
     return
   end subroutine Vdoubleprime
 
   subroutine V_finalize()
-    deallocate(procdir)
+    deallocate(procdir,beaddir)
     call EXECUTE_COMMAND_LINE("cd ..")
   end subroutine V_finalize
   

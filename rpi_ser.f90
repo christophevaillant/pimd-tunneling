@@ -70,12 +70,26 @@ program rpi
   end if
   allocate(origin(ndim))
 
-  call get_align(well1,theta1, theta2, theta3, origin)
-  wellinit(:,:)= well1(:,:)
-  call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
-  if (alignwell) call get_align(well2,theta1, theta2, theta3, origin)
-  wellinit(:,:)= well2(:,:)
-  call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
+  if (alignwell) then
+     call get_align(well1,theta1, theta2, theta3, origin)
+     wellinit(:,:)= well1(:,:)
+     call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
+     call get_align(well2,theta1, theta2, theta3, origin)
+     wellinit(:,:)= well2(:,:)
+     call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
+     open(21, file="aligned_ends.xyz")
+     write(21,*) natom
+     write(21,*) "Well1"
+     do i=1, natom
+        write(21,*)  label(i), (well1(k,i)*0.529177d0, k=1,ndim)
+     end do
+     write(21,*) natom
+     write(21,*) "Well2"
+     do i=1, natom
+        write(21,*)  label(i), (well2(k,i)*0.529177d0, k=1,ndim)
+     end do
+     close(21)
+  end if
   ! write(*,*) "Potential at wells:", V(well1), V(well2), V0
   V0=V(well1)
   Vwell1= 0.0d0
@@ -84,17 +98,6 @@ program rpi
   allocate(grad(ndim,natom))
   call Vprime(well1, grad)
   write(*,*) "With norm of grad:", norm2(reshape(grad, (/ndim*natom/)))
-  open(21, file="aligned_ends.xyz")
-  write(21,*) natom
-  write(21,*) "Well1"
-  do i=1, natom
-     write(21,*)  label(i), (well1(k,i)*0.529177d0, k=1,ndim)
-  end do
-  write(21,*) natom
-  write(21,*) "Well2"
-  do i=1, natom
-     write(21,*)  label(i), (well2(k,i)*0.529177d0, k=1,ndim)
-  end do
   write(*,*) "beta=", beta, "n=", n
   write(*,*) "beta_n=", betan
 
@@ -116,9 +119,12 @@ program rpi
   info=0
   allocate(work(lwork), iwork(liwork))
   call DSYEVD('N', 'L', ndof, reshape(H, (/ndof,ndof/)), ndof, etasquared, work, lwork, iwork, liwork, info)
-  write(*,*) etasquared
+  write(*,*)"normal modes:"
+  do j=1, ndof
+     write(*,*) j,etasquared(j)*219475.0d0
+  end do
   deallocate(H,etasquared)
-  ! stop
+
   !-------------------------
   !obtain instanton solution, x_tilde
   allocate(xtilde(n, ndim, natom))
@@ -137,6 +143,10 @@ program rpi
         if (alignpath) then
            if (i.eq.1) then
               lampath(1)=0.0d0
+              theta1=0.0d0
+              theta2=0.0d0
+              theta3=0.0d0
+              origin(:)=0.0d0
               call get_align(initpath,theta1, theta2, theta3, origin)
               call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
            else
