@@ -15,13 +15,13 @@ program rpi
   integer::                         i, j,k,npath, dummy, zerocount, npoints
   integer::                         ii,jj,kk,l
   character::                      dummylabel, dummystr(28)
-  logical::                        angular, output_instanton, readpath, alignwell, alignpath
+  logical::                        angular, output_instanton, readpath, alignwell, alignpath, checkhess
     integer::                        nout, ldz, lwork, liwork, info
   integer,allocatable::            isuppz(:), iwork(:)
   double precision, allocatable::  work(:)
 
   namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, angular, npoints, cutofftheta,cutoffphi,&
-       output_instanton,readpath, alignwell, fixedends, alignpath
+       output_instanton,readpath, alignwell, fixedends, alignpath, checkhess
 
   !-------------------------
   !Set default system parameters then read in namelist
@@ -39,6 +39,7 @@ program rpi
   fixedends=.true.
   alignpath=.true.
   potforcepresent=.false.
+  checkhess=.false.
   
   read(5, nml=RPIDATA)
   betan= beta/dble(n)
@@ -101,30 +102,31 @@ program rpi
   write(*,*) "beta=", beta, "n=", n
   write(*,*) "beta_n=", betan
 
-  write(*,*)"Calculating Hessian as test"
-  allocate(H(ndim,natom,ndim,natom), etasquared(ndof))
-  call Vdoubleprime(well1,H)
-  open(22, file="hessian_well1.dat")
-  do j=1,natom
-     do i=1,ndim
-        write(22,*) ((H(i,j,k,l), k=1,ndim),l=1,natom)           
+  if (checkhess) then
+     write(*,*)"Calculating Hessian as test"
+     allocate(H(ndim,natom,ndim,natom), etasquared(ndof))
+     call Vdoubleprime(well1,H)
+     open(22, file="hessian_well1.dat")
+     do j=1,natom
+        do i=1,ndim
+           write(22,*) ((H(i,j,k,l), k=1,ndim),l=1,natom)           
+        end do
+        do l=1,natom
+           H(:,j,:,l) = H(:,j,:,l)/sqrt(mass(j)*mass(l))
+        end do
      end do
-     do l=1,natom
-        H(:,j,:,l) = H(:,j,:,l)/sqrt(mass(j)*mass(l))
+     ! !get diagonal hessian
+     lwork= 2*ndof+1
+     liwork= 1
+     info=0
+     allocate(work(lwork), iwork(liwork))
+     call DSYEVD('N', 'L', ndof, reshape(H, (/ndof,ndof/)), ndof, etasquared, work, lwork, iwork, liwork, info)
+     write(*,*)"normal modes:"
+     do j=1, ndof
+        write(*,*) j,etasquared(j)*219475.0d0
      end do
-  end do
-    ! !get diagonal hessian
-  lwork= 2*ndof+1
-  liwork= 1
-  info=0
-  allocate(work(lwork), iwork(liwork))
-  call DSYEVD('N', 'L', ndof, reshape(H, (/ndof,ndof/)), ndof, etasquared, work, lwork, iwork, liwork, info)
-  write(*,*)"normal modes:"
-  do j=1, ndof
-     write(*,*) j,etasquared(j)*219475.0d0
-  end do
-  deallocate(H,etasquared)
-
+     deallocate(H,etasquared)
+  end if
   !-------------------------
   !obtain instanton solution, x_tilde
   allocate(xtilde(n, ndim, natom))
@@ -143,18 +145,14 @@ program rpi
         if (alignpath) then
            if (i.eq.1) then
               lampath(1)=0.0d0
-              theta1=0.0d0
-              theta2=0.0d0
-              theta3=0.0d0
-              origin(:)=0.0d0
               call get_align(initpath,theta1, theta2, theta3, origin)
-              call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
+              call align_atoms(initpath,theta1, theta2, theta3, origin, path(1,:,:))
            else
               call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
               lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
            end if
            if (xunit .eq. 2) then
-              path(:,:,:) = path(:,:,:)/0.529177d0
+              path(i,:,:) = path(i,:,:)/0.529177d0
            end if
         else
            if (xunit.eq.1) then
@@ -174,11 +172,7 @@ program rpi
         write(20,*) natom
         write(20,*) "Energy of minimum",i
         do j=1, natom
-           if (xunit .eq. 1) then
-              write(20,*)  label(j), (path(i,k,j)*0.529177d0, k=1,ndim)
-           else
-              write(20,*)  label(j), (path(i,k,j), k=1,ndim)
-           end if
+           write(20,*)  label(j), (path(i,k,j)*0.529177d0, k=1,ndim)
         end do
      end do
      close(20)
@@ -200,14 +194,34 @@ program rpi
 
   else
      !do a quick and dirty linear interpolation
+     write(*,*) "well1"
+     do j=1, natom
+        write(*,*)  label(j), (well1(k,j)*0.529177d0, k=1,ndim)
+     end do
+     write(*,*) "well2"
+     do j=1, natom
+        write(*,*)  label(j), (well2(k,j)*0.529177d0, k=1,ndim)
+     end do
+
      do i=1,ndim
         do j=1,natom
            do k=1,n
-              xtilde(k,i,j)= well1(i,j) + dble(i-1)*well2(i,j)/dble(n-1)
+              xtilde(k,i,j)= (dble(n-k)*well1(i,j) + dble(k-1)*well2(i,j))/dble(n-1)
            end do
         end do
      end do
+     open(20, file="aligned.xyz")
+     do i=1,n
+        write(20,*) natom
+        write(20,*) "Energy of minimum",i
+        do j=1, natom
+           write(20,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim)
+        end do
+     end do
+     close(20)
+
   end if
+
   write(*,*) "Locating instanton"
   call instanton(xtilde,well1,well2)
   write(*,*) "Found instanton."
@@ -258,7 +272,7 @@ program rpi
      xharm(i,:,:)= well1(:,:)
   end do
   etasquared(:)=0.0d0
-  call detJ(xharm, etasquared)
+  call detJ(xharm, etasquared,.true.)
   lndetj0= 0.0d0
   zerocount=0
   do i=1,totdof
@@ -305,7 +319,7 @@ program rpi
                  close(19)
               end if
 
-              call detJ(xtilderot, etasquared)
+              call detJ(xtilderot, etasquared, .false.)
 
               lndetj= 0.0d0
               zerocount=0
@@ -355,7 +369,7 @@ program rpi
                  close(19)
               end if
 
-              call detJ(xtilderot, etasquared)
+              call detJ(xtilderot, etasquared,.false.)
 
               lndetj= 0.0d0
               zerocount=0
@@ -386,7 +400,7 @@ program rpi
   !work out Hessian at the instantons
      !-------------------------
      !Put it all together and output.
-     call detJ(xtilde, etasquared)
+     call detJ(xtilde, etasquared,.false.)
      lndetj= 0.0d0
      zerocount=0
      write(*,*) 1,etasquared(1)

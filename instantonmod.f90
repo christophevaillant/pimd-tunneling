@@ -149,11 +149,12 @@ contains
   end subroutine UMforceenergy
 
   !---------------------------------------------------------------------
-  subroutine UMhessian(x, answer)
+  subroutine UMhessian(x, singlewell,answer)
     implicit none
     integer::            i, j1, k1, j2, k2, idof1, idof2
     integer::            fulldof1, fulldof2, index
     double precision, intent(in)::   x(:,:,:)
+    logical, intent(in)::   singlewell
     double precision, intent(out):: answer(:,:)
     double precision, allocatable:: hess(:,:,:,:)
 
@@ -162,7 +163,9 @@ contains
     answer=0.0d0
     do i=1, n, 1
        hess=0.0d0
-       call Vdoubleprime(x(i,:,:), hess,i)
+       if (i .eq. 1 .or. .not. singlewell) then
+          call Vdoubleprime(x(i,:,:), hess,i)
+       end if
        do j1=1,ndim
           do k1=1,natom
              do j2=1,ndim
@@ -200,8 +203,9 @@ contains
 
   subroutine get_align(atomsin,theta1, theta2, theta3, origin)
     implicit none
-    double precision::     atomsin(:,:), workvec(3), atoms(ndim,natom)
-    double precision::     theta1, theta2, theta3, origin(ndim)
+    double precision,intent(in)::     atomsin(:,:)
+    double precision,intent(out)::     theta1, theta2, theta3, origin(ndim)
+    double precision::     workvec(3), atoms(ndim,natom)
     integer::              i,j,k
 
 
@@ -282,10 +286,10 @@ contains
     else
        atomsout(:,:)= atomsin(:,:)
     end if
-    call centreofmass(atomsout, workvec)
-    do i=1,natom
-       atomsout(:,i)=atomsout(:,i) - workvec(:)
-    end do
+    ! call centreofmass(atomsout, workvec)
+    ! do i=1,natom
+    !    atomsout(:,i)=atomsout(:,i) - workvec(:)
+    ! end do
     return
   end subroutine align_atoms
 
@@ -727,10 +731,12 @@ end subroutine centreofmass
 
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
-  subroutine detJ(x, etasquared)
+  subroutine detJ(x, etasquared, singlewell)
   character::                      jobz, range, uplo
   double precision::               vl, vu, abstol
-  double precision::               x(:,:,:), etasquared(:)
+  double precision,intent(in)::    x(:,:,:)
+  logical, intent(in)::             singlewell
+  double precision,intent(inout)::  etasquared(:)
   integer::                        nout, ldz, lwork, liwork, info,i
   integer,allocatable::            isuppz(:), iwork(:)
   double precision, allocatable::  work(:), z(:,:), H(:,:)
@@ -749,7 +755,7 @@ end subroutine centreofmass
   allocate(work(lwork), iwork(liwork), H(ndof+1,totdof))
   H=0.0d0
   etasquared=0.0d0
-  call UMhessian(x,H)
+  call UMhessian(x,singlewell,H)
   write(*,*) "Hessian is cooked."
 
   call DSBEVD('N', 'L', totdof, ndof, H, ndof+1, etasquared, z, 1, work, lwork, iwork, liwork, info)
