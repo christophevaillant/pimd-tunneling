@@ -161,9 +161,9 @@ contains
     allocate(hess(ndim, natom, ndim, natom))
 
     answer=0.0d0
+    hess=0.0d0
     do i=1, n, 1
-       hess=0.0d0
-       if (i .eq. 1 .or. .not. singlewell) then
+       if ((i .eq. 1 .and. singlewell) .or. .not. singlewell) then
           call Vdoubleprime(x(i,:,:), hess,i)
        end if
        do j1=1,ndim
@@ -673,7 +673,7 @@ end subroutine centreofmass
     allocate(work(iw), iwork(3*totdof), isave(44), dsave(29))
     iflag=0
     ! eps2= 1.0d-5 !gradient convergence
-    factr=1.0d6
+    factr=1.0d5
     maxiter=40
     if (fixedends) then
        if (potforcepresent) then

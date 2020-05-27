@@ -1,6 +1,6 @@
 module mcmod_mass
   implicit none
-  double precision::               V0, eps2=1.0d-3
+  double precision::               V0, eps2=1.0d-5
   integer::                        atom1, atom2, atom3
   character(len=:), allocatable::  procdir, beaddir(:)
   character, allocatable::         label(:)
