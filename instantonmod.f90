@@ -3,7 +3,7 @@ module instantonmod
   implicit none
   double precision, parameter::    pi=3.14159265358979d0
   double precision::               beta, betan, UMtilde
-  double precision, allocatable::  well1(:,:), well2(:,:), mass(:)
+  double precision, allocatable::  xtilde(:,:,:),well1(:,:), well2(:,:), mass(:)
   logical::                        fixedends
 
   public :: QsortC
@@ -813,5 +813,146 @@ end subroutine centreofmass
     eucliddist= sqrt(eucliddist)
     return
   end function eucliddist
+
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  subroutine read_path(instapath,centre,npath,path,Vpath, splinepath, lampath)
+    implicit none
+    integer, intent(inout)::   npath
+    logical, intent(in)::   instapath, centre
+    double precision,allocatable, intent(out):: path(:,:,:), Vpath(:), splinepath(:), lampath(:)
+    double precision, allocatable::   initpath(:,:)
+    double precision:: a,b,xmiddle, origin(3), theta1, theta2, theta3
+    integer::   i,j,k, dummy
+    character:: dummylabel, dummystr(28)    
+
+    !----------------------------------
+    !allocate and initialize
+    allocate(lampath(npath),initpath(ndim, natom))
+    allocate(path(npath, ndim, natom), Vpath(npath),splinepath(npath))
+
+
+    path(:,:,:)= 0.0d0
+    initpath(:,:)=0.0d0
+
+    !----------------------------------
+    !open file and read in
+    open(15, file="path.xyz")
+    do i=1, npath
+       read(15,*) dummy
+       read(15,'(28A)') dummystr
+       do j=1, natom
+          read(15,*) dummylabel, (initpath(k,j), k=1,ndim)
+       end do
+       if (xunit .eq. 2) then
+          initpath(:,:)= initpath(:,:)/0.529177d0
+       end if
+       if (i.eq.1) then
+          lampath(1)=0.0d0
+          call get_align(initpath,theta1, theta2, theta3, origin)
+          call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
+       else
+          call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
+          lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))
+       end if
+       Vpath(i)= V(path(i,:,:))
+    end do
+    lampath(:)= lampath(:)/lampath(npath)
+    deallocate(initpath)
+    close(15)
+
+    !----------------------------------
+    !calculate splines for interpolation
+    do i=1,ndim
+       do j=1,natom
+          splinepath(:)=0.0d0
+          call spline(lampath(:), path(:,i,j), 1.0d31, 1.0d31, splinepath(:))
+          do k=1,n
+             xtilde(k,i,j)= splint(lampath, path(:,i,j), splinepath(:), dble(k-1)/dble(n-1))
+          end do
+       end do
+    end do
+    !----------------------------------
+    !find instanton from initial guess
+    if (instapath) then
+       write(*,*) "Finding instanton"
+       if (fixedends) then
+          call instanton(xtilde,well1,well2)
+       else
+          call instanton(xtilde)
+       end if
+       deallocate(path,lampath,vpath,splinepath)
+       if (fixedends) then
+          npath=n+2
+          allocate(path(npath, ndim, natom), Vpath(npath),splinepath(npath),lampath(npath))
+          path(2:n+1,:,:)=xtilde(:,:,:)
+          path(1,:,:)= well1(:,:)
+          path(npath,:,:)= well2(:,:)
+       else
+          npath=n
+          allocate(path(npath, ndim, natom), Vpath(npath),splinepath(npath),lampath(npath))
+          path(:,:,:)= xtilde(:,:,:)
+       end if
+       write(*,*) "Found instanton."
+       open(19, file="instanton.xyz")
+       do i=1,n
+          write(19,*) natom
+          write(19,*) "Energy of minimum",i
+          do j=1, natom
+             write(19,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim)
+          end do
+       end do
+
+       !work out reaction coordinate
+       do i=1, npath
+          if (i.eq.1) then
+             lampath(1)=0.0d0
+          else
+             lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))
+          end if
+          Vpath(i)= V(path(i,:,:))
+       end do
+       lampath(:)= lampath(:)/lampath(npath)
+       close(19)
+    end if
+
+     !-------------------------
+     !Find the centre to make sure this is symmetric
+     if (centre) then
+        write(*,*) size(lampath), size(Vpath), size(splinepath)
+        xmiddle= findmiddle(0.3d0, 0.7d0, lampath, Vpath, splinepath)
+        a= 2.0d0  - 4.0d0*xmiddle
+        b= 4.0d0*xmiddle - 1.0d0
+        do i=1, npath
+           if (a.ge.0) then
+              lampath(i)= -0.5d0*b/a + sqrt((lampath(i)/a) + (0.5*b/a)**2)
+           else
+              lampath(i)= -0.5d0*b/a - sqrt((lampath(i)/a) + (0.5*b/a)**2)
+           end if
+        end do
+        write(*,*)"Centred,", a, b, xmiddle
+     end if
+
+     !----------------------------------
+     !calculate splines for interpolation
+     write(*,*) size(lampath), size(Vpath), size(splinepath)
+     do i=1,ndim
+        do j=1,natom
+           splinepath(:)=0.0d0
+           call spline(lampath(:), path(:,i,j), 1.0d31, 1.0d31, splinepath(:))
+        end do
+     end do
+     open(20, file="aligned.xyz")
+     do i=1,n
+        write(20,*) natom
+        write(20,*) "rotation angles:", theta1, theta2, theta3
+        do j=1, natom
+           write(20,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim)
+        end do
+     end do
+     close(20)
+
+    return
+  end subroutine read_path
 
 end module instantonmod

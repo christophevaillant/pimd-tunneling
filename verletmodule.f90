@@ -11,7 +11,7 @@ module verletint
   integer, allocatable::            ipar(:)
   double precision::                dt, dHdrlimit
   double precision,allocatable::    transmatrix(:,:),dpar(:), beadvec(:,:)
-  double precision,allocatable::    xtilde(:,:,:),beadmass(:,:), lam(:)
+  double precision,allocatable::    beadmass(:,:), lam(:)
   double precision, allocatable::   c1(:,:), c2(:,:)
   double precision::                alpha1, alpha2, alpha3, alpha4
   double precision::                beta1, beta2, beta3, tau, gamma

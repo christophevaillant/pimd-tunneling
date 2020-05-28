@@ -115,61 +115,7 @@ program rpi
 
      !-------------------------
      !obtain instanton solution, x_tilde
-     allocate(initpath(ndim, natom), lampath(npath), Vpath(npath))
-     allocate(path(npath, ndim, natom),splinepath(npath))
-     path=0.0d0
-     open(15, file="path.xyz")
-     do i=1, npath
-        read(15,*) dummy
-        read(15,'(28A)') dummystr!, dummyE !'(A,G25.15)'
-        do j=1, natom
-           read(15,*) dummylabel, (initpath(k,j), k=1,ndim)
-        end do
-        if (i.eq.1) then
-           ! call align_atoms(
-           lampath(1)=0.0d0
-           call get_align(initpath,theta1, theta2, theta3, origin)
-        else
-           lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
-        end if
-        call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
-        ! path(i,:,:)= initpath(:,:)
-        Vpath(i)= V(path(i,:,:))
-     end do
-     lampath(:)= lampath(:)/lampath(npath)
-     close(15)
-     open(20, file="aligned.xyz")
-     do i=1,npath
-        write(20,*) natom
-        write(20,*) "Energy of minimum",i
-        do j=1, natom
-           if (xunit .eq. 1) then
-              write(20,*)  label(j), (path(i,k,j)*0.529177d0, k=1,ndim)
-           else
-              write(20,*)  label(j), (path(i,k,j), k=1,ndim)
-           end if
-        end do
-     end do
-     close(20)
-
-     deallocate(initpath, origin)
-
-     if (xunit .eq. 2) then
-        path(:,:,:) = path(:,:,:)/0.529177d0
-     end if
-
-     xtilde=0.0d0
-     splinepath=0.0d0
-     do i=1,ndim
-        do j=1,natom
-           splinepath(:)=0.0d0
-           call spline(lampath(:), path(:,i,j), 1.0d31, 1.0d31, splinepath(:))
-           do k=1,n
-              xtilde(k,i,j)= splint(lampath, path(:,i,j), splinepath(:), dble(k-1)/dble(n-1))
-           end do
-        end do
-     end do
-     deallocate(lampath,Vpath, path, splinepath)
+     call read_path(.false.,centre,npath,path,Vpath,splinepath,lampath)
      call instanton(xtilde,well1,well2)
      write(*,*) "Found instanton."
      open(19, file="instanton.xyz")
