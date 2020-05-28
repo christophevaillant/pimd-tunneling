@@ -10,13 +10,14 @@ contains
 
   subroutine V_init(iproc)
     integer, intent(in):: iproc
-    V0=0.0d0
     potforcepresent=.false.
+    V0=0.0d0
     return
   end subroutine V_init
   !---------------------------------------------------------------------
-  function V(x)
+  function V(x,bead)
     implicit none
+    integer, intent(in), optional:: bead
     double precision::     v, x(:,:)
     double precision, allocatable:: dummy1(:),dummy2(:), xtemp(:)
     integer::              i,j
@@ -34,8 +35,9 @@ contains
   end function V
 
   !---------------------------------------------------------------------
-  subroutine Vprime(x, grad)
+  subroutine Vprime(x, grad,bead)
     implicit none
+    integer, intent(in), optional:: bead
     integer::              i,j
     double precision::     grad(:,:), x(:,:), dummy1
     double precision, allocatable:: gradtemp(:), xtemp(:)
@@ -56,8 +58,33 @@ contains
     return
   end subroutine Vprime
   !---------------------------------------------------------------------
-  subroutine  Vdoubleprime(x,hess)
+  subroutine potforce(x, grad,energy,bead)
     implicit none
+    integer, intent(in), optional:: bead
+    integer::              i,j
+    double precision::     grad(:,:), x(:,:), dummy1, energy
+    double precision, allocatable:: gradtemp(:), xtemp(:)
+
+    allocate(gradtemp(ndof), xtemp(natom*ndim))
+    do i=1,ndim
+       do j=1,natom
+          xtemp((j-1)*ndim +i)= x(i,j)*0.529177d0
+       end do
+    end do
+    call mbpolenergygradient(2, energy, xtemp, gradtemp)
+    do i= 1,ndim
+       do j=1,natom
+          grad(i,j)= gradtemp(ndim*(j-1)+i)*1.59362d-3*0.529177d0
+       end do
+    end do
+    energy= energy*1.59362d-3 - V0
+    deallocate(gradtemp, xtemp)
+    return
+  end subroutine Potforce
+  !---------------------------------------------------------------------
+  subroutine  Vdoubleprime(x,hess,bead)
+    implicit none
+    integer, intent(in), optional:: bead
     double precision::     hess(:,:,:,:), x(:,:), dummy1, eps
     integer::              i, j
     double precision, allocatable::     gradplus(:, :), gradminus(:, :)

@@ -3,7 +3,7 @@ program rpi
   use verletint
   use instantonmod
   implicit none
-  double precision, allocatable::   theta(:),phi(:), xharm(:,:,:), H(:,:)
+  double precision, allocatable::   theta(:),phi(:), xharm(:,:,:), H(:,:,:,:)
   double precision, allocatable::   weightstheta(:),weightsphi(:), origin(:)
   double precision, allocatable::   eta(:),weightseta(:)
   double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:), wellinit(:,:)
@@ -13,11 +13,15 @@ program rpi
   double precision::                delta, omega, gammetilde, Ibeta, Vwell1, Vwell2
   double precision::                theta1, theta2, theta3
   integer::                         i, j,k,npath, dummy, zerocount, npoints
-  integer::                         ii,jj,kk
+  integer::                         ii,jj,kk,l
   character::                      dummylabel, dummystr(28)
-  logical::                        angular, output_instanton, readpath, alignwell, alignpath
+  logical::                        angular, output_instanton, readpath, alignwell, alignpath, checkhess
+    integer::                        nout, ldz, lwork, liwork, info
+  integer,allocatable::            isuppz(:), iwork(:)
+  double precision, allocatable::  work(:)
+
   namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, angular, npoints, cutofftheta,cutoffphi,&
-       output_instanton,readpath, alignwell, fixedends, alignpath
+       output_instanton,readpath, alignwell, fixedends, alignpath, checkhess
 
   !-------------------------
   !Set default system parameters then read in namelist
@@ -35,6 +39,7 @@ program rpi
   fixedends=.true.
   alignpath=.true.
   potforcepresent=.false.
+  checkhess=.false.
   
   read(5, nml=RPIDATA)
   betan= beta/dble(n)
@@ -66,12 +71,26 @@ program rpi
   end if
   allocate(origin(ndim))
 
-  call get_align(well1,theta1, theta2, theta3, origin)
-  wellinit(:,:)= well1(:,:)
-  call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
-  if (alignwell) call get_align(well2,theta1, theta2, theta3, origin)
-  wellinit(:,:)= well2(:,:)
-  call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
+  if (alignwell) then
+     call get_align(well1,theta1, theta2, theta3, origin)
+     wellinit(:,:)= well1(:,:)
+     call align_atoms(wellinit, theta1, theta2, theta3, origin, well1)
+     call get_align(well2,theta1, theta2, theta3, origin)
+     wellinit(:,:)= well2(:,:)
+     call align_atoms(wellinit, theta1, theta2, theta3, origin, well2)
+     open(21, file="aligned_ends.xyz")
+     write(21,*) natom
+     write(21,*) "Well1"
+     do i=1, natom
+        write(21,*)  label(i), (well1(k,i)*0.529177d0, k=1,ndim)
+     end do
+     write(21,*) natom
+     write(21,*) "Well2"
+     do i=1, natom
+        write(21,*)  label(i), (well2(k,i)*0.529177d0, k=1,ndim)
+     end do
+     close(21)
+  end if
   ! write(*,*) "Potential at wells:", V(well1), V(well2), V0
   V0=V(well1)
   Vwell1= 0.0d0
@@ -80,99 +99,80 @@ program rpi
   allocate(grad(ndim,natom))
   call Vprime(well1, grad)
   write(*,*) "With norm of grad:", norm2(reshape(grad, (/ndim*natom/)))
-  open(21, file="aligned_ends.xyz")
-  write(21,*) natom
-  write(21,*) "Well1"
-  do i=1, natom
-     write(21,*)  label(i), (well1(k,i)*0.529177d0, k=1,ndim)
-  end do
-  write(21,*) natom
-  write(21,*) "Well2"
-  do i=1, natom
-     write(21,*)  label(i), (well2(k,i)*0.529177d0, k=1,ndim)
-  end do
   write(*,*) "beta=", beta, "n=", n
   write(*,*) "beta_n=", betan
-  
+
+  if (checkhess) then
+     write(*,*)"Calculating Hessian as test"
+     allocate(H(ndim,natom,ndim,natom), etasquared(ndof))
+     call Vdoubleprime(well1,H)
+     open(22, file="hessian_well1.dat")
+     do j=1,natom
+        do i=1,ndim
+           write(22,*) ((H(i,j,k,l), k=1,ndim),l=1,natom)           
+        end do
+        do l=1,natom
+           H(:,j,:,l) = H(:,j,:,l)/sqrt(mass(j)*mass(l))
+        end do
+     end do
+     ! !get diagonal hessian
+     lwork= 2*ndof+1
+     liwork= 1
+     info=0
+     allocate(work(lwork), iwork(liwork))
+     call DSYEVD('N', 'L', ndof, reshape(H, (/ndof,ndof/)), ndof, etasquared, work, lwork, iwork, liwork, info)
+     write(*,*)"normal modes:"
+     do j=1, ndof
+        write(*,*) j,etasquared(j)*219475.0d0
+     end do
+     deallocate(H,etasquared)
+  end if
   !-------------------------
   !obtain instanton solution, x_tilde
   allocate(xtilde(n, ndim, natom))
   if (readpath) then
-     allocate(initpath(ndim, natom), lampath(npath), Vpath(npath))
-     allocate(path(npath, ndim, natom))
-     path=0.0d0
-     lampath(:)=0.0d0
-     open(15, file="path.xyz")
-     do i=1, npath
-        read(15,*)
-        read(15,*)
-        do j=1, natom
-           read(15,*) dummylabel, (initpath(k,j), k=1,ndim)
-        end do
-        if (alignpath) then
-           if (i.eq.1) then
-              lampath(1)=0.0d0
-              call get_align(initpath,theta1, theta2, theta3, origin)
-              call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
-           else
-              call align_atoms(initpath,theta1, theta2, theta3, origin, path(i,:,:))
-              lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))!dble(i-1)/dble(npath-1)
-           end if
-           if (xunit .eq. 2) then
-              path(:,:,:) = path(:,:,:)/0.529177d0
-           end if
-        else
-           if (xunit.eq.1) then
-              path(i,:,:)= initpath(:,:)
-           else
-              path(i,:,:)= initpath(:,:)/0.529177d0
-           end if
-           if (i.gt.1) lampath(i)= lampath(i-1) + eucliddist(path(i-1,:,:), path(i,:,:))
-        end if
-        Vpath(i)= V(path(i,:,:))
-        write(*,*) i, Vpath(i)
-     end do
-     lampath(:)= lampath(:)/lampath(npath)
-     close(15)
-     open(20, file="aligned.xyz")
-     do i=1,npath
-        write(20,*) natom
-        write(20,*) "Energy of minimum",i
-        do j=1, natom
-           if (xunit .eq. 1) then
-              write(20,*)  label(j), (path(i,k,j)*0.529177d0, k=1,ndim)
-           else
-              write(20,*)  label(j), (path(i,k,j), k=1,ndim)
-           end if
-        end do
-     end do
-     close(20)
+     call read_path(.false.,centre,npath,path,Vpath,splinepath,lampath)
 
-     deallocate(initpath, origin)
-     allocate(splinepath(npath))
      xtilde=0.0d0
-     splinepath=0.0d0
      do i=1,ndim
         do j=1,natom
-           splinepath(:)=0.0d0
-           call spline(lampath(:), path(:,i,j), 1.0d31, 1.0d31, splinepath(:))
            do k=1,n
               xtilde(k,i,j)= splint(lampath, path(:,i,j), splinepath(:), dble(k-1)/dble(n-1))
            end do
         end do
      end do
-     deallocate(lampath,Vpath, path, splinepath)
+     deallocate(Vpath, path, splinepath,lampath)
 
   else
      !do a quick and dirty linear interpolation
+     write(*,*) "well1"
+     do j=1, natom
+        write(*,*)  label(j), (well1(k,j)*0.529177d0, k=1,ndim)
+     end do
+     write(*,*) "well2"
+     do j=1, natom
+        write(*,*)  label(j), (well2(k,j)*0.529177d0, k=1,ndim)
+     end do
+
      do i=1,ndim
         do j=1,natom
            do k=1,n
-              xtilde(k,i,j)= well1(i,j) + dble(i-1)*well2(i,j)/dble(n-1)
+              xtilde(k,i,j)= (dble(n-k)*well1(i,j) + dble(k-1)*well2(i,j))/dble(n-1)
            end do
         end do
      end do
+     open(20, file="aligned.xyz")
+     do i=1,n
+        write(20,*) natom
+        write(20,*) "Energy of minimum",i
+        do j=1, natom
+           write(20,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim)
+        end do
+     end do
+     close(20)
+
   end if
+
   write(*,*) "Locating instanton"
   call instanton(xtilde,well1,well2)
   write(*,*) "Found instanton."
@@ -223,7 +223,7 @@ program rpi
      xharm(i,:,:)= well1(:,:)
   end do
   etasquared(:)=0.0d0
-  call detJ(xharm, etasquared)
+  call detJ(xharm, etasquared,.true.)
   lndetj0= 0.0d0
   zerocount=0
   do i=1,totdof
@@ -270,7 +270,7 @@ program rpi
                  close(19)
               end if
 
-              call detJ(xtilderot, etasquared)
+              call detJ(xtilderot, etasquared, .false.)
 
               lndetj= 0.0d0
               zerocount=0
@@ -320,7 +320,7 @@ program rpi
                  close(19)
               end if
 
-              call detJ(xtilderot, etasquared)
+              call detJ(xtilderot, etasquared,.false.)
 
               lndetj= 0.0d0
               zerocount=0
@@ -351,7 +351,7 @@ program rpi
   !work out Hessian at the instantons
      !-------------------------
      !Put it all together and output.
-     call detJ(xtilde, etasquared)
+     call detJ(xtilde, etasquared,.false.)
      lndetj= 0.0d0
      zerocount=0
      write(*,*) 1,etasquared(1)
@@ -367,8 +367,11 @@ program rpi
      write(*,*) "lndetJ", lndetj, lndetj0
      gammetilde= exp(0.5d0*(lndetJ-lndetJ0))
 
-
-     Skink= betan*UM(xtilde, well1, well2)
+     if (fixedends) then
+        Skink= betan*UM(xtilde, well1, well2)
+     else
+        Skink= betan*UM(xtilde)
+     end if
      omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
      delta= 2.0d0*omega/betan
      write(*,*) "phi=", gammetilde
