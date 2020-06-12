@@ -131,7 +131,7 @@ program rpi
   !obtain instanton solution, x_tilde
   allocate(xtilde(n, ndim, natom))
   if (readpath) then
-     call read_path(.false.,centre,npath,path,Vpath,splinepath,lampath)
+     call read_path(.false.,.false.,npath,path,Vpath,splinepath,lampath)
 
      xtilde=0.0d0
      do i=1,ndim

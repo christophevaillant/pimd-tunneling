@@ -36,9 +36,8 @@ contains
     return
   end subroutine file_init
   
-  subroutine V_init(iproc, well)
+  subroutine V_init(iproc)
     integer, intent(in):: iproc
-    double precision, intent(in):: well(:,:)
     character(len=7)::  format_string
     character:: status
     logical::    ex
