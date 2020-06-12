@@ -13,6 +13,7 @@ contains
 
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
+  !linear polymer potential
   function UM(x,a,b)
     implicit none
     integer::            i,j,k
@@ -46,6 +47,7 @@ contains
   end function UM
 
   !---------------------------------------------------------------------
+  !linear polymer force
   subroutine UMprime(x, answer,a,b)
     implicit none
     integer::            i,j,k
@@ -88,6 +90,7 @@ contains
   end subroutine UMprime
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
+  !linear polymer force and energy
   subroutine UMforceenergy(x, answer,UM,a,b)
     implicit none
     integer::            i,j,k
@@ -149,6 +152,7 @@ contains
   end subroutine UMforceenergy
 
   !---------------------------------------------------------------------
+  !linear polymer hessian
   subroutine UMhessian(x, singlewell,answer)
     implicit none
     integer::            i, j1, k1, j2, k2, idof1, idof2
@@ -293,6 +297,9 @@ contains
     return
   end subroutine align_atoms
 
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  !general rotation of a vector of angle theta about axis
   subroutine rotate_vec(vec,axis,theta)
     implicit none
     double precision::     rotmatrix(3,3), vec(:)
@@ -319,6 +326,9 @@ contains
     return
   end subroutine rotate_vec
 
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  !rotate the atoms by an angle theta about an axis
   subroutine rotate_atoms(atoms,axis,theta)
     implicit none
     double precision,intent(in):: theta
@@ -350,8 +360,11 @@ contains
     end if
     return
   end subroutine rotate_atoms
+
   !---------------------------------------------------------------------
-  !spline algorithms
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  !spline algorithms from numerical recipes
   FUNCTION assert_eq(n1,n2,n3,string)
     CHARACTER(LEN=*), INTENT(IN) :: string
     INTEGER, INTENT(IN) :: n1,n2,n3
@@ -365,6 +378,8 @@ contains
     end if
   END FUNCTION assert_eq
 
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
   SUBROUTINE spline(x,y,yp1,ypn,y2)
     IMPLICIT NONE
     double precision, DIMENSION(:), INTENT(IN) :: x,y
@@ -412,6 +427,8 @@ contains
     return
   END SUBROUTINE spline
   
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
   SUBROUTINE tridag(a,b,c,r,u)
     IMPLICIT NONE
     double precision, DIMENSION(:), INTENT(IN) :: a,b,c,r
@@ -448,6 +465,8 @@ contains
     end do
   END SUBROUTINE tridag
 
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
   FUNCTION assert_eqn(nn,string)
     CHARACTER(LEN=*), INTENT(IN) :: string
     INTEGER, DIMENSION(:), INTENT(IN) :: nn
@@ -461,6 +480,8 @@ contains
     end if
   END FUNCTION assert_eqn
 
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
   FUNCTION splint(xa,ya,y2a,x)
     IMPLICIT NONE
     double precision, DIMENSION(:), INTENT(IN) :: xa,ya,y2a
@@ -492,6 +513,8 @@ contains
     splint=a*ya(klo)+b*ya(khi)+((a**3-a)*y2a(klo)+(b**3-b)*y2a(khi))*(h**2)/6.0d0
   END FUNCTION splint
 
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
   FUNCTION splin_grad(xa,ya,y2a,x)
     IMPLICIT NONE
     double precision, DIMENSION(:), INTENT(IN) :: xa,ya,y2a
@@ -523,6 +546,8 @@ contains
     splin_grad=((ya(khi) - ya(klo))/h) +((1.0d0-3.0d0*a**2)*y2a(klo)+(3.0d0*b**2-1.0d0)*y2a(khi))*h/6.0d0
   END FUNCTION splin_grad
 
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
   FUNCTION locate(xx,x)
     IMPLICIT NONE
     double precision, DIMENSION(:), INTENT(IN) :: xx
@@ -577,6 +602,8 @@ recursive subroutine QsortC(A)
   endif
 end subroutine QsortC
 
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
 subroutine Partition(A, marker)
   double precision, intent(in out), dimension(:) :: A
   integer, intent(out) :: marker
@@ -614,6 +641,9 @@ subroutine Partition(A, marker)
 
 end subroutine Partition
 
+  !---------------------------------------------------------------------
+!---------------------------------------------------------------------
+!returns the centre of mass
 subroutine centreofmass(x, com)
   implicit none
   double precision::    x(:,:), com(:)
@@ -629,6 +659,9 @@ subroutine centreofmass(x, com)
   return
 end subroutine centreofmass
 
+  !---------------------------------------------------------------------
+!---------------------------------------------------------------------
+!optimizes and returns the instanton
   subroutine instanton(xtilde,a,b)
     implicit none
     double precision, intent(inout)::xtilde(:,:,:)
@@ -668,12 +701,12 @@ end subroutine centreofmass
     task='START'
     m=8
     iprint=-1
-    xtol= 1d-6
+    xtol= 1d-5
     iw=totdof*(2*m+5) + 11*m**2 + 8*m
     allocate(work(iw), iwork(3*totdof), isave(44), dsave(29))
     iflag=0
     ! eps2= 1.0d-5 !gradient convergence
-    factr=1.0d5
+    factr=1.0d6
     maxiter=40
     if (fixedends) then
        if (potforcepresent) then
@@ -731,6 +764,7 @@ end subroutine centreofmass
 
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
+  !returns the fluctuation prefactor
   subroutine detJ(x, etasquared, singlewell)
   character::                      jobz, range, uplo
   double precision::               vl, vu, abstol
@@ -763,6 +797,9 @@ end subroutine centreofmass
   return
   end subroutine detJ
 
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  !returns the centre of a path
   function findmiddle(x1,x2,lampath,path, splinepath)
     integer::          jmax,j
     double precision:: findmiddle,x1,x2,xacc
@@ -798,6 +835,9 @@ end subroutine centreofmass
     stop
   end function findmiddle
 
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  !calculates the euclidean distance between two configurations
   function eucliddist(x1, x2)
     implicit none
     double precision,intent(in)::   x1(:,:), x2(:,:)
