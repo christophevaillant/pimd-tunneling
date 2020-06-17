@@ -24,7 +24,6 @@ contains
     UM=0.0d0
     do i=1, N-1, 1
        pot= V(x(i,:,:),i)
-       write(*,*) i, pot
        UM=UM + pot
        do j=1, ndim
           do k=1, natom
@@ -803,7 +802,8 @@ end subroutine centreofmass
   function findmiddle(x1,x2,lampath,path,npath)
     integer::          jmax,j,npath
     double precision:: findmiddle,x1,x2,xacc
-    double precision:: lampath(:), path(:), splinepath(:)
+    double precision:: lampath(:), path(:)
+    double precision, allocatable:: splinepath(:)
     parameter (jmax=40)
     parameter (xacc= 1d-6)
     double precision:: dx,f,fmid,xmid
@@ -982,7 +982,7 @@ end subroutine centreofmass
      !----------------------------------
      !calculate splines for interpolation
      write(*,*) size(lampath), size(Vpath)
-     open(400, "testspline.csv")
+     open(400, file="testspline.csv")
      do i=1,ndim
         do j=1,natom
            splinepath(:,i,j)=0.0d0
@@ -990,6 +990,7 @@ end subroutine centreofmass
            write(400,*)i,j,splinepath(:,i,j)
         end do
      end do
+     close(400)
      open(20, file="aligned.xyz")
      do i=1,n
         write(20,*) natom
@@ -1010,7 +1011,7 @@ end subroutine centreofmass
     integer, intent(in)::   npath
     double precision,allocatable, intent(in):: path(:,:,:), lampath(:)
     double precision, intent(out):: splinehess(:,:,:), hesspath(:,:,:)
-    integer:: i,j1,k1, j2,k2,idof1,idof2
+    integer:: i,j1,i1, j2,i2,idof1,idof2,j
     double precision, allocatable:: temphess(:,:,:,:)
     
     allocate(temphess(ndim,natom,ndim,natom))
@@ -1022,8 +1023,8 @@ end subroutine centreofmass
              do i2=1,i1
                 do j2= 1,j2
                    idof2= ndim*(j2-1) + i2
-                   hesspath(i,idof1,idof2)= hesstemp(i1,j1,i2,j2)
-                   hesspath(i,idof2,idof1)= hesstemp(i1,j1,i2,j2)
+                   hesspath(i,idof1,idof2)= temphess(i1,j1,i2,j2)
+                   hesspath(i,idof2,idof1)= temphess(i1,j1,i2,j2)
                 end do
              end do
           end do

@@ -20,7 +20,6 @@ program pimd
   double precision, allocatable::  x(:,:,:), initpath(:,:)
   double precision, allocatable::  origin(:), wellinit(:,:)
   double precision, allocatable::  xi(:), dbdxi(:,:,:), pinit(:,:,:)
-  double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:,:,:), Vpath(:)
   integer::                        ndofrb, dummy
   logical::                        instapath, centre, readpath, alignwell, readhess
   character::                      dummylabel, dummystr(28)
@@ -38,6 +37,7 @@ program pimd
   double precision, allocatable::  mpi_double_send(:), endpoints(:,:,:), allendpoints(:,:,:)
   double precision, allocatable::  gradpoints(:,:,:), allgradpoints(:,:,:), startpoint(:,:)
   double precision, allocatable::  finalintegrand(:), allintegrands(:)
+  double precision, allocatable::  allxipoints(:), xipoints(:)
   integer (kind=4)::               ierrmkl
   integer, dimension(MPI_STATUS_SIZE) :: rstatus
   namelist /MCDATA/ n, beta, NMC, Noutput,dt, iprint,imin,tau,npath, gamma,&
@@ -225,7 +225,7 @@ program pimd
   !ncalcs is number of calculations for each processor
   allocate(endpoints(ncalcs, ndim, natom), allendpoints(ncalcs*nproc, ndim, natom))
   allocate(gradpoints(ncalcs, ndim, natom), allgradpoints(ncalcs*nproc, ndim, natom))
-  allocate(startpoint(ndim, natom))
+  allocate(startpoint(ndim, natom), allxipoints(ncalcs*nproc), xipoints(ncalcs))
   allendpoints= 0.0d0
   allgradpoints=0.0d0
   endpoints=0.0d0
@@ -241,26 +241,35 @@ program pimd
                  allgradpoints(nrep*(i-1) + j, k, l)= dbdxi(i, k, l)
               end do
            end do
+           allxipoints(nrep*(i-1)+j)=xi(i)
         end do
      end do
-     deallocate(path, xint, dbdxi,lampath,splinepath)
+     deallocate(xint, dbdxi)
   end if
 
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
   call MPI_Bcast(startpoint, ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(xtilde, n*ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(V0, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
-
+  call MPI_Bcast(npath, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  if (iproc .ne. 0) allocate(path(npath,ndim,natom), lampath(npath), splinepath(npath,ndim,natom))
+  call MPI_Bcast(path, npath*ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(lampath, npath, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(splinepath, npath*ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
+  
   if (iproc.eq.0) then
      do ii=1,nproc-1
         do i=1,ncalcs
            call MPI_Send(allendpoints(ncalcs*(ii) + i,:,:), ndof, MPI_DOUBLE_PRECISION, ii, 1, MPI_COMM_WORLD, ierr)
+           call MPI_Send(allxipoints(ncalcs*(ii) + i), 1, MPI_DOUBLE_PRECISION, ii, 1, MPI_COMM_WORLD, ierr)
         end do
      end do
      endpoints(1:ncalcs, :, :) = allendpoints(1:ncalcs, :, :)
+     xipoints(:)= allxipoints(1:ncalcs)
   else if (iproc.ne.0) then
      do i=1,ncalcs
         call MPI_Recv(endpoints(i,:,:), ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus,ierr)
+        call MPI_Recv(xipoints(i), 1, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus,ierr)
      end do
   end if
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
@@ -293,11 +302,11 @@ program pimd
         cycle
      end if
      call init_nm(startpoint,endpoints(ii,:,:))
-     call init_path(startpoint, endpoints(ii,:,:), x, pinit)
+     call init_path(xipoints(ii), x, pinit)
      if (thermostat .eq. 1) then
         call propagate_pimd_nm(x,pinit, startpoint,endpoints(ii,:,:), gradpoints(ii,:,:),dHdr)
      else if (thermostat .eq. 2) then
-        call propagate_pimd_pile(x,pinit, startpoint,endpoints(ii,:,:), gradpoints(ii,:,:),dHdr)
+        call propagate_pimd_pile(x,pinit, startpoint,endpoints(ii,:,:), gradpoints(ii,:,:),xipoints(ii),dHdr)
      else if (thermostat .eq. 3) then
         call propagate_pimd_higher(x,pinit, startpoint,endpoints(ii,:,:), gradpoints(ii,:,:),dHdr)
      else

@@ -12,6 +12,8 @@ module verletint
   double precision::                dt, dHdrlimit
   double precision,allocatable::    transmatrix(:,:),dpar(:), beadvec(:,:)
   double precision,allocatable::    beadmass(:,:), lam(:)
+  double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:,:,:), Vpath(:)
+  double precision, allocatable::  hesspath(:,:,:), splinehess(:,:,:)  
   double precision, allocatable::   c1(:,:), c2(:,:)
   double precision::                alpha1, alpha2, alpha3, alpha4
   double precision::                beta1, beta2, beta3, tau, gamma
@@ -26,45 +28,24 @@ contains
   !-----------------------------------------------------
   !-----------------------------------------------------
   !function for initializing a path
-  subroutine init_path(start, end, x, p)
-    double precision::  start(:,:), end(:,:), x(:,:,:), p(:,:,:)
+  subroutine init_path(xi, x, p)
+    double precision::  x(:,:,:), p(:,:,:), xi
     double precision, allocatable:: vel(:), tempp(:), dists(:)
-    double precision, allocatable:: splinepath(:)
-    double precision::  stdev
+    double precision::  stdev, xieff
     integer::           i,j,k, dofi, imin(1)
 
     allocate(vel(n),tempp(n), dists(n))
 
-    ! do i=1,n
-    !    dists(i)= eucliddist(xtilde(i,:,:), end(:,:))
-    ! end do
-    ! imin= minloc(dists)
-    ! ! write(*,*) "loc at", imin(1), dists(imin(1))
-    ! do i=1, imin(1)
-    !    dists(i)= dble(i-1)/dble(imin(1)-1)
-    ! end do
-    ! allocate(splinepath(imin(1)))
-    ! do i=1,ndim
-    !    do j=1,natom
-    !       splinepath(:)=0.0d0
-    !       call spline(dists(1:imin(1)), xtilde(1:imin(1),i,j), 1.0d31, 1.0d31, splinepath(:))
-    !       do k=1,n
-    !          x(k,i,j)= splint(dists(1:imin(1)), xtilde(1:imin(1),i,j), splinepath(:), dble(k-1)/dble(n-1))
-    !          ! write(*,*) iproc, k,xtilde(1,i,j), xtilde(imin(1), i,j), x(k,i,j)
-    !       end do
-    !    end do
-    ! end do
-    ! deallocate(splinepath, dists)
-    x(:,:,:)= xtilde(:,:,:)
-    ! open(45+iproc)
-    ! do i=1,n
-    !    write(45+iproc,*) natom
-    !    write(45+iproc,*) "Energy of minimum",i
-    !    do j=1, natom
-    !       write(45+iproc,*)  label(j), (x(i,k,j)*0.529177d0, k=1,ndim)
-    !    end do
-    ! end do
-    ! close(45+iproc)
+    do i=1,ndim
+       do j=1,natom
+          do k=1,n
+             xieff= dble(k-1)*xi/dble(n-1)
+             x(k,i,j)= splint(lampath, path(:,i,j), splinepath(:,i,j), xieff)
+          end do
+       end do
+    end do
+    
+    ! x(:,:,:)= xtilde(:,:,:)
 
     do i=1,ndim
        do k=1,natom
@@ -506,10 +487,10 @@ contains
   !-----------------------------------------------------
   !-----------------------------------------------------
   !main function for propagating a MD trajectory with Langevin thermostat
-  subroutine propagate_pimd_pile(xprop,vprop,a,b,dbdl,dHdr)
+  subroutine propagate_pimd_pile(xprop,vprop,a,b,dbdl,xi,dHdr)
     implicit none
     double precision::     xprop(:,:,:), vprop(:,:,:),randno, Eold
-    double precision::     potenergy, springenergy, kinenergy, totenergy
+    double precision::     potenergy, springenergy, kinenergy, totenergy,xi
     double precision::     a(:,:),b(:,:), dHdr, dbdl(:,:), contr
     double precision, allocatable:: force(:,:,:)
     integer::              i,j,k,count, time1,time2,imax, irate, skipcount,jj
@@ -544,7 +525,7 @@ contains
              dHdr= dHdr+contr
           else
              write(*,*) "Over limit", contr, ", reinitialize path"
-             call init_path(a, b, xprop, vprop)
+             call init_path(xi, xprop, vprop)
 !             skipcount=skipcount+1
           end if
        end if

@@ -104,11 +104,5 @@ contains
     deallocate(gradplus, gradminus)
     return
   end subroutine Vdoubleprime
-    !---------------------------------------------------------------------
-  subroutine potforce(x,grad,energy)
-    double precision,intent(in)::     x(:,:)
-    double precision, intent(out)::  grad(:,:), energy
-    return
-  end subroutine Potforce
 
 end module mcmod_mass
