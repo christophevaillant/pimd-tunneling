@@ -20,9 +20,9 @@ program pimd
   double precision, allocatable::  x(:,:,:), initpath(:,:)
   double precision, allocatable::  origin(:), wellinit(:,:)
   double precision, allocatable::  xi(:), dbdxi(:,:,:), pinit(:,:,:)
-  double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:), Vpath(:)
+  double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:,:,:), Vpath(:)
   integer::                        ndofrb, dummy
-  logical::                        instapath, centre, readpath, alignwell
+  logical::                        instapath, centre, readpath, alignwell, readhess
   character::                      dummylabel, dummystr(28)
   !gauss-legendre variables
   integer::                        nintegral,ii, time1, time2, imax, irate
@@ -42,7 +42,7 @@ program pimd
   integer, dimension(MPI_STATUS_SIZE) :: rstatus
   namelist /MCDATA/ n, beta, NMC, Noutput,dt, iprint,imin,tau,npath, gamma,&
        nintegral,nrep, use_mkl, thermostat, ndim, natom, xunit, instapath, centre,&
-       dHdrlimit, readpath, alignwell, fixedends, cayley
+       dHdrlimit, readpath, alignwell, fixedends, cayley, readhess
 
   !initialize MPI
   nproc=0
@@ -80,6 +80,7 @@ program pimd
   alignwell=.false.
   fixedends=.true.
   cayley=.false.
+  readhess=.false.
   
   !Read in namelist variables for root proc, and spread
   !it to other procs
@@ -188,7 +189,11 @@ program pimd
      !-------------------------
      !Read in initial wells, and masses
      if (readpath) then
-       call read_path(instapath,centre,npath,path,Vpath,splinepath,lampath)
+        call read_path(instapath,centre,npath,path,Vpath,splinepath,lampath)
+        if (readhess) then
+           allocate(splinehess(npath,ndof,ndof), hesspath(npath,ndof,ndof))
+           call read_hess(npath,path,lampath,splinehess,hesspath)
+        end if
      end if
      !-------------------------
      !-------------------------
@@ -200,8 +205,8 @@ program pimd
      do i=1,ndim
         do j=1,natom
            do k=1, nintegral
-              xint(k,i,j)= splint(lampath, path(:,i,j), splinepath(:), xi(k))
-              dbdxi(k,i,j)= splin_grad(lampath, path(:,i,j), splinepath(:), xi(k))
+              xint(k,i,j)= splint(lampath, path(:,i,j), splinepath(:,i,j), xi(k))
+              dbdxi(k,i,j)= splin_grad(lampath, path(:,i,j), splinepath(:,i,j), xi(k))
            end do
         end do
      end do

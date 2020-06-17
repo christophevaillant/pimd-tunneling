@@ -800,14 +800,16 @@ end subroutine centreofmass
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
   !returns the centre of a path
-  function findmiddle(x1,x2,lampath,path, splinepath)
-    integer::          jmax,j
+  function findmiddle(x1,x2,lampath,path,npath)
+    integer::          jmax,j,npath
     double precision:: findmiddle,x1,x2,xacc
     double precision:: lampath(:), path(:), splinepath(:)
     parameter (jmax=40)
     parameter (xacc= 1d-6)
     double precision:: dx,f,fmid,xmid
 
+    allocate(splinepath(npath))
+    call spline(lampath(:), path(:), 1.0d31, 1.0d31, splinepath(:))
     fmid=splin_grad(lampath, path, splinepath, x2)
     f=splin_grad(lampath, path, splinepath, x1)
     if(f*fmid.ge.0.) then
@@ -829,7 +831,10 @@ end subroutine centreofmass
        xmid=findmiddle+dx
        fmid=splin_grad(lampath, path, splinepath, xmid)
        if(fmid.le.0.)findmiddle=xmid
-       if(abs(dx).lt.xacc .or. fmid.eq.0.) return
+       if(abs(dx).lt.xacc .or. fmid.eq.0.) then
+          deallocate(splinepath)
+          return
+       end if
     end do
     write(*,*)'too many bisections in findmiddle'
     stop
@@ -856,11 +861,12 @@ end subroutine centreofmass
 
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
+  !read in the initial path guess from file
   subroutine read_path(instapath,centre,npath,path,Vpath, splinepath, lampath)
     implicit none
     integer, intent(inout)::   npath
     logical, intent(in)::   instapath, centre
-    double precision,allocatable, intent(out):: path(:,:,:), Vpath(:), splinepath(:), lampath(:)
+    double precision,allocatable, intent(out):: path(:,:,:), Vpath(:), splinepath(:,:,:), lampath(:)
     double precision, allocatable::   initpath(:,:)
     double precision:: a,b,xmiddle, origin(3), theta1, theta2, theta3
     integer::   i,j,k, dummy
@@ -869,7 +875,7 @@ end subroutine centreofmass
     !----------------------------------
     !allocate and initialize
     allocate(lampath(npath),initpath(ndim, natom))
-    allocate(path(npath, ndim, natom), Vpath(npath),splinepath(npath))
+    allocate(path(npath, ndim, natom), Vpath(npath),splinepath(npath,ndim,natom))
 
 
     path(:,:,:)= 0.0d0
@@ -905,10 +911,10 @@ end subroutine centreofmass
     !calculate splines for interpolation
     do i=1,ndim
        do j=1,natom
-          splinepath(:)=0.0d0
-          call spline(lampath(:), path(:,i,j), 1.0d31, 1.0d31, splinepath(:))
+          splinepath(:,i,j)=0.0d0
+          call spline(lampath(:), path(:,i,j), 1.0d31, 1.0d31, splinepath(:,i,j))
           do k=1,n
-             xtilde(k,i,j)= splint(lampath, path(:,i,j), splinepath(:), dble(k-1)/dble(n-1))
+             xtilde(k,i,j)= splint(lampath, path(:,i,j), splinepath(:,i,j), dble(k-1)/dble(n-1))
           end do
        end do
     end do
@@ -924,13 +930,13 @@ end subroutine centreofmass
        deallocate(path,lampath,vpath,splinepath)
        if (fixedends) then
           npath=n+2
-          allocate(path(npath, ndim, natom), Vpath(npath),splinepath(npath),lampath(npath))
+          allocate(path(npath, ndim, natom), Vpath(npath),splinepath(npath,ndim,natom),lampath(npath))
           path(2:n+1,:,:)=xtilde(:,:,:)
           path(1,:,:)= well1(:,:)
           path(npath,:,:)= well2(:,:)
        else
           npath=n
-          allocate(path(npath, ndim, natom), Vpath(npath),splinepath(npath),lampath(npath))
+          allocate(path(npath, ndim, natom), Vpath(npath),splinepath(npath,ndim,natom),lampath(npath))
           path(:,:,:)= xtilde(:,:,:)
        end if
        write(*,*) "Found instanton."
@@ -959,8 +965,8 @@ end subroutine centreofmass
      !-------------------------
      !Find the centre to make sure this is symmetric
      if (centre) then
-        write(*,*) size(lampath), size(Vpath), size(splinepath)
-        xmiddle= findmiddle(0.3d0, 0.7d0, lampath, Vpath, splinepath)
+        write(*,*) size(lampath), size(Vpath)
+        xmiddle= findmiddle(0.3d0, 0.7d0, lampath, Vpath,npath)
         a= 2.0d0  - 4.0d0*xmiddle
         b= 4.0d0*xmiddle - 1.0d0
         do i=1, npath
@@ -975,11 +981,13 @@ end subroutine centreofmass
 
      !----------------------------------
      !calculate splines for interpolation
-     write(*,*) size(lampath), size(Vpath), size(splinepath)
+     write(*,*) size(lampath), size(Vpath)
+     open(400, "testspline.csv")
      do i=1,ndim
         do j=1,natom
-           splinepath(:)=0.0d0
-           call spline(lampath(:), path(:,i,j), 1.0d31, 1.0d31, splinepath(:))
+           splinepath(:,i,j)=0.0d0
+           call spline(lampath(:), path(:,i,j), 1.0d31, 1.0d31, splinepath(:,i,j))
+           write(400,*)i,j,splinepath(:,i,j)
         end do
      end do
      open(20, file="aligned.xyz")
@@ -994,5 +1002,43 @@ end subroutine centreofmass
 
     return
   end subroutine read_path
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  !calculate hessians along path
+  subroutine read_hess(npath,path,lampath,splinehess,hesspath)
+    implicit none
+    integer, intent(in)::   npath
+    double precision,allocatable, intent(in):: path(:,:,:), lampath(:)
+    double precision, intent(out):: splinehess(:,:,:), hesspath(:,:,:)
+    integer:: i,j1,k1, j2,k2,idof1,idof2
+    double precision, allocatable:: temphess(:,:,:,:)
+    
+    allocate(temphess(ndim,natom,ndim,natom))
+    do i=1,npath
+       call Vdoubleprime(path(i,:,:), temphess)
+       do i1=1,ndim
+          do j1=1,natom
+             idof1= ndim*(j1-1) + i1
+             do i2=1,i1
+                do j2= 1,j2
+                   idof2= ndim*(j2-1) + i2
+                   hesspath(i,idof1,idof2)= hesstemp(i1,j1,i2,j2)
+                   hesspath(i,idof2,idof1)= hesstemp(i1,j1,i2,j2)
+                end do
+             end do
+          end do
+       end do
+    end do
+
+     do i=1,ndof
+        do j=1,i
+           splinehess(:,i,j)=0.0d0
+           call spline(lampath(:), path(:,i,j), 1.0d31, 1.0d31, splinehess(:,i,j))
+        end do
+     end do
+    
+    deallocate(temphess)
+    return
+  end subroutine read_hess
 
 end module instantonmod
