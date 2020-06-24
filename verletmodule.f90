@@ -11,18 +11,19 @@ module verletint
   integer, allocatable::            ipar(:)
   double precision::                dt, dHdrlimit
   double precision,allocatable::    transmatrix(:,:),dpar(:), beadvec(:,:)
-  double precision,allocatable::    beadmass(:,:), lam(:)
+  double precision,allocatable::    beadmass(:,:,:), lam(:)
   double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:,:,:), Vpath(:)
   double precision, allocatable::  hesspath(:,:,:), splinehess(:,:,:)  
-  double precision, allocatable::   c1(:,:), c2(:,:)
+  double precision, allocatable::   c1(:,:,:), c2(:,:,:)
   double precision::                alpha1, alpha2, alpha3, alpha4
   double precision::                beta1, beta2, beta3, tau, gamma
-  logical::                         iprint, use_mkl, cayley
+  logical::                         iprint, use_mkl, cayley, readhess
   integer::                         errcode_poisson, rmethod_poisson
   integer::                         brng_poisson, seed_poisson, stat
   type (vsl_stream_state)::         stream_poisson,stream_normal
   integer::                         errcode_normal, rmethod_normal, brng_normal
   integer::                         seed_normal, rk
+  character::                       procstr
 
 contains
   !-----------------------------------------------------
@@ -30,21 +31,72 @@ contains
   !function for initializing a path
   subroutine init_path(xi, x, p)
     double precision::  x(:,:,:), p(:,:,:), xi
-    double precision, allocatable:: vel(:), tempp(:), dists(:)
+    double precision, allocatable:: vel(:), tempp(:), dists(:), interphess(:,:,:)
+    double precision, allocatable:: etasquared(:),eigvecs(:,:),tempx(:)
     double precision::  stdev, xieff
-    integer::           i,j,k, dofi, imin(1)
+    integer::           i,j,k, dofi, imin(1),i2,j2,k2,idof1,idof2
 
     allocate(vel(n),tempp(n), dists(n))
-
     do i=1,ndim
        do j=1,natom
           do k=1,n
              xieff= dble(k-1)*xi/dble(n-1)
+
              x(k,i,j)= splint(lampath, path(:,i,j), splinepath(:,i,j), xieff)
           end do
        end do
     end do
-    
+    if (readhess) then
+       allocate(interphess(n,ndof,ndof), etasquared(totdof), eigvecs(totdof,totdof))
+       allocate(tempx(totdof))
+       !------------------
+       !generate random numbers
+       ! stdev=sqrt(1.0d0/beta)
+       ! errcode_normal = vdrnggaussian(rmethod_normal,stream_normal,totdof,tempx,0.0d0,stdev)
+       !------------------
+       !interpolate hessian
+       do i=1,ndof
+          do j=1,ndof
+             do k=1,n
+                xieff= dble(k-1)*xi/dble(n-1)
+                interphess(k,i,j)= splint(lampath, hesspath(:,i,j), splinehess(:,i,j), xieff)
+             end do
+          end do
+       end do
+
+       !------------------
+       !calculate "instanton" e.vectors and e.values
+       call detJ(x,etasquared,.false.,interphess,eigvecs)
+       gamma=tau*sqrt(abs(etasquared(totdof)))
+       write(*,*) iproc, i, 2.0d0*pi/sqrt(abs(etasquared(totdof))), gamma
+       !------------------
+       !add random displacements to path
+       ! do idof1=2,totdof
+       !    if (etasquared(idof1) .lt. 0.0) cycle
+       !    do i2= 1,n
+       !       do j2=1,ndim
+       !          do k2=1,natom
+       !             idof2= natom*(j2-1 + ndim*(i2-1)) +k2
+       !             x(i2,j2,k2)= x(i2,j2,k2) + sqrt(1.0/(etasquared(idof1)*mass(k2)))&
+       !                  *tempx(idof1)*eigvecs(idof2,idof1)
+       !          end do
+       !       end do
+       !    end do
+       ! end do
+             
+       deallocate(interphess, etasquared,eigvecs,tempx)
+    end if
+
+       write(procstr,"(I1)") iproc
+       open(400,file="initial"//trim(procstr)//".xyz")
+       do i=1,n
+          write(400,*) natom
+          write(400,*) i
+          do k2=1,natom
+             write(400,*) label(k2), x(i,1,k2)*0.529177d0, x(i,2,k2)*0.529177d0, x(i,3,k2)*0.529177d0
+          end do
+       end do
+       close(400)
     ! x(:,:,:)= xtilde(:,:,:)
 
     do i=1,ndim
@@ -53,7 +105,7 @@ contains
           stdev=sqrt(1.0d0/betan)
           errcode_normal = vdrnggaussian(rmethod_normal,stream_normal,n,vel,0.0d0,stdev)
           do j=1,n
-             vel(j)= vel(j)*sqrt(beadmass(k,j))
+             vel(j)= vel(j)*sqrt(beadmass(i,k,j))
           end do
           call nmtransform_backward(vel, tempp, 0)
           do j=1,n
@@ -113,7 +165,7 @@ contains
   subroutine propagate_pimd_nm(xprop,vprop,a,b,dbdl,dHdr)
     implicit none
     double precision::     xprop(:,:,:), vprop(:,:,:),randno, sigma
-    double precision::     a(:,:),b(:,:), dHdr, totenergy, kin,dbdl(:,:)
+    double precision::     a(:,:),b(:,:), dHdr, totenergy, kin,dbdl(:,:), contr
     double precision, allocatable:: pprop(:), tempp(:), tempv(:)
     integer::              i,j,k,l,count, time1,time2,imax, irate, dofi
     integer (kind=4)::     rkick(1)
@@ -123,7 +175,7 @@ contains
     dHdr=0.0d0
     kin=0.0d0
     errcode_poisson = virngpoisson( rmethod_poisson, stream_poisson, 1, rkick(1), dble(Noutput))
-    ! open(20, file="andersen_m.dat")
+    open(401,file="trajectory"//trim(procstr)//".dat")
     do i=1, NMC, 1
        count=count+1
        if (count .ge. rkick(1)) then
@@ -136,7 +188,7 @@ contains
                 errcode_normal = vdrnggaussian(rmethod_normal,stream_normal,n,pprop,0.0d0,sigma)
                 do l=1,n
                    ! tempp(l)= pprop((dofi-1)*n +l)*sqrt(beadmass(k,l))
-                   tempp(l)= pprop(l)*sqrt(beadmass(k,l))
+                   tempp(l)= pprop(l)*sqrt(beadmass(j,k,l))
                 end do
                 if (.not. use_mkl) then
                    call nmtransform_backward(tempp, tempv, 0)
@@ -154,15 +206,25 @@ contains
           ! write(20,*)i, dHdr/dble(i)
        end if
        call time_step_test(xprop, vprop)
-       if (i .gt. imin) then
-       do j=1,ndim
-          do k=1,natom
-             dHdr= dHdr+mass(k)*(-xprop(n,j,k))*dbdl(j,k)
+       if (i.gt.imin) then
+          contr=0.0d0
+          do j=1,ndim
+             do k=1,natom
+                contr=contr+mass(k)*(-xprop(n,j,k))*dbdl(j,k)
+             end do
           end do
-       end do
-    end if
+          write(401,*) contr
+          dHdr= dHdr+contr
+       end if
+    !    if (i .gt. imin) then
+    !    do j=1,ndim
+    !       do k=1,natom
+    !          dHdr= dHdr+mass(k)*(-xprop(n,j,k))*dbdl(j,k)
+    !       end do
+    !    end do
+    ! end if
     end do
-    ! close(20)
+    close(401)
     ! stop
     dHdr=dHdr/dble(NMC-imin)
     deallocate(pprop, tempv, tempp)
@@ -241,14 +303,15 @@ contains
     do i=1, n
        do j=1,ndim
           do k=1,natom
-             omegak= sqrt(mass(k)/beadmass(k,i))*lam(i)
+             dofi= natom*(j-1 + ndim*(i-1)) +k
+             omegak= sqrt(mass(k)/beadmass(j,k,i))*lam(dofi)
              newv(i,j,k)= p(i,j,k)*cos(0.5d0*dt*omegak) - &
-                  q(i,j,k)*omegak*beadmass(k,i)*sin(0.5d0*omegak*dt)
+                  q(i,j,k)*omegak*beadmass(j,k,i)*sin(0.5d0*omegak*dt)
              newx(i,j,k)= q(i,j,k)*cos(0.5d0*dt*omegak) + &
-                  p(i,j,k)*sin(0.5d0*omegak*dt)/(omegak*beadmass(k,i))
+                  p(i,j,k)*sin(0.5d0*omegak*dt)/(omegak*beadmass(j,k,i))
              if (newv(i,j,k) .ne. newv(i,j,k)) then
                 write(*,*) "NaN in 1st NM propagation"
-                write(*,*) omegak, mass(k), beadmass(k,i), lam(i)
+                write(*,*) omegak, mass(k), beadmass(j,k,i), lam(dofi)
                 write(*,*) p(i,j,k), v(i,j,k)
                 stop
              end if
@@ -300,11 +363,12 @@ contains
     do i=1, n
        do j=1,ndim
           do k=1,natom
-             omegak= sqrt(mass(k)/beadmass(k,i))*lam(i)
+             dofi= natom*(j-1 + ndim*(i-1)) +k
+             omegak= sqrt(mass(k)/beadmass(j,k,i))*lam(dofi)
              newv(i,j,k)= p(i,j,k)*cos(0.5d0*dt*omegak) - &
-                  q(i,j,k)*omegak*beadmass(k,i)*sin(0.5d0*omegak*dt)
+                  q(i,j,k)*omegak*beadmass(j,k,i)*sin(0.5d0*omegak*dt)
              newx(i,j,k)= q(i,j,k)*cos(0.5d0*dt*omegak) + &
-                  p(i,j,k)*sin(0.5d0*omegak*dt)/(omegak*beadmass(k,i))
+                  p(i,j,k)*sin(0.5d0*omegak*dt)/(omegak*beadmass(j,k,i))
              if (newv(i,j,k) .ne. newv(i,j,k)) then
                 write(*,*) "NaN in 1st NM propagation"
                 stop
@@ -377,11 +441,12 @@ contains
     do i=1, n
        do j=1,ndim
           do k=1,natom
-             omegak= sqrt(mass(k)/beadmass(k,i))*lam(i)
+             dofi= natom*(j-1 + ndim*(i-1)) +k
+             omegak= sqrt(mass(k)/beadmass(j,k,i))*lam(dofi)
              newv(i,j,k)= p(i,j,k)*cos(dt*omegak) - &
-                  q(i,j,k)*omegak*beadmass(k,i)*sin(omegak*dt)
+                  q(i,j,k)*omegak*beadmass(j,k,i)*sin(omegak*dt)
              newx(i,j,k)= q(i,j,k)*cos(dt*omegak) + &
-                  p(i,j,k)*sin(omegak*dt)/(omegak*beadmass(k,i))
+                  p(i,j,k)*sin(omegak*dt)/(omegak*beadmass(j,k,i))
              if (newv(i,j,k) .ne. newv(i,j,k)) then
                 write(*,*) "NaN in 1st NM propagation"
                 stop
@@ -427,12 +492,15 @@ contains
   !initialize normal mode routines
   subroutine init_nm(a,b)
     double precision::    a(:,:),b(:,:)
-    integer::             i,j,k,l, dofi
+    integer::             i,j,k,l, dofi,tdofi
 
     do i=1, n
-       lam(i)= 2.0d0*sin(dble(i)*pi/dble(2*n +2))/betan
-       do j=1, natom
-          beadmass(j,i)=mass(j)*(lam(i)*tau)**2
+       do k=1,ndim
+          do j=1, natom
+             dofi= natom*(k-1 + ndim*(i-1)) +j
+             lam(dofi)= 2.0d0*sin(dble(i)*pi/dble(2*n +2))/betan
+             beadmass(k,j,i)=mass(j)*(lam(dofi)*tau)**2
+          end do
        end do
        do l=i,n
           transmatrix(i,l)= sin(dble(i*l)*pi/dble(n+1))*sqrt(2.0d0/dble(n+1))
@@ -445,10 +513,11 @@ contains
        do j=1,ndim
           do k=1,natom
              dofi= (k-1)*ndim +j
+             tdofi= natom*(j-1 + ndim*(i-1)) +k
              beadvec(i, dofi)= a(j,k)*sin(dble(i)*pi/dble(n+1)) &
                   + b(j,k)*sin(dble(n*i)*pi/dble(n+1))
              beadvec(i,dofi)= beadvec(i,dofi)*sqrt(2.0d0/dble(n+1))
-             beadvec(i,dofi)= beadvec(i,dofi)/(lam(i)*betan)**2
+             beadvec(i,dofi)= beadvec(i,dofi)/(lam(tdofi)*betan)**2
           end do
        end do
     end do
@@ -493,20 +562,24 @@ contains
     double precision::     potenergy, springenergy, kinenergy, totenergy,xi
     double precision::     a(:,:),b(:,:), dHdr, dbdl(:,:), contr
     double precision, allocatable:: force(:,:,:)
-    integer::              i,j,k,count, time1,time2,imax, irate, skipcount,jj
+    integer::              i,j,k,count, time1,time2,imax, irate, skipcount,jj,idof
     integer (kind=4)::     rkick(1)
 
-    allocate(c1(natom,n), c2(natom,n), force(n, ndim, natom))
-    do i=1,n
-       do j=1,natom
-          c1(j,i)= exp(-gamma*dt*lam(i)*sqrt(mass(j)/beadmass(j,i)))!
-          c2(j,i)= sqrt(1.0d0- c1(j,i)**2)
+    allocate(c1(ndim,natom,n), c2(ndim,natom,n), force(n, ndim, natom))
+       do i=1,n
+          do k=1,ndim
+             do j=1,natom
+                idof= natom*(k-1 + ndim*(i-1)) +j
+                c1(k,j,i)= exp(-gamma*dt*lam(idof)*sqrt(mass(j)/beadmass(k,j,i)))!
+                c2(k,j,i)= sqrt(1.0d0- c1(k,j,i)**2)
+             end do
+          end do
        end do
-    end do
     count=0
     dHdr=0.0d0
     force(:,:,:)=0.0d0
     skipcount=0
+    open(401,file="trajectory"//trim(procstr)//".dat")
     do i=1, NMC, 1
        count=count+1
        if (count .ge. Noutput .and. i .gt. imin) then
@@ -521,6 +594,7 @@ contains
                 contr=contr+mass(k)*(-xprop(n,j,k))*dbdl(j,k)
              end do
           end do
+          write(401,*) contr
           if (abs(contr) .lt. dHdrlimit .or. dHdrlimit .lt. 0.0) then
              dHdr= dHdr+contr
           else
@@ -546,6 +620,7 @@ contains
        ! Eold=totenergy
     end do
     dHdr= dHdr/dble(NMC-imin-skipcount)
+    close(401)
     ! if (skipcount .gt. 0) write(*,*) "Skipped", skipcount, "points"
     deallocate(c1, c2)
     return
@@ -559,15 +634,18 @@ contains
     double precision::     xprop(:,:,:), vprop(:,:,:),randno
     double precision::     a(:,:),b(:,:), dHdr, dbdl(:,:)
     double precision, allocatable:: force(:,:,:)
-    integer::              i,j,k,count, time1,time2,imax, irate
+    integer::              i,j,k,count, time1,time2,imax, irate, idof
     integer (kind=4)::     rkick(1)
 
-    allocate(c1(natom,n), c2(natom,n), force(n, ndim, natom))
+    allocate(c1(ndim,natom,n), c2(ndim,natom,n), force(n, ndim, natom))
     do i=1,n
-       do j=1,natom
-          c1(j,i)= exp(-dt*lam(i)*sqrt(mass(j)/beadmass(j,i)))!
-          c2(j,i)= sqrt(1.0d0- c1(j,i)**2)
+       do k=1,ndim
+          do j=1,natom
+             idof= natom*(k-1 + ndim*(i-1)) +j
+          c1(k,j,i)= exp(-dt*lam(idof)*sqrt(mass(j)/beadmass(k,j,i)))!
+          c2(k,j,i)= sqrt(1.0d0- c1(k,j,i)**2)
        end do
+       end do 
     end do
     beta1= 1.0d0/(2.0d0- 2.0d0**(1.0d0/3.0d0))
     alpha1=0.5d0*beta1
@@ -642,8 +720,8 @@ contains
              ! call nmtransform_forward_nr(x(:,i,j), q(:,i,j), dofi)
           end if
           do k=1,n
-             p(k,i,j)= (c1(j,k)**2)*p(k,i,j) + &
-                  sqrt(beadmass(j,k)/betan)*c2(j,k)*sqrt(1.0+c1(j,k)**2)*pprop((dofi-1)*n +k)
+             p(k,i,j)= (c1(i,j,k)**2)*p(k,i,j) + &
+                  sqrt(beadmass(i,j,k)/betan)*c2(i,j,k)*sqrt(1.0+c1(i,j,k)**2)*pprop((dofi-1)*n +k)
           end do
        end do
     end do
@@ -694,11 +772,12 @@ contains
     do i=1, n
        do j=1,ndim
           do k=1,natom
-             omegak= sqrt(mass(k)/beadmass(k,i))*lam(i)
+             dofi= natom*(j-1 + ndim*(i-1)) +k
+             omegak= sqrt(mass(k)/beadmass(j,k,i))*lam(dofi)
              newv(i,j,k)= p(i,j,k)*cos(dt*omegak) - &
-                  q(i,j,k)*omegak*beadmass(k,i)*sin(omegak*dt)
+                  q(i,j,k)*omegak*beadmass(j,k,i)*sin(omegak*dt)
              newx(i,j,k)= q(i,j,k)*cos(dt*omegak) + &
-                  p(i,j,k)*sin(omegak*dt)/(omegak*beadmass(k,i))
+                  p(i,j,k)*sin(omegak*dt)/(omegak*beadmass(j,k,i))
              if (newv(i,j,k) .ne. newv(i,j,k)) then
                 write(*,*) "NaN in 1st NM propagation"
                 write(*,*), i,j,k, p(i,j,k), q(i,j,k)
@@ -785,8 +864,8 @@ contains
           end if
           do k=1,n
              vprop(k,i,j)= p(k,i,j)
-             p(k,i,j)= (c1(j,k)**2)*p(k,i,j) + &
-                  sqrt(beadmass(j,k)/betan)*c2(j,k)*sqrt(1.0+c1(j,k)**2)*pprop((dofi-1)*n +k)
+             p(k,i,j)= (c1(i,j,k)**2)*p(k,i,j) + &
+                  sqrt(beadmass(i,j,k)/betan)*c2(i,j,k)*sqrt(1.0+c1(i,j,k)**2)*pprop((dofi-1)*n +k)
           end do
        end do
     end do
@@ -842,11 +921,12 @@ contains
     do i=1, n
        do j=1,ndim
           do k=1,natom
-             omegak= sqrt(mass(k)/beadmass(k,i))*lam(i)
+             dofi= natom*(j-1 + ndim*(i-1)) +k
+             omegak= sqrt(mass(k)/beadmass(j,k,i))*lam(dofi)
              newv(i,j,k)= p(i,j,k)*cos(dt*omegak) - &
-                  q(i,j,k)*omegak*beadmass(k,i)*sin(omegak*dt)
+                  q(i,j,k)*omegak*beadmass(j,k,i)*sin(omegak*dt)
              newx(i,j,k)= q(i,j,k)*cos(dt*omegak) + &
-                  p(i,j,k)*sin(omegak*dt)/(omegak*beadmass(k,i))
+                  p(i,j,k)*sin(omegak*dt)/(omegak*beadmass(j,k,i))
              if (newv(i,j,k) .ne. newv(i,j,k)) then
                 write(*,*) "NaN in 1st NM propagation"
                 write(*,*), i,j,k, p(i,j,k), q(i,j,k)
@@ -953,8 +1033,8 @@ contains
        do j=1,natom
           dofi= (j-1)*ndim+i
           do k=1,n
-             p(k,i,j)= (c1(j,k)**2)*p(k,i,j) + &
-                  sqrt(beadmass(j,k)/betan)*c2(j,k)*sqrt(1.0+c1(j,k)**2)*pprop((dofi-1)*n +k)
+             p(k,i,j)= (c1(i,j,k)**2)*p(k,i,j) + &
+                  sqrt(beadmass(i,j,k)/betan)*c2(i,j,k)*sqrt(1.0+c1(i,j,k)**2)*pprop((dofi-1)*n +k)
           end do
           if (.not. use_mkl) then
              call nmtransform_backward(p(:,i,j), vprop(:,i,j), 0)
@@ -996,19 +1076,20 @@ contains
     do i=1, n
        do j=1,ndim
           do k=1,natom
-             omegak= sqrt(mass(k)/beadmass(k,i))*lam(i)
+             dofi= natom*(j-1 + ndim*(i-1)) +k
+             omegak= sqrt(mass(k)/beadmass(j,k,i))*lam(dofi)
              if (cayley) then
                 newpi(i,j,k)= pip(i,j,k)*(4.0d0- omegak**2*time**2) &
-                     - 4.0d0*q(i,j,k)*beadmass(k,i)*omegak**2*time
+                     - 4.0d0*q(i,j,k)*beadmass(j,k,i)*omegak**2*time
                 newpi(i,j,k)=newpi(i,j,k)/(4.0d0+ omegak**2*time**2)
                 q(i,j,k)= q(i,j,k)*(4.0d0- omegak**2*time**2) &
-                     + 4.0d0*pip(i,j,k)*time/beadmass(k,i)
+                     + 4.0d0*pip(i,j,k)*time/beadmass(j,k,i)
                 q(i,j,k)=q(i,j,k)/(4.0d0+ omegak**2*time**2)
              else
                 newpi(i,j,k)= pip(i,j,k)*cos(time*omegak) - &
-                     q(i,j,k)*omegak*beadmass(k,i)*sin(omegak*time)
+                     q(i,j,k)*omegak*beadmass(j,k,i)*sin(omegak*time)
                 q(i,j,k)= q(i,j,k)*cos(time*omegak) + &
-                     pip(i,j,k)*sin(omegak*time)/(omegak*beadmass(k,i))
+                     pip(i,j,k)*sin(omegak*time)/(omegak*beadmass(j,k,i))
              end if
              if (newpi(i,j,k) .ne. newpi(i,j,k)) then
                 write(*,*) "NaN in 1st NM propagation"

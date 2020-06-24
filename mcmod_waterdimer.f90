@@ -15,9 +15,8 @@ contains
     return
   end subroutine V_init
   !---------------------------------------------------------------------
-  function V(x,bead)
+  function V(x)
     implicit none
-    integer, intent(in), optional:: bead
     double precision::     v, x(:,:)
     double precision, allocatable:: dummy1(:),dummy2(:), xtemp(:)
     integer::              i,j
@@ -35,9 +34,8 @@ contains
   end function V
 
   !---------------------------------------------------------------------
-  subroutine Vprime(x, grad,bead)
+  subroutine Vprime(x, grad)
     implicit none
-    integer, intent(in), optional:: bead
     integer::              i,j
     double precision::     grad(:,:), x(:,:), dummy1
     double precision, allocatable:: gradtemp(:), xtemp(:)
@@ -58,9 +56,8 @@ contains
     return
   end subroutine Vprime
   !---------------------------------------------------------------------
-  subroutine potforce(x, grad,energy,bead)
+  subroutine potforce(x, grad,energy)
     implicit none
-    integer, intent(in), optional:: bead
     integer::              i,j
     double precision::     grad(:,:), x(:,:), dummy1, energy
     double precision, allocatable:: gradtemp(:), xtemp(:)
@@ -82,9 +79,8 @@ contains
     return
   end subroutine Potforce
   !---------------------------------------------------------------------
-  subroutine  Vdoubleprime(x,hess,bead)
+  subroutine  Vdoubleprime(x,hess)
     implicit none
-    integer, intent(in), optional:: bead
     double precision::     hess(:,:,:,:), x(:,:), dummy1, eps
     integer::              i, j
     double precision, allocatable::     gradplus(:, :), gradminus(:, :)

@@ -21,7 +21,7 @@ program pimd
   double precision, allocatable::  origin(:), wellinit(:,:)
   double precision, allocatable::  xi(:), dbdxi(:,:,:), pinit(:,:,:)
   integer::                        ndofrb, dummy
-  logical::                        instapath, centre, readpath, alignwell, readhess
+  logical::                        instapath, centre, readpath, alignwell
   character::                      dummylabel, dummystr(28)
   !gauss-legendre variables
   integer::                        nintegral,ii, time1, time2, imax, irate
@@ -137,6 +137,7 @@ program pimd
   call MPI_Bcast(ndim, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(fixedends, 1, MPI_LOGICAL, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(readhess, 1, MPI_LOGICAL, 0,MPI_COMM_WORLD, ierr)
 
   allocate(xtilde(n, ndim, natom),mass(natom), label(natom))
   if (iproc.eq.0) then
@@ -191,7 +192,6 @@ program pimd
      if (readpath) then
         call read_path(instapath,centre,npath,path,Vpath,splinepath,lampath)
         if (readhess) then
-           allocate(splinehess(npath,ndof,ndof), hesspath(npath,ndof,ndof))
            call read_hess(npath,path,lampath,splinehess,hesspath)
         end if
      end if
@@ -256,7 +256,19 @@ program pimd
   call MPI_Bcast(path, npath*ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(lampath, npath, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(splinepath, npath*ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
-  
+  if (readhess) then
+     if (iproc .ne. 0) allocate(hesspath(npath,ndof,ndof), splinehess(npath,ndof,ndof))
+     call MPI_Barrier(MPI_COMM_WORLD,ierr)
+     !need to split up data transfer because of bullshit mpi reasons
+     do i=1,ndof
+        do j=1,ndof
+           call MPI_Bcast(splinehess(:,i,j), npath, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
+           call MPI_Barrier(MPI_COMM_WORLD,ierr)
+           call MPI_Bcast(hesspath(:,i,j), npath, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
+        end do
+     end do
+  end if
+
   if (iproc.eq.0) then
      do ii=1,nproc-1
         do i=1,ncalcs
@@ -294,7 +306,8 @@ program pimd
   integrand(:)=0.0d0
   ! call random_seed()
   allocate(x(n,ndim,natom), pinit(n,ndim,natom))
-  allocate(transmatrix(n,n),beadmass(natom,n),beadvec(n,ndof), lam(n))
+  allocate(transmatrix(n,n),beadmass(ndim,natom,n),beadvec(n,ndof), lam(totdof))
+
   call alloc_nm(iproc)
   do ii=1, ncalcs
      if (all(abs(endpoints(ii,:,:)) .lt. 1d-10)) then

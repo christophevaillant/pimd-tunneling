@@ -112,9 +112,8 @@ contains
     return
   end subroutine V_init
   !---------------------------------------------------------------------
-  function V(x, bead)
+  function V(x)
     implicit none
-    integer, intent(in), optional:: bead
     double precision, intent(in)::     x(:,:)
     double precision::  v,throwaway
     double precision, allocatable:: dummy1(:,:)
@@ -130,9 +129,8 @@ contains
   end function V
 
   !---------------------------------------------------------------------
-  subroutine Vprime(x, grad, bead)
+  subroutine Vprime(x, grad)
     implicit none
-    integer, intent(in), optional:: bead
     double precision, intent(in)::  x(:,:)
     double precision, intent(out):: grad(:,:)
     integer::              i,j,k,linecount
@@ -147,10 +145,9 @@ contains
   end subroutine Vprime
 
     !---------------------------------------------------------------------
-  subroutine potforce(x,grad,energy, bead)
+  subroutine potforce(x,grad,energy)
     implicit none
     double precision,intent(in)::     x(:,:)
-    integer, intent(in), optional:: bead
     double precision, intent(out)::  grad(:,:), energy
     double precision::               throwaway
     double precision, allocatable::  dummy1(:),dummy2(:), xtemp(:)
@@ -187,39 +184,14 @@ contains
     return
   end subroutine Potforce
 !---------------------------------------------------------------------
-  subroutine  Vdoubleprime(x,hess, bead)
+  subroutine  Vdoubleprime(x,hess)
     implicit none
-    integer, intent(in), optional:: bead
     double precision::     hess(:,:,:,:), x(:,:), dummy1, eps
     integer::              i, j,k,l
     double precision:: pot1, pot2, pot3, pot4
     ! double precision, allocatable:: xtemp(:,:)
     double precision, allocatable::     gradplus(:, :), gradminus(:, :)
 
-    ! allocate(xtemp(ndim,natom))
-    ! eps=1d-2
-    ! do i= 1, ndim
-    !    do j= 1, natom
-    !       do k=i, ndim
-    !          do l=j,natom
-    !             xtemp(:,:)= x(:,:)
-    !             xtemp(i,j)= xtemp(i,j) + eps
-    !             xtemp(k,l)= xtemp(k,l)+ eps
-    !             pot1=V(xtemp,bead)
-    !             xtemp(k,l)= xtemp(k,l) - 2.0d0*eps
-    !             pot2=V(xtemp,bead)
-    !             xtemp(i,j)= xtemp(i,j) - 2.0d0*eps
-    !             xtemp(k,l)= xtemp(k,l) + 2.0d0*eps
-    !             pot3=V(xtemp,bead)                
-    !             xtemp(k,l)= xtemp(k,l) - 2.0d0*eps
-    !             pot4=V(xtemp,bead)                
-    !             hess(i,j,k,l)= (pot1 - pot2- pot3 + pot4)/(4.0d0*eps)
-    !             hess(k,l,i,j)= hess(i,j,k,l)
-    !          end do
-    !       end do
-    !    end do
-    ! end do
-    ! deallocate(xtemp)
 
     allocate(gradplus(ndim,natom), gradminus(ndim,natom))
     eps=1d-2

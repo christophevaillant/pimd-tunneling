@@ -23,7 +23,7 @@ contains
 
     UM=0.0d0
     do i=1, N-1, 1
-       pot= V(x(i,:,:),i)
+       pot= V(x(i,:,:))
        UM=UM + pot
        do j=1, ndim
           do k=1, natom
@@ -31,7 +31,7 @@ contains
           end do
        end do
     end do
-    UM=UM+ V(x(N,:,:),i)
+    UM=UM+ V(x(N,:,:))
     if (fixedends) then
        !UM=UM + V(a(:,:))+ V(b(:,:)) !already set these to 0!
        do j=1, ndim
@@ -76,7 +76,7 @@ contains
              end if
           end do
        end do
-       call Vprime(x(i,:,:),grad(:,:),i)
+       call Vprime(x(i,:,:),grad(:,:))
        do j=1, ndim
           do k=1, natom
              answer(i,j,k)= answer(i,j,k)+ grad(j,k)
@@ -102,7 +102,7 @@ contains
     allocate(grad(ndim,natom))
     UM=0.0d0
     do i=1, N, 1
-       call potforce(x(i,:,:),grad,energy,i)
+       call potforce(x(i,:,:),grad,energy)
        UM=UM+ energy
        do j=1, ndim
           do k=1, natom
@@ -152,11 +152,12 @@ contains
 
   !---------------------------------------------------------------------
   !linear polymer hessian
-  subroutine UMhessian(x, singlewell,answer)
+  subroutine UMhessian(x, singlewell,answer,inithess)
     implicit none
     integer::            i, j1, k1, j2, k2, idof1, idof2
     integer::            fulldof1, fulldof2, index
     double precision, intent(in)::   x(:,:,:)
+    double precision, intent(in),optional::  inithess(:,:,:)
     logical, intent(in)::   singlewell
     double precision, intent(out):: answer(:,:)
     double precision, allocatable:: hess(:,:,:,:)
@@ -166,8 +167,22 @@ contains
     answer=0.0d0
     hess=0.0d0
     do i=1, n, 1
-       if ((i .eq. 1 .and. singlewell) .or. .not. singlewell) then
-          call Vdoubleprime(x(i,:,:), hess,i)
+       if (present(inithess)) then
+          do j1=1,ndim
+             do k1=1,natom
+                idof1= ndim*(k1-1) + j1
+                do j2=1,j1
+                   do k2=1,k1
+                      idof2= ndim*(k2-1) + j2
+                      hess(j1,k1,j2,k2)= inithess(i,idof1,idof2)
+                   end do
+                end do
+             end do
+          end do
+       else
+          if ((i .eq. 1 .and. singlewell) .or. .not. singlewell) then
+             call Vdoubleprime(x(i,:,:), hess)
+          end if
        end if
        do j1=1,ndim
           do k1=1,natom
@@ -764,9 +779,11 @@ end subroutine centreofmass
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
   !returns the fluctuation prefactor
-  subroutine detJ(x, etasquared, singlewell)
+  subroutine detJ(x, etasquared, singlewell,interphess,eigvecs)
   character::                      jobz, range, uplo
   double precision::               vl, vu, abstol
+  double precision, intent(in),optional::  interphess(:,:,:)
+  double precision, intent(out), optional:: eigvecs(:,:)
   double precision,intent(in)::    x(:,:,:)
   logical, intent(in)::             singlewell
   double precision,intent(inout)::  etasquared(:)
@@ -774,12 +791,19 @@ end subroutine centreofmass
   integer,allocatable::            isuppz(:), iwork(:)
   double precision, allocatable::  work(:), z(:,:), H(:,:)
   ! !get diagonal hessian
-  jobz='N'
+  if (present(eigvecs)) then
+     jobz='V'
+     allocate(z(totdof,totdof))
+     lwork= 1 + 5*totdof + 2*totdof**2
+     liwork= 3 + 5*totdof
+  else
+     jobz='N'
+     lwork= 2*totdof
+     liwork= 1
+  end if
   range='A'
   uplo='U'
   abstol=1.0d-8
-  lwork= 2*totdof
-  liwork= 1
   info=0
   ldz=totdof
   vl=0.0d0
@@ -791,7 +815,13 @@ end subroutine centreofmass
   call UMhessian(x,singlewell,H)
   write(*,*) "Hessian is cooked."
 
-  call DSBEVD('N', 'L', totdof, ndof, H, ndof+1, etasquared, z, 1, work, lwork, iwork, liwork, info)
+  if (present(eigvecs)) then
+     call DSBEVD(jobz, 'L', totdof, ndof, H, ndof+1, etasquared, z, totdof, work, lwork, iwork, liwork, info)
+     eigvecs=z
+     deallocate(z)
+  else
+     call DSBEVD(jobz, 'L', totdof, ndof, H, ndof+1, etasquared, z, 1, work, lwork, iwork, liwork, info)
+  end if
   deallocate(work, iwork, H)
   return
   end subroutine detJ
@@ -1010,10 +1040,11 @@ end subroutine centreofmass
     implicit none
     integer, intent(in)::   npath
     double precision,allocatable, intent(in):: path(:,:,:), lampath(:)
-    double precision, intent(out):: splinehess(:,:,:), hesspath(:,:,:)
+    double precision, allocatable,intent(out):: splinehess(:,:,:), hesspath(:,:,:)
     integer:: i,j1,i1, j2,i2,idof1,idof2,j
     double precision, allocatable:: temphess(:,:,:,:)
     
+    allocate(splinehess(npath,ndof,ndof), hesspath(npath,ndof,ndof))
     allocate(temphess(ndim,natom,ndim,natom))
     do i=1,npath
        call Vdoubleprime(path(i,:,:), temphess)
@@ -1021,7 +1052,7 @@ end subroutine centreofmass
           do j1=1,natom
              idof1= ndim*(j1-1) + i1
              do i2=1,i1
-                do j2= 1,j2
+                do j2= 1,j1
                    idof2= ndim*(j2-1) + i2
                    hesspath(i,idof1,idof2)= temphess(i1,j1,i2,j2)
                    hesspath(i,idof2,idof1)= temphess(i1,j1,i2,j2)
