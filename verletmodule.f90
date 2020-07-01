@@ -87,16 +87,16 @@ contains
        deallocate(interphess, etasquared,eigvecs,tempx)
     end if
 
-       write(procstr,"(I1)") iproc
-       open(400,file="initial"//trim(procstr)//".xyz")
-       do i=1,n
-          write(400,*) natom
-          write(400,*) i
-          do k2=1,natom
-             write(400,*) label(k2), x(i,1,k2)*0.529177d0, x(i,2,k2)*0.529177d0, x(i,3,k2)*0.529177d0
-          end do
-       end do
-       close(400)
+       ! write(procstr,"(I1)") iproc
+       ! open(400,file="initial"//trim(procstr)//".xyz")
+       ! do i=1,n
+       !    write(400,*) natom
+       !    write(400,*) i
+       !    do k2=1,natom
+       !       write(400,*) label(k2), x(i,1,k2)*0.529177d0, x(i,2,k2)*0.529177d0, x(i,3,k2)*0.529177d0
+       !    end do
+       ! end do
+       ! close(400)
     ! x(:,:,:)= xtilde(:,:,:)
 
     do i=1,ndim
@@ -175,7 +175,6 @@ contains
     dHdr=0.0d0
     kin=0.0d0
     errcode_poisson = virngpoisson( rmethod_poisson, stream_poisson, 1, rkick(1), dble(Noutput))
-    open(401,file="trajectory"//trim(procstr)//".dat")
     do i=1, NMC, 1
        count=count+1
        if (count .ge. rkick(1)) then
@@ -213,7 +212,6 @@ contains
                 contr=contr+mass(k)*(-xprop(n,j,k))*dbdl(j,k)
              end do
           end do
-          write(401,*) contr
           dHdr= dHdr+contr
        end if
     !    if (i .gt. imin) then
@@ -224,7 +222,6 @@ contains
     !    end do
     ! end if
     end do
-    close(401)
     ! stop
     dHdr=dHdr/dble(NMC-imin)
     deallocate(pprop, tempv, tempp)
@@ -498,7 +495,6 @@ contains
     count=0
     dHdr=0.0d0
     skipcount=0
-    open(401,file="trajectory"//trim(procstr)//".dat")
     do i=1, NMC, 1
        count=count+1
        if (count .ge. Noutput .and. i .gt. imin) then
@@ -513,7 +509,6 @@ contains
                 contr=contr+mass(k)*(-xprop(n,j,k))*dbdl(j,k)
              end do
           end do
-          write(401,*) contr
           if (abs(contr) .lt. dHdrlimit .or. dHdrlimit .lt. 0.0) then
              dHdr= dHdr+contr
           else
@@ -539,7 +534,6 @@ contains
        ! Eold=totenergy
     end do
     dHdr= dHdr/dble(NMC-imin-skipcount)
-    close(401)
     ! if (skipcount .gt. 0) write(*,*) "Skipped", skipcount, "points"
     deallocate(c1, c2)
     return
