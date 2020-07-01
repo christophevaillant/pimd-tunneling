@@ -12,29 +12,29 @@ module mcmod_mass
   
 contains
 
-  subroutine file_init(force,i)
-    implicit none
-    integer, intent(in), optional:: i
-    logical, intent(in):: force
-    character(len=25)::  wfufilename, fulldir
+  ! subroutine file_init(force,i)
+  !   implicit none
+  !   integer, intent(in), optional:: i
+  !   logical, intent(in):: force
+  !   character(len=25)::  wfufilename, fulldir
 
-    if (present(i)) then
-       fulldir= trim(procdir) // "/" // trim(beaddir(i))
-    else
-       fulldir= trim(procdir)
-    end if
+  !   if (present(i)) then
+  !      fulldir= trim(procdir) // "/" // trim(beaddir(i))
+  !   else
+  !      fulldir= trim(procdir)
+  !   end if
     
-    if (force) then
-       call EXECUTE_COMMAND_LINE("cp " //trim(basename)// "_force.com "//trim(fulldir))
-       open(50, file=trim(fulldir)//"/"//trim(basename)//"_force.com", status="old", position="append")
-    else
-       call EXECUTE_COMMAND_LINE("cp " //trim(basename)// ".com "//trim(fulldir))
-       open(50, file=trim(fulldir)//"/"//trim(basename)//".com", status="old", position="append")
-    end if
+  !   if (force) then
+  !      call EXECUTE_COMMAND_LINE("cp " //trim(basename)// "_force.com "//trim(fulldir))
+  !      open(50, file=trim(fulldir)//"/"//trim(basename)//"_force.com", status="old", position="append")
+  !   else
+  !      call EXECUTE_COMMAND_LINE("cp " //trim(basename)// ".com "//trim(fulldir))
+  !      open(50, file=trim(fulldir)//"/"//trim(basename)//".com", status="old", position="append")
+  !   end if
 
-    close(50)
-    return
-  end subroutine file_init
+  !   close(50)
+  !   return
+  ! end subroutine file_init
   
   subroutine V_init(iproc)
     integer, intent(in):: iproc
@@ -79,19 +79,19 @@ contains
        call EXECUTE_COMMAND_LINE("cp " //trim(basename)// ".com "//trim(procdir))
        call EXECUTE_COMMAND_LINE("cp geometry.xyz "//trim(procdir))
     end if
-    call CHDIR(procdir)
-    open(1000, file="geometry",form="formatted", status="old")
-    open(2000, file="gradient",form="formatted", status="old")
-    open(3000, file="statusmol",form="formatted", status="old")
-    open(4000, file="statuspi",form="formatted", status="old")
-    call EXECUTE_COMMAND_LINE("molpro --no-xml-output --nouse-logfile --no-flush6 -d . -s "&
-         //trim(basename)//".com", wait=.false.) !
+    ! call CHDIR(procdir)
+    open(1000, file=trim(procdir)//"/geometry",form="formatted", status="old")
+    open(2000, file=trim(procdir)//"/gradient",form="formatted", status="old")
+    open(3000, file=trim(procdir)//"/statusmol",form="formatted", status="old")
+    open(4000, file=trim(procdir)//"/statuspi",form="formatted", status="old")
+    call EXECUTE_COMMAND_LINE("molpro -n 1 --no-xml-output --nouse-logfile --no-flush6 -d " // trim(procdir) //" -s "&
+         //trim(procdir) //"/" // trim(basename)//".com", wait=.false.) !
     status=" "
     readstat=1
        ! read(3000,*,iostat=readstat) status
        ! write(*,*) readstat,status
        ! stop
-    call CHDIR("..")
+    ! call CHDIR("..")
     ! allocate(character(len=8)::beaddir(n))
     ! do i=1, n
     !    if (i .lt. 10) then
@@ -157,7 +157,7 @@ contains
     character::            status
     double precision::     throw1,throw2,throw3,throw4
 
-    call CHDIR(procdir)
+    ! call CHDIR(procdir)
     do i=1,natom
        do j=1, 3
           write(1000,*) x(j,i)
@@ -178,7 +178,7 @@ contains
           read(2000,*)grad(j,i)
        end do
     end do
-    call CHDIR("..")
+    ! call CHDIR("..")
     
 
     return
