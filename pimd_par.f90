@@ -306,7 +306,7 @@ program pimd
   integrand(:)=0.0d0
   ! call random_seed()
   allocate(x(n,ndim,natom), pinit(n,ndim,natom))
-  allocate(transmatrix(n,n),beadmass(ndim,natom,n),beadvec(n,ndof), lam(totdof))
+  allocate(transmatrix(n,n),beadmass(natom,n),beadvec(n,ndof), lam(n))
 
   call alloc_nm(iproc)
   do ii=1, ncalcs
@@ -320,8 +320,8 @@ program pimd
         call propagate_pimd_nm(x,pinit, startpoint,endpoints(ii,:,:), gradpoints(ii,:,:),dHdr)
      else if (thermostat .eq. 2) then
         call propagate_pimd_pile(x,pinit, startpoint,endpoints(ii,:,:), gradpoints(ii,:,:),xipoints(ii),dHdr)
-     else if (thermostat .eq. 3) then
-        call propagate_pimd_higher(x,pinit, startpoint,endpoints(ii,:,:), gradpoints(ii,:,:),dHdr)
+     ! else if (thermostat .eq. 3) then
+     !    call propagate_pimd_higher(x,pinit, startpoint,endpoints(ii,:,:), gradpoints(ii,:,:),dHdr)
      else
         write(*,*) "Incorrect thermostat option."
         stop
@@ -369,9 +369,9 @@ program pimd
 
      finalI= exp(-answer*betan)
      write(*,*) "beta, betan, n=", beta, betan, n
-     write(*,*) "final Delta A=", answer , "+/-", sqrt(sigmaA)
-     write(*,*) "q/q0=", finalI, betan*sqrt(sigmaA)*finalI
-     write(*,*) "q0/q=", 1.0d0/finalI, betan*sqrt(sigmaA)/finalI
+     write(*,*) "final Delta A=", answer , "+/-", sqrt(sigmaA),sqrt(sigmaA/nrep)
+     write(*,*) "q/q0=", finalI, betan*sqrt(sigmaA)*finalI,betan*sqrt(sigmaA/nrep)*finalI
+     write(*,*) "q0/q=", 1.0d0/finalI, betan*sqrt(sigmaA)/finalI, betan*sqrt(sigmaA/nrep)/finalI
      call system_clock(time2, irate, imax)
      write(*,*) "Ran in", dble(time2-time1)/dble(irate), "s"
   end if
