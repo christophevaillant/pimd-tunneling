@@ -6,8 +6,7 @@ program rpi
   double precision, allocatable::   theta(:),phi(:), xharm(:,:,:), H(:,:,:,:)
   double precision, allocatable::   weightstheta(:),weightsphi(:), origin(:)
   double precision, allocatable::   eta(:),weightseta(:)
-  double precision, allocatable::   HHarm(:,:), etasquared(:),Vpath(:), wellinit(:,:)
-  double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:), grad(:,:)
+  double precision, allocatable::   HHarm(:,:), etasquared(:), wellinit(:,:), grad(:,:)
   double precision, allocatable::   initpath(:,:), xtilderot(:,:,:), wellrot(:,:)
   double precision::                lndetj, lndetj0, skink, psi, cutofftheta, cutoffphi
   double precision::                delta, omega, gammetilde, Ibeta, Vwell1, Vwell2
@@ -137,7 +136,7 @@ program rpi
      do i=1,ndim
         do j=1,natom
            do k=1,n
-              xtilde(k,i,j)= splint(lampath, path(:,i,j), splinepath(:), dble(k-1)/dble(n-1))
+              xtilde(k,i,j)= splint(lampath, path(:,i,j), splinepath(:,i,j), dble(k-1)/dble(n-1))
            end do
         end do
      end do
