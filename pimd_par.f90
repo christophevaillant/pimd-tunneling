@@ -33,8 +33,7 @@ program pimd
   integer,allocatable::            isuppz(:), iwork(:)
   !MPI variables
   integer::                        ierr, nproc, ncalcs
-  integer, allocatable::           mpi_int_send(:)
-  double precision, allocatable::  mpi_double_send(:), endpoints(:,:,:), allendpoints(:,:,:)
+  double precision, allocatable::  endpoints(:,:,:), allendpoints(:,:,:)
   double precision, allocatable::  gradpoints(:,:,:), allgradpoints(:,:,:), startpoint(:,:)
   double precision, allocatable::  finalintegrand(:), allintegrands(:)
   double precision, allocatable::  allxipoints(:), xipoints(:)
@@ -42,7 +41,8 @@ program pimd
   integer, dimension(MPI_STATUS_SIZE) :: rstatus
   namelist /MCDATA/ n, beta, NMC, Noutput,dt, iprint,imin,tau,npath, gamma,&
        nintegral,nrep, use_mkl, thermostat, ndim, natom, xunit, instapath, centre,&
-       dHdrlimit, readpath, alignwell, fixedends, cayley, readhess
+       dHdrlimit, readpath, alignwell, fixedends, cayley, readhess,basename, &
+       atom1,atom2,atom3
 
   !initialize MPI
   nproc=0
@@ -81,11 +81,13 @@ program pimd
   fixedends=.true.
   cayley=.false.
   readhess=.false.
+  atom1=1
+  atom2=2
+  atom3=3
+  basename=""
   
   !Read in namelist variables for root proc, and spread
   !it to other procs
-  allocate(mpi_int_send(8), mpi_double_send(5))
-  call V_init(iproc)
   if (iproc .eq. 0) then
      read(*, nml=MCDATA)
      betan= beta/dble(n+1)
@@ -105,7 +107,15 @@ program pimd
 
      ncalcs= nintegral*nrep/nproc
      if (mod(nintegral*nrep, nproc) .ne. 0) ncalcs=ncalcs+1
-     
+
+  end if
+  call MPI_Bcast(atom1, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(atom2, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(atom3, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(basename, 20, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
+  call V_init(iproc)
+
+  if (iproc .eq. 0) then
      !Read in wells and work out the instanton path in order to interpolate
      allocate(origin(ndim))
      allocate(well1(ndim,natom), well2(ndim,natom), wellinit(ndim,natom))
@@ -126,7 +136,6 @@ program pimd
   end if
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
   ierr=0
-  ! call MPI_Bcast(mpi_int_send, 8, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(ncalcs, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(N, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(NMC, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
@@ -172,7 +181,6 @@ program pimd
      end if
   end if
 
-  ! call MPI_Bcast(mpi_double_send, 5, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(beta, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(betan, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(dt, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)

@@ -5,8 +5,6 @@ module mcmod_mass
   character(len=:), allocatable::  procdir, beaddir(:)
   character, allocatable::         label(:)
   character(len=20)::              basename
-  character(len=15)::              informat
-  character(len=2)::               procstring
   integer::                        n, ndim, ndof, natom, xunit, totdof, potprocs
   logical::                        potforcepresent
   
@@ -41,19 +39,9 @@ contains
     character(len=7)::  format_string
     character:: status
     logical::    ex
-    integer::  i,readstat
-    namelist /POTDATA/ basename, atom1,atom2,atom3, informat, potprocs
+    integer::  i,readstat, ierr
 
-    !-----------------------
-    !read in default parameters
-    atom1=1
-    atom2=2
-    atom3=3
     potforcepresent= .true.
-    informat="(A22,3X,F18.12)"
-    potprocs=1
-    
-    read(5, nml=POTDATA)
 
     !-----------------------
     !format statement for reading in
@@ -64,7 +52,6 @@ contains
        format_string = "(A4,I2)"
        allocate(character(len=6)::procdir)
     endif
-    write(procstring, "(I2)") potprocs
     write(procdir,format_string) "proc", iproc
     V0=0.0d0
     !-----------------------
@@ -88,26 +75,6 @@ contains
          //trim(procdir) //"/" // trim(basename)//".com", wait=.false.) !
     status=" "
     readstat=1
-       ! read(3000,*,iostat=readstat) status
-       ! write(*,*) readstat,status
-       ! stop
-    ! call CHDIR("..")
-    ! allocate(character(len=8)::beaddir(n))
-    ! do i=1, n
-    !    if (i .lt. 10) then
-    !       format_string = "(A4,I1)"
-    !    else if (i .lt. 100) then
-    !       format_string = "(A4,I2)"
-    !    else if (i .lt. 1000) then
-    !       format_string = "(A4,I3)"
-    !    end if
-    !    write(beaddir(i),format_string) "bead", i
-    !    call EXECUTE_COMMAND_LINE("mkdir "//trim(procdir)//"/"//trim(beaddir(i)))
-    !    call CHDIR(trim(procdir)//"/"//trim(beaddir(i)))
-    !    call CHDIR("..")
-    ! end do
-    !--------------------------------
-    !Run Molpro
     
     return
   end subroutine V_init

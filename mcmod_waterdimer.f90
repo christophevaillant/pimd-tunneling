@@ -1,10 +1,11 @@
 module mcmod_mass
   implicit none
   double precision::               V0, eps2=1.0d-5
-  integer,parameter::              atom1=1, atom2=2, atom3=3
+  integer::              atom1, atom2, atom3
   character, allocatable::         label(:)
   integer::                        n, ndim, ndof, natom, xunit, totdof
   logical::                        potforcepresent
+  character(len=20)::              basename
 
 contains
 

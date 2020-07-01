@@ -20,7 +20,8 @@ program rpi
   double precision, allocatable::  work(:)
 
   namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, angular, npoints, cutofftheta,cutoffphi,&
-       output_instanton,readpath, alignwell, fixedends, alignpath, checkhess
+       output_instanton,readpath, alignwell, fixedends, alignpath, checkhess,basename, &
+       atom1,atom2,atom3
 
   !-------------------------
   !Set default system parameters then read in namelist
