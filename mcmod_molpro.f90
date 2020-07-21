@@ -45,12 +45,15 @@ contains
 
     !-----------------------
     !format statement for reading in
-    if (iproc < 10) then
+    if (iproc .lt. 10) then
        format_string = "(A4,I1)"
        allocate(character(len=5)::procdir)
-    else
+    else if (iproc .ge. 10 .and. iproc .lt. 100) then
        format_string = "(A4,I2)"
        allocate(character(len=6)::procdir)
+    else if (iproc .ge. 100) then
+       format_string = "(A4,I3)"
+       allocate(character(len=7)::procdir)
     endif
     write(procdir,format_string) "proc", iproc
     V0=0.0d0
@@ -71,8 +74,8 @@ contains
     open(2000, file=trim(procdir)//"/gradient",form="formatted", status="old")
     open(3000, file=trim(procdir)//"/statusmol",form="formatted", status="old")
     open(4000, file=trim(procdir)//"/statuspi",form="formatted", status="old")
-    call EXECUTE_COMMAND_LINE("molpro -n 1 --no-xml-output --nouse-logfile --no-flush6 -d " // trim(procdir) //" -s "&
-         //trim(procdir) //"/" // trim(basename)//".com", wait=.false.) !
+    call EXECUTE_COMMAND_LINE("molpro -n 1 --no-xml-output --nouse-logfile --no-flush6 -d ./" // trim(procdir) &
+         //" -s ./"//trim(procdir) //"/" // trim(basename)//".com", wait=.false.) !
     status=" "
     readstat=1
     
