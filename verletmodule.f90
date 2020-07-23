@@ -164,7 +164,8 @@ contains
     double precision, intent(in)::   xprop(:,:,:), pprop(:,:,:), dHdr
     integer, intent(in)::            ii
     integer::                        i,j,k
-    
+
+    rewind(restartunit)
     do i=1,n
        write(restartunit,*) natom
        write(restartunit,*) dHdr
@@ -387,13 +388,10 @@ contains
     if (restart .lt. 2)dHdr=0.0d0
     do ii=1, NMC, 1
        count=count+1
-       if ((mod(ii,Noutput) .eq. 0) .and. (restart .gt. 0)) then
-          call write_restart(xprop,vprop,ii+restartnmc,dHdr)
-       end if
-
        if (count .ge. Noutput .and. ii .gt. imin) then
           count=0
           if (iprint) write(*,*) 100*dble(ii)/dble(NMC-imin), dHdr/(betan**2*dble(ii-imin))
+          if (restart .gt. 0) call write_restart(xprop,vprop,ii+restartnmc,dHdr)
        end if
        call time_step_pile(xprop, vprop)
        if (ii.gt.imin) then
