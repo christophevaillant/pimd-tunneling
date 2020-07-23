@@ -7,7 +7,7 @@ module verletint
   use instantonmod
   implicit none
 
-  integer::                         NMC, Noutput, imin, iproc
+  integer::                         NMC, Noutput, imin, restart, iproc, restartnmc,restartunit
   integer, allocatable::            ipar(:)
   double precision::                dt, dHdrlimit
   double precision,allocatable::    transmatrix(:,:),dpar(:), beadvec(:,:)
@@ -159,6 +159,30 @@ contains
     return
   end subroutine gauleg
 
+  subroutine write_restart(xprop,pprop,ii,dHdr)
+    implicit none
+    double precision, intent(in)::   xprop(:,:,:), pprop(:,:,:), dHdr
+    integer, intent(in)::            ii
+    integer::                        i,j,k
+    
+    do i=1,n
+       write(restartunit,*) natom
+       write(restartunit,*) dHdr
+       do j=1,natom
+          write(restartunit,*) label(j), xprop(i,1,j), xprop(i,2,j), xprop(i,3,j)
+       end do
+    end do
+    do i=1,n
+       write(restartunit,*) natom
+       write(restartunit,*) ii
+       do j=1,natom
+          write(restartunit,*) label(j), pprop(i,1,j), pprop(i,2,j), pprop(i,3,j)
+       end do
+    end do
+
+    return
+  end subroutine write_restart
+
   !-----------------------------------------------------
   !-----------------------------------------------------
   !main function for propagating a MD trajectory
@@ -167,19 +191,22 @@ contains
     double precision::     xprop(:,:,:), vprop(:,:,:),randno, sigma
     double precision::     a(:,:),b(:,:), dHdr, totenergy, kin,dbdl(:,:), contr
     double precision, allocatable:: pprop(:), tempp(:), tempv(:)
-    integer::              i,j,k,l,count, time1,time2,imax, irate, dofi
+    integer::              i,j,k,l,count, time1,time2,imax, irate, dofi,ii
     integer (kind=4)::     rkick(1)
 
     allocate(pprop(n), tempp(n),tempv(n))
     count=0
-    dHdr=0.0d0
+    if (restart .lt. 2) dHdr=0.0d0
     kin=0.0d0
     errcode_poisson = virngpoisson( rmethod_poisson, stream_poisson, 1, rkick(1), dble(Noutput))
-    do i=1, NMC, 1
+    do ii=1, NMC, 1
        count=count+1
+       if ((mod(ii,Noutput) .eq. 0) .and. (restart .gt. 0)) then
+          call write_restart(xprop,vprop,ii+restartnmc,dHdr)
+       end if
        if (count .ge. rkick(1)) then
           count=0
-          if (iprint) write(*,*) 100*dble(i)/dble(NMC),dHdr/(betan**2*dble(i-imin))!dHdr/dble(i)
+          if (iprint) write(*,*) 100*dble(ii)/dble(NMC),dHdr/(betan**2*dble(ii-imin))!dHdr/dble(i)
           do j=1,ndim
              do k=1,natom
                 dofi=(k-1)*ndim +j
@@ -204,8 +231,8 @@ contains
           count=0
           ! write(20,*)i, dHdr/dble(i)
        end if
-       call time_step_test(xprop, vprop)
-       if (i.gt.imin) then
+       call time_step_nm(xprop, vprop)
+       if (ii.gt.imin) then
           contr=0.0d0
           do j=1,ndim
              do k=1,natom
@@ -214,16 +241,9 @@ contains
           end do
           dHdr= dHdr+contr
        end if
-    !    if (i .gt. imin) then
-    !    do j=1,ndim
-    !       do k=1,natom
-    !          dHdr= dHdr+mass(k)*(-xprop(n,j,k))*dbdl(j,k)
-    !       end do
-    !    end do
-    ! end if
     end do
-    ! stop
-    dHdr=dHdr/dble(NMC-imin)
+    if ((restart .gt. 0)) call write_restart(xprop,vprop,nmc+restartnmc,dHdr)
+    dHdr=dHdr/dble(NMC+restartnmc-imin)
     deallocate(pprop, tempv, tempp)
     return
   end subroutine propagate_pimd_nm
@@ -267,136 +287,7 @@ contains
   !-----------------------------------------------------
   !routine taking a step in time using normal mode verlet algorithm
   !from ceriotti et al 2010 paper.
-  subroutine time_step_nm(x, v)
-    implicit none
-    double precision::    x(:,:,:), v(:,:,:), omegak
-    double precision, allocatable::  newv(:,:,:), newx(:,:,:),force(:,:)
-    double precision, allocatable::  q(:,:,:), p(:,:,:)
-    integer::             i,j,k, dofi
-
-    allocate(newv(n,ndim,natom), newx(n,ndim,natom),force(ndim,natom))
-    allocate(q(n,ndim,natom),p(n,ndim,natom))
-    newv(:,:,:)=0.0d0
-    newx(:,:,:)=0.0d0
-    force(:,:)=0.0d0
-    q(:,:,:)=0.0d0
-    p(:,:,:)=0.0d0
-    !-------------
-    !step 2
-    do i=1,ndim
-       do j=1,natom
-          dofi=(j-1)*ndim + i
-          if (.not. use_mkl) then
-             call nmtransform_forward(v(:,i,j), p(:,i,j), 0)
-             call nmtransform_forward(x(:,i,j), q(:,i,j), dofi)
-          else
-             call nmtransform_forward_nr(v(:,i,j), p(:,i,j), 0)
-             call nmtransform_forward_nr(x(:,i,j), q(:,i,j), dofi)
-          end if
-       end do
-    end do
-    !-------------
-    !step 3
-    do i=1, n
-       do j=1,ndim
-          do k=1,natom
-             dofi= natom*(j-1 + ndim*(i-1)) +k
-             omegak= sqrt(mass(k)/beadmass(k,i))*lam(i)
-             newv(i,j,k)= p(i,j,k)*cos(0.5d0*dt*omegak) - &
-                  q(i,j,k)*omegak*beadmass(k,i)*sin(0.5d0*omegak*dt)
-             newx(i,j,k)= q(i,j,k)*cos(0.5d0*dt*omegak) + &
-                  p(i,j,k)*sin(0.5d0*omegak*dt)/(omegak*beadmass(k,i))
-             if (newv(i,j,k) .ne. newv(i,j,k)) then
-                write(*,*) "NaN in 1st NM propagation"
-                write(*,*) omegak, mass(k), beadmass(k,i), lam(i)
-                write(*,*) p(i,j,k), v(i,j,k)
-                stop
-             end if
-          end do
-       end do
-    end do
-    !-------------
-    !step 4
-    do i=1,ndim
-       do j=1,natom
-          dofi=(j-1)*ndim + i
-          if (.not. use_mkl) then
-             call nmtransform_backward(newv(:,i,j), v(:,i,j), 0)
-             call nmtransform_backward(newx(:,i,j), x(:,i,j),dofi)
-          else
-             call nmtransform_backward_nr(newv(:,i,j), v(:,i,j),0)
-             call nmtransform_backward_nr(newx(:,i,j), x(:,i,j),dofi)
-          end if
-       end do
-    end do
-    !-------------
-    !step 1
-    do i=1,n
-       call Vprime(x(i,:,:),force)
-       do j=1,ndim
-          do k=1,natom
-             newv(i,j,k)= v(i,j,k) - force(j,k)*dt
-             if (newv(i,j,k) .ne. newv(i,j,k)) then
-                write(*,*) "NaN in pot propagation"
-                stop
-             end if
-          end do
-       end do
-    end do
-    !-------------
-    !step 2
-    do i=1,ndim
-       do j=1,natom
-          if (.not. use_mkl) then
-             call nmtransform_forward(newv(:,i,j), p(:,i,j), 0)
-          else
-             call nmtransform_forward_nr(newv(:,i,j), p(:,i,j), 0)
-          end if
-          q(:,i,j)=newx(:,i,j)
-       end do
-    end do
-    !-------------
-    !step 3
-    do i=1, n
-       do j=1,ndim
-          do k=1,natom
-             dofi= natom*(j-1 + ndim*(i-1)) +k
-             omegak= sqrt(mass(k)/beadmass(k,i))*lam(i)
-             newv(i,j,k)= p(i,j,k)*cos(0.5d0*dt*omegak) - &
-                  q(i,j,k)*omegak*beadmass(k,i)*sin(0.5d0*omegak*dt)
-             newx(i,j,k)= q(i,j,k)*cos(0.5d0*dt*omegak) + &
-                  p(i,j,k)*sin(0.5d0*omegak*dt)/(omegak*beadmass(k,i))
-             if (newv(i,j,k) .ne. newv(i,j,k)) then
-                write(*,*) "NaN in 1st NM propagation"
-                stop
-             end if
-          end do
-       end do
-    end do
-    !-------------
-    !step 4
-    do i=1,ndim
-       do j=1,natom
-          dofi=(j-1)*ndim + i
-          if (.not. use_mkl) then
-             call nmtransform_backward(newv(:,i,j), v(:,i,j), 0)
-             call nmtransform_backward(newx(:,i,j), x(:,i,j),dofi)
-          else
-             call nmtransform_backward_nr(newv(:,i,j), v(:,i,j),0)
-             call nmtransform_backward_nr(newx(:,i,j), x(:,i,j),dofi)
-          end if
-       end do
-    end do
-    deallocate(newv, newx,force)
-    deallocate(q,p)
-    return
-  end subroutine time_step_nm
-
-  !-----------------------------------------------------
-  !-----------------------------------------------------
-  !routine taking a step in time using normal mode verlet algorithm
-  !from ceriotti et al 2010 paper.
-  subroutine time_step_test(xprop, pprop)
+  subroutine time_step_nm(xprop, pprop)
     implicit none
     double precision, intent(inout)::    xprop(:,:,:), pprop(:,:,:)
     double precision, allocatable::  force(:,:,:), pip(:,:,:)
@@ -407,7 +298,7 @@ contains
     call step_nm(0.5d0*dt,xprop,pprop ,.true.)
     deallocate(force, pip)
     return
-  end subroutine time_step_test
+  end subroutine time_step_nm
   !-----------------------------------------------------
   !-----------------------------------------------------
   !initialize normal mode routines
@@ -482,7 +373,7 @@ contains
     double precision::     xprop(:,:,:), vprop(:,:,:),randno, Eold
     double precision::     potenergy, springenergy, kinenergy, totenergy,xi
     double precision::     a(:,:),b(:,:), dHdr, dbdl(:,:), contr
-    integer::              i,j,k,count, time1,time2,imax, irate, skipcount,jj,idof
+    integer::              i,j,k,count, time1,time2,imax, irate, jj,idof,ii
     integer (kind=4)::     rkick(1)
 
     allocate(c1(natom,n), c2(natom,n))
@@ -493,16 +384,19 @@ contains
        end do
     end do
     count=0
-    dHdr=0.0d0
-    skipcount=0
-    do i=1, NMC, 1
+    if (restart .lt. 2)dHdr=0.0d0
+    do ii=1, NMC, 1
        count=count+1
-       if (count .ge. Noutput .and. i .gt. imin) then
+       if ((mod(ii,Noutput) .eq. 0) .and. (restart .gt. 0)) then
+          call write_restart(xprop,vprop,ii+restartnmc,dHdr)
+       end if
+
+       if (count .ge. Noutput .and. ii .gt. imin) then
           count=0
-          if (iprint) write(*,*) 100*dble(i)/dble(NMC-imin), dHdr/(betan**2*dble(i-imin))
+          if (iprint) write(*,*) 100*dble(ii)/dble(NMC-imin), dHdr/(betan**2*dble(ii-imin))
        end if
        call time_step_pile(xprop, vprop)
-       if (i.gt.imin) then
+       if (ii.gt.imin) then
           contr=0.0d0
           do j=1,ndim
              do k=1,natom
@@ -514,27 +408,11 @@ contains
           else
              write(*,*) "Over limit", contr, ", reinitialize path"
              call init_path(xi, xprop, vprop)
-!             skipcount=skipcount+1
           end if
        end if
-       !    totenergy= UM(xprop,a,b)
-       !    do jj=1, N
-       !       do k=1,natom
-       !          kinenergy= 0.0d0
-       !          do j=1,ndim
-       !             kinenergy= kinenergy + vprop(jj,j,k)**2
-       !          end do
-       !          totenergy= totenergy+0.5d0*kinenergy/mass(k)
-       !    end do
-       ! end do
-       ! if (iprint) then
-       !    write(*,*) i, totenergy- Eold
-       ! end if
-       ! if (abs(totenergy- Eold) .gt. 1d-1) write(*,*) i, totenergy
-       ! Eold=totenergy
     end do
-    dHdr= dHdr/dble(NMC-imin-skipcount)
-    ! if (skipcount .gt. 0) write(*,*) "Skipped", skipcount, "points"
+    if ((restart .gt. 0)) call write_restart(xprop,vprop,nmc+restartnmc,dHdr)
+    dHdr= dHdr/dble(NMC+restartnmc-imin)
     deallocate(c1, c2)
     return
   end subroutine propagate_pimd_pile
@@ -572,10 +450,6 @@ contains
     call step_fflangevin(pprop)
     call step_nm(0.5d0*dt,xprop,pprop ,.true.)
 
-    ! call step_v(0.5d0*dt, xprop, pprop, force, .true.)
-    ! call step_langevin(pprop)
-    ! call step_v(0.5d0*dt, xprop, pprop, force,.false.)
-    ! call step_nm(dt,xprop,pprop ,.true.)
     deallocate(force, pip)
     return
   end subroutine time_step_ffpile
@@ -616,50 +490,6 @@ contains
     deallocate(xprop_nr)
     return
   end subroutine nmtransform_backward_nr
-
-  ! !-----------------------------------------------------
-  ! !-----------------------------------------------------
-  ! subroutine time_step_higher(xprop, vprop)
-  !   implicit none
-  !   double precision::    xprop(:,:,:), vprop(:,:,:), omegak
-  !   double precision::    pprop(n*ndof)
-  !   double precision, allocatable::  force(:,:,:)
-  !   double precision, allocatable::  q(:,:,:), p(:,:,:)
-  !   integer::             i,j,k,dofi
-
-  !   allocate(p(n,ndim,natom),q(n,ndim,natom))
-
-  !   q(:,:,:)= xprop(:,:,:)
-  !   p(:,:,:)= vprop(:,:,:)
-  !   call step_nm(alpha4*dt, q, p, .true.)
-  !   call step_v(beta3*dt,q, p)
-  !   call step_nm(alpha3*dt, q, p, .true.)
-  !   call step_v(beta2*dt,q, p)
-  !   call step_nm(alpha2*dt, q, p, .true.)
-  !   call step_v(beta1*dt,q, p)
-  !   call step_nm(alpha1*dt, q, p,.false.)
-    
-  !   errcode_normal = vdrnggaussian(rmethod_normal,stream_normal,n*ndof,pprop,0.0d0,1.0d0)
-  !   do i=1,ndim
-  !      do j=1,natom
-  !         dofi= (j-1)*ndim+i
-  !         do k=1,n
-  !            p(k,i,j)= (c1(i,j,k)**2)*p(k,i,j) + &
-  !                 sqrt(beadmass(i,j,k)/betan)*c2(i,j,k)*sqrt(1.0+c1(i,j,k)**2)*pprop((dofi-1)*n +k)
-  !         end do
-  !         if (.not. use_mkl) then
-  !            call nmtransform_backward(p(:,i,j), vprop(:,i,j), 0)
-  !            call nmtransform_backward(q(:,i,j), xprop(:,i,j), dofi)
-  !         else
-  !            call nmtransform_backward_nr(p(:,i,j), vprop(:,i,j), 0)
-  !            call nmtransform_backward_nr(q(:,i,j), xprop(:,i,j), dofi)
-  !         end if
-  !      end do
-  !   end do
-
-  !   deallocate(q,p)
-  !   return
-  ! end subroutine time_step_higher
 
   !-----------------------------------------------------
   !-----------------------------------------------------

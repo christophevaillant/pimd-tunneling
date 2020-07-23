@@ -10,19 +10,19 @@ program pimd
   ! include 'mkl_service.fi'
   !general variables
   integer::                        i, j, irej, randind,count,k,l,jj, nrep
-  integer::                        thermostat,dofi, npath
+  integer::                        thermostat,dofi, npath, dummyint
   double precision::               Isum, Isum0,Isqprev, xcutoff, UHnew, UHold
   double precision::               diagonals, offdiags, Pacc, delta, stdev
   double precision::               UHinitial, f, randno,answer, com, totm
-  double precision::               lndetj, lndetj0, skink, theta, phi, dummyE
+  double precision::               lndetj, lndetj0, skink, theta, phi
   double precision::               dHdr, dx, finalI,sigmaA, a, b, xmiddle
   double precision::               theta1, theta2, theta3
   double precision, allocatable::  x(:,:,:), initpath(:,:)
   double precision, allocatable::  origin(:), wellinit(:,:)
   double precision, allocatable::  xi(:), dbdxi(:,:,:), pinit(:,:,:)
-  integer::                        ndofrb, dummy
+  character(len=30)::              format_string, restartstr
   logical::                        instapath, centre, readpath, alignwell
-  character::                      dummylabel, dummystr(28)
+  character(len=3)::               dummychar, iprocchar, iichar
   !gauss-legendre variables
   integer::                        nintegral,ii, time1, time2, imax, irate
   double precision, allocatable::  weights(:), xint(:,:,:), integrand(:), sigma(:)
@@ -42,7 +42,7 @@ program pimd
   namelist /MCDATA/ n, beta, NMC, Noutput,dt, iprint,imin,tau,npath, gamma,&
        nintegral,nrep, use_mkl, thermostat, ndim, natom, xunit, instapath, centre,&
        dHdrlimit, readpath, alignwell, fixedends, cayley, readhess,basename, &
-       atom1,atom2,atom3
+       atom1,atom2,atom3, restart
 
   !initialize MPI
   nproc=0
@@ -85,6 +85,7 @@ program pimd
   atom2=2
   atom3=3
   basename=""
+  restart=0
   
   !Read in namelist variables for root proc, and spread
   !it to other procs
@@ -144,6 +145,7 @@ program pimd
   call MPI_Bcast(imin, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(ndim, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(restart, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(fixedends, 1, MPI_LOGICAL, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(readhess, 1, MPI_LOGICAL, 0,MPI_COMM_WORLD, ierr)
 
@@ -322,13 +324,54 @@ program pimd
         cycle
      end if
      call init_nm(startpoint,endpoints(ii,:,:))
-     call init_path(xipoints(ii), x, pinit)
+     !need to check status of calculation for restart
+     if (restart .lt. 2) then
+        call init_path(xipoints(ii), x, pinit)
+        restartnmc=0
+     end if
+     if (restart .ge. 1) then
+        restartunit= 600+ iproc
+        !-----------------------
+        !format statement for reading in
+        if (iproc .lt. 10) then
+           format_string = "(A12,I1,A1"
+        else if (iproc .ge. 10 .and. iproc .lt. 100) then
+           format_string = "(A12,I2,A1"
+        else if (iproc .ge. 100) then
+           format_string = "(A12,I3,A1"
+        endif
+        
+        if (ii .lt. 10) then
+           format_string= trim(format_string) // ",I1,A4)"
+        else if (ii .ge. 10 .and. ii .lt. 100) then
+           format_string= trim(format_string) // ",I2,A4)"
+        else if (ii .ge. 100 .and. ii .lt. 1000) then
+           format_string= trim(format_string) // ",I3,A4)"
+        end if
+        
+        write(restartstr,trim(format_string)) "restart_proc", iproc, "_", ii,".xyz"
+        open(restartunit,file=trim(restartstr))
+     end if
+     if (restart .eq. 2) then
+        do i=1,n
+           read(restartunit,*) dummyint
+           read(restartunit,*) dHdr
+           do j=1,natom
+              read(restartunit,*) dummychar, x(i,1,j), x(i,2,j), x(i,3,j)
+           end do
+        end do
+        do i=1,n
+           read(restartunit,*) dummyint
+           read(restartunit,*) restartnmc
+           do j=1,natom
+              read(restartunit,*) dummychar, pinit(i,1,j), pinit(i,2,j), pinit(i,3,j)
+           end do
+        end do
+     end if
      if (thermostat .eq. 1) then
         call propagate_pimd_nm(x,pinit, startpoint,endpoints(ii,:,:), gradpoints(ii,:,:),dHdr)
      else if (thermostat .eq. 2) then
         call propagate_pimd_pile(x,pinit, startpoint,endpoints(ii,:,:), gradpoints(ii,:,:),xipoints(ii),dHdr)
-     ! else if (thermostat .eq. 3) then
-     !    call propagate_pimd_higher(x,pinit, startpoint,endpoints(ii,:,:), gradpoints(ii,:,:),dHdr)
      else
         write(*,*) "Incorrect thermostat option."
         stop
