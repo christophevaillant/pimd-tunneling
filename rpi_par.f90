@@ -2,6 +2,7 @@ program rpi
   use mcmod_mass
   use verletint
   use instantonmod
+  use parallelmod
   implicit none
 
   include 'mpif.h'
@@ -23,10 +24,10 @@ program rpi
   integer, dimension(MPI_STATUS_SIZE) :: rstatus
   double precision, allocatable::  endpoints(:,:,:), allendpoints(:,:,:)
   double precision, allocatable::  results(:), allresults(:)
-  logical::                        alignwell
+  logical::                        alignwell, angular
 
   namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, npoints, cutofftheta,cutoffphi, alignwell,&
-       fixedends
+       fixedends, angular
 
   !initialize MPI
   nproc=0
@@ -171,6 +172,7 @@ program rpi
   !-------------------------------------------
   !Set up end points array to distribute to the processors
   !ncalcs is number of calculations for each processor
+  if (angular) then
   allocate(wellrot(ndim,natom))
   allocate(endpoints(ncalcs, ndim, natom), allendpoints(npoints**3, ndim, natom))
   allendpoints=0.0d0
@@ -267,6 +269,7 @@ program rpi
      deallocate(well2)
   end if
   deallocate(xtilderot, endpoints, well1)
+end if
 
   deallocate(etasquared, xtilde)
   call MPI_FINALIZE(ierr)
