@@ -61,17 +61,17 @@ contains
 
     if (fixedends) then
        if (potforcepresent) then
-          call UMforceenergy(xtilde,fprime,f,a,b)
+          call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f,a,b)
        else
-          f= UM(xtilde,a,b)
-          call UMprime(xtilde,fprime,a,b)
+          f= parallel_UM(xtilde,iproc, nproc, a,b)
+          call parallel_UMprime(xtilde,iproc, nproc, fprime,a,b)
        end if
     else
        if (potforcepresent) then
-          call UMforceenergy(xtilde,fprime,f)
+          call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f)
        else
-          f= UM(xtilde)
-          call UMprime(xtilde,fprime)
+          f= parallel_UM(xtildeiproc, nproc)
+          call UMprime(xtilde,iproc, nproc, fprime)
        end if
     end if
     count=0
@@ -87,17 +87,17 @@ contains
           xtilde= reshape(xwork,(/n,ndim,natom/))
           if (fixedends) then
              if (potforcepresent) then
-                call UMforceenergy(xtilde,fprime,f,a,b)
+                call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f,a,b)
              else
-                f= UM(xtilde,a,b)
-                call UMprime(xtilde,fprime,a,b)
+                f= parallel_UM(xtilde,iproc, nproc, a,b)
+                call parallel_UMprime(xtilde,iproc, nproc, fprime,a,b)
              end if
           else
              if (potforcepresent) then
-                call UMforceenergy(xtilde,fprime,f)
+                call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f)
              else
-                f= UM(xtilde)
-                call UMprime(xtilde,fprime)
+                f= parallel_UM(xtilde,iproc, nproc)
+                call parallel_UMprime(xtilde,iproc, nproc, fprime)
              end if
           end if
        end if
@@ -192,6 +192,36 @@ contains
     double precision,allocatable:: grad(:,:)
 
     allocate(grad(ndim,natom))
+
+    !Begin Parallel parts!
+    ncalcs= N/nproc
+    if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
+    allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
+    if (iproc .eq. 0) then
+       !need to send x to all the procs
+       do i=1,nproc-1
+          do j=1, ncalcs
+             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, j, 1, MPI_COMM_WORLD, ierr)
+          end do
+       end do
+       xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
+    else
+       !need to receive x to all procs
+       do i=1,ncalcs
+          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr))
+       end do
+    end if
+    do i=1, ncalcs
+       !need to calculate the potential
+       Vpart(i)= V(xpart(i,:,:))
+    end do
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+    !gather all the results
+    allocate(Vall(n))
+    call MPI_Gather(Vpart,nalcs,MPI_DOUBLE_PRECISION, Vall, ncalcs, MPI_DOUBLE_PRECISION, 0, &
+         MPI_COMM_WORLD, ierr)
+    deallocate(xpart,Vpart)
+
     do i=1, N
        do j=1,ndim
           do k=1,natom
@@ -237,6 +267,35 @@ contains
 
     allocate(grad(ndim,natom))
     UM=0.0d0
+    !Begin Parallel parts!
+    ncalcs= N/nproc
+    if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
+    allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
+    if (iproc .eq. 0) then
+       !need to send x to all the procs
+       do i=1,nproc-1
+          do j=1, ncalcs
+             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, j, 1, MPI_COMM_WORLD, ierr)
+          end do
+       end do
+       xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
+    else
+       !need to receive x to all procs
+       do i=1,ncalcs
+          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr))
+       end do
+    end if
+    do i=1, ncalcs
+       !need to calculate the potential
+       Vpart(i)= V(xpart(i,:,:))
+    end do
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+    !gather all the results
+    allocate(Vall(n))
+    call MPI_Gather(Vpart,nalcs,MPI_DOUBLE_PRECISION, Vall, ncalcs, MPI_DOUBLE_PRECISION, 0, &
+         MPI_COMM_WORLD, ierr)
+    deallocate(xpart,Vpart)
+
     do i=1, N, 1
        call potforce(x(i,:,:),grad,energy)
        UM=UM+ energy
@@ -302,6 +361,36 @@ contains
 
     answer=0.0d0
     hess=0.0d0
+
+    !Begin Parallel parts!
+    ncalcs= N/nproc
+    if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
+    allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
+    if (iproc .eq. 0) then
+       !need to send x to all the procs
+       do i=1,nproc-1
+          do j=1, ncalcs
+             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, j, 1, MPI_COMM_WORLD, ierr)
+          end do
+       end do
+       xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
+    else
+       !need to receive x to all procs
+       do i=1,ncalcs
+          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr))
+       end do
+    end if
+    do i=1, ncalcs
+       !need to calculate the potential
+       Vpart(i)= V(xpart(i,:,:))
+    end do
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+    !gather all the results
+    allocate(Vall(n))
+    call MPI_Gather(Vpart,nalcs,MPI_DOUBLE_PRECISION, Vall, ncalcs, MPI_DOUBLE_PRECISION, 0, &
+         MPI_COMM_WORLD, ierr)
+    deallocate(xpart,Vpart)
+
     do i=1, n, 1
        if (present(inithess)) then
           do j1=1,ndim
