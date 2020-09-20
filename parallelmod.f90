@@ -71,7 +71,7 @@ contains
           call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f)
        else
           f= parallel_UM(xtildeiproc, nproc)
-          call UMprime(xtilde,iproc, nproc, fprime)
+          call parallel_UMprime(xtilde,iproc, nproc, fprime)
        end if
     end if
     count=0
@@ -177,26 +177,27 @@ contains
           end do
        end if
     end if
-
+    deallocate(Vall)
     return
   end function PARALLEL_UM
 
   !---------------------------------------------------------------------
   !linear polymer force
-  subroutine parallel_UMprime(x, answer,a,b)
+  subroutine parallel_UMprime(x,iproc,nproc, answer,a,b)
     implicit none
-    integer::            i,j,k
     double precision, intent(in)::   x(:,:,:)
     double precision, intent(out)::  answer(:,:,:)
     double precision, intent(in), optional:: a(:,:),b(:,:)
-    double precision,allocatable:: grad(:,:)
+    integer, intent(in)::          iproc, nproc
+    double precision,allocatable:: gradpart(:,:,:), xpart(:,:,:), gradall(:,:,:)
+    integer::            i,j,k, ncalcs, ierr
+    integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
-    allocate(grad(ndim,natom))
 
     !Begin Parallel parts!
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
-    allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
+    allocate(xpart(ncalcs,ndim,natom),gradpart(ncalcs,ndim,natom))
     if (iproc .eq. 0) then
        !need to send x to all the procs
        do i=1,nproc-1
@@ -213,14 +214,14 @@ contains
     end if
     do i=1, ncalcs
        !need to calculate the potential
-       Vpart(i)= V(xpart(i,:,:))
+       call Vprime(xpart(i,:,:),gradpart(i,:,:))
     end do
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
-    allocate(Vall(n))
-    call MPI_Gather(Vpart,nalcs,MPI_DOUBLE_PRECISION, Vall, ncalcs, MPI_DOUBLE_PRECISION, 0, &
-         MPI_COMM_WORLD, ierr)
-    deallocate(xpart,Vpart)
+    allocate(gradall(n,ndim,natom))
+    call MPI_Gather(gradpart,nalcs*ndim*natom,MPI_DOUBLE_PRECISION, gradall, ncalcs*ndim*natom,&
+         MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+    deallocate(xpart,gradpart)
 
     do i=1, N
        do j=1,ndim
@@ -242,14 +243,13 @@ contains
              end if
           end do
        end do
-       call Vprime(x(i,:,:),grad(:,:))
        do j=1, ndim
           do k=1, natom
-             answer(i,j,k)= answer(i,j,k)+ grad(j,k)
+             answer(i,j,k)= answer(i,j,k)+ gradall(i,j,k)
           end do
        end do
     end do
-    deallocate(grad)
+    deallocate(gradall)
 
     return
   end subroutine Parallel_UMprime
@@ -258,13 +258,16 @@ contains
   !linear polymer force and energy
   subroutine parallel_UMforceenergy(x, answer,UM,a,b)
     implicit none
-    integer::            i,j,k
-    double precision,intent(in)::   x(:,:,:)
+        double precision,intent(in)::   x(:,:,:)
     double precision,intent(in),optional:: a(:,:),b(:,:)
     double precision, intent(out)::  answer(:,:,:), UM
-    double precision,allocatable:: grad(:,:)
+    integer, intent(in)::          iproc, nproc
+    double precision, allocatable:: xpart(:,:,:), Vpart(:), Vall(:)
+    double precision,allocatable:: gradpart(:,:,:), gradall(:,:,:)
     double precision:: energy
-
+    integer::            i,j,k, ncalcs, ierr
+    integer, dimension(MPI_STATUS_SIZE) :: rstatus
+    
     allocate(grad(ndim,natom))
     UM=0.0d0
     !Begin Parallel parts!
@@ -287,18 +290,20 @@ contains
     end if
     do i=1, ncalcs
        !need to calculate the potential
-       Vpart(i)= V(xpart(i,:,:))
+       call potforce(x(i,:,:),gradpart(i,:,:),Vpart(i))
     end do
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
-    allocate(Vall(n))
+    allocate(Vall(n),gradall(n,ndim,natom))
     call MPI_Gather(Vpart,nalcs,MPI_DOUBLE_PRECISION, Vall, ncalcs, MPI_DOUBLE_PRECISION, 0, &
          MPI_COMM_WORLD, ierr)
-    deallocate(xpart,Vpart)
+    call MPI_Gather(gradpart,nalcs*ndim*natom,MPI_DOUBLE_PRECISION, gradall, ncalcs*ndim*natom,&
+         MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+    deallocate(xpart,Vpart, gradpart)
 
     do i=1, N, 1
-       call potforce(x(i,:,:),grad,energy)
-       UM=UM+ energy
+       UM=UM+ Vall(i)
        do j=1, ndim
           do k=1, natom
              if (i .lt. N) UM=UM+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
@@ -325,7 +330,7 @@ contains
        end do
        do j=1, ndim
           do k=1, natom
-             answer(i,j,k)= answer(i,j,k)+ grad(j,k)
+             answer(i,j,k)= answer(i,j,k)+ gradall(i,j,k)
           end do
        end do
     end do
@@ -340,27 +345,27 @@ contains
        end do
     end if
 
-    deallocate(grad)
+    deallocate(gradall, Vall)
 
     return
   end subroutine Parallel_UMforceenergy
 
   !---------------------------------------------------------------------
   !linear polymer hessian
-  subroutine parallel_UMhessian(x, singlewell,answer,inithess)
+  subroutine parallel_UMhessian(x, iproc, nproc,singlewell,answer,inithess)
     implicit none
-    integer::            i, j1, k1, j2, k2, idof1, idof2
-    integer::            fulldof1, fulldof2, index
     double precision, intent(in)::   x(:,:,:)
     double precision, intent(in),optional::  inithess(:,:,:)
     logical, intent(in)::   singlewell
+    integer, intent(in)::          iproc, nproc
     double precision, intent(out):: answer(:,:)
     double precision, allocatable:: hess(:,:,:,:)
+    double precision,allocatable:: hesspart(:,:,:,:,:), xpart(:,:,:), hessall(:,:,:,:,:)
+    integer::            i, j1, k1, j2, k2, idof1, idof2
+    integer::            fulldof1, fulldof2, index
 
-    allocate(hess(ndim, natom, ndim, natom))
 
     answer=0.0d0
-    hess=0.0d0
 
     !Begin Parallel parts!
     ncalcs= N/nproc
