@@ -352,11 +352,9 @@ contains
 
   !---------------------------------------------------------------------
   !linear polymer hessian
-  subroutine parallel_UMhessian(x, iproc, nproc,singlewell,answer,inithess)
+  subroutine parallel_UMhessian(x, iproc, nproc,answer)
     implicit none
     double precision, intent(in)::   x(:,:,:)
-    double precision, intent(in),optional::  inithess(:,:,:)
-    logical, intent(in)::   singlewell
     integer, intent(in)::          iproc, nproc
     double precision, intent(out):: answer(:,:)
     double precision, allocatable:: hess(:,:,:,:)
@@ -370,7 +368,7 @@ contains
     !Begin Parallel parts!
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
-    allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
+    allocate(xpart(ncalcs,ndim,natom),hesspart(ncalcs,ndim,natom,ndim,natom))
     if (iproc .eq. 0) then
        !need to send x to all the procs
        do i=1,nproc-1
@@ -387,33 +385,16 @@ contains
     end if
     do i=1, ncalcs
        !need to calculate the potential
-       Vpart(i)= V(xpart(i,:,:))
+       call Vdoubleprime(xpart(i,:,:), hesspart(i,:,:,:,:))
     end do
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
-    allocate(Vall(n))
-    call MPI_Gather(Vpart,nalcs,MPI_DOUBLE_PRECISION, Vall, ncalcs, MPI_DOUBLE_PRECISION, 0, &
-         MPI_COMM_WORLD, ierr)
-    deallocate(xpart,Vpart)
+    allocate(hessall(n,ndim,natom,ndim,natom))
+    call MPI_Gather(hesspart,nalcs*ndof*ndof,MPI_DOUBLE_PRECISION, hessall, ncalcs*ndof*ndof,&
+         MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+    deallocate(xpart,hesspart)
 
     do i=1, n, 1
-       if (present(inithess)) then
-          do j1=1,ndim
-             do k1=1,natom
-                idof1= ndim*(k1-1) + j1
-                do j2=1,j1
-                   do k2=1,k1
-                      idof2= ndim*(k2-1) + j2
-                      hess(j1,k1,j2,k2)= inithess(i,idof1,idof2)
-                   end do
-                end do
-             end do
-          end do
-       else
-          if ((i .eq. 1 .and. singlewell) .or. .not. singlewell) then
-             call Vdoubleprime(x(i,:,:), hess)
-          end if
-       end if
        do j1=1,ndim
           do k1=1,natom
              do j2=1,ndim
@@ -429,20 +410,20 @@ contains
 
                    if (idof1.eq.idof2) then
                       answer(1,fulldof1)= 2.0d0/betan**2&
-                           +hess(j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
+                           +hessall(i,j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
                       if (i.gt.1) answer(ndof+1,fulldof1)=-1.0d0/betan**2
                    else
                       index=1 + fulldof2 -fulldof1
                       if (index.lt.0) cycle
                       answer(index,fulldof1)= &
-                        +hess(j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
+                        +hessall(i,j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
                    end if
                 end do
              end do
           end do
        end do
     end do
-    deallocate(hess)
+    deallocate(hessall)
     return
   end subroutine Parallel_UMhessian
 
