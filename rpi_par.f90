@@ -9,8 +9,7 @@ program rpi
   double precision, allocatable::   theta(:),phi(:),xharm(:,:,:)
   double precision, allocatable::   weightstheta(:),weightsphi(:), origin(:)
   double precision, allocatable::   eta(:),weightseta(:)
-  double precision, allocatable::   etasquared(:),Vpath(:), wellinit(:,:)
-  double precision, allocatable::  path(:,:,:), lampath(:), splinepath(:)
+  double precision, allocatable::   etasquared(:),wellinit(:,:)
   double precision, allocatable::   initpath(:,:), xtilderot(:,:,:), wellrot(:,:)
   double precision::                lndetj, lndetj0, skink, psi, cutofftheta, cutoffphi
   double precision::                delta, omega, gammetilde, Ibeta
@@ -136,7 +135,7 @@ program rpi
   call MPI_Bcast(well2, ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(label, natom, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
 
-  call parallel_instanton(xtilde,well1,well2)
+  call parallel_instanton(xtilde,iproc, nproc,well1,well2)
   write(*,*) "Found instanton."
   open(19, file="instanton.xyz")
   do i=1,n
@@ -159,7 +158,7 @@ program rpi
         xharm(i,:,:)= well1(:,:)
      end do
      etasquared(:)=0.0d0
-     call detJ(xharm, etasquared)
+     call detJ(xharm, .true.,etasquared)
      lndetj0= 0.0d0
      zerocount=0
      do i=1,totdof
