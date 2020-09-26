@@ -158,7 +158,7 @@ program rpi
         xharm(i,:,:)= well1(:,:)
      end do
      etasquared(:)=0.0d0
-     call detJ(xharm, .true.,etasquared)
+     call detJ(xharm,etasquared, .true.)
      lndetj0= 0.0d0
      zerocount=0
      do i=1,totdof
@@ -229,7 +229,7 @@ program rpi
      do ii=1, ncalcs
         xtilderot(:,:,:)= xtilde(:,:,:)
         call instanton(xtilderot,well1,endpoints(ii,:,:))
-        call detJ(xtilderot, etasquared)
+        call detJ(xtilderot, etasquared, .false.)
 
         lndetj= 0.0d0
         zerocount=0
