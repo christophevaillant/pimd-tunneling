@@ -58,24 +58,32 @@ program rpi
      betan= beta/dble(n)
      write(*,*)"Running with parameters (in a.u.):"
      write(*,*) "beta, betan, n=", beta, betan, n
-     ncalcs= (npoints**3)/nproc
-     if (mod(npoints**3, nproc) .ne. 0) ncalcs=ncalcs+1
-
+     if (angular) then
+        ncalcs= (npoints**3)/nproc
+        if (mod(npoints**3, nproc) .ne. 0) ncalcs=ncalcs+1
+     end if
   end if
-
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
   ierr=0
-  call MPI_Bcast(ncalcs, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(npoints, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  if (angular) then
+     call MPI_Bcast(ncalcs, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+     call MPI_Bcast(npoints, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  end if
   call MPI_Bcast(N, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(ndim, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(fixedends, 1, MPI_LOGICAL, 0,MPI_COMM_WORLD, ierr)
   ndof=ndim*natom
   totdof= n*ndof
-  if (iproc.eq. nproc-1 .and. mod(npoints**3,nproc) > 0) then
+  if ((iproc.eq. nproc-1 .and. mod(npoints**3,nproc) > 0) .and. angular) then
      ncalcs= ncalcs-mod(npoints**3,nproc)
   end if
+  
+    if (.not. angular) then
+     ncalcs= N/nproc
+     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
+  end if
+
 
   write(*,*) "ncalcs=", ncalcs, "on iproc", iproc
 
