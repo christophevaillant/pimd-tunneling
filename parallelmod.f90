@@ -272,7 +272,7 @@ contains
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
     allocate(gradall(n,ndim,natom))
-    call MPI_Gather(gradpart,nalcs*ndim*natom,MPI_DOUBLE_PRECISION, gradall, ncalcs*ndim*natom,&
+    call MPI_Gather(gradpart,ncalcs*ndim*natom,MPI_DOUBLE_PRECISION, gradall, ncalcs*ndim*natom,&
          MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
     deallocate(xpart,gradpart)
 
@@ -349,9 +349,9 @@ contains
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
     allocate(Vall(n),gradall(n,ndim,natom))
-    call MPI_Gather(Vpart,nalcs,MPI_DOUBLE_PRECISION, Vall, ncalcs, MPI_DOUBLE_PRECISION, 0, &
+    call MPI_Gather(Vpart,ncalcs,MPI_DOUBLE_PRECISION, Vall, ncalcs, MPI_DOUBLE_PRECISION, 0, &
          MPI_COMM_WORLD, ierr)
-    call MPI_Gather(gradpart,nalcs*ndim*natom,MPI_DOUBLE_PRECISION, gradall, ncalcs*ndim*natom,&
+    call MPI_Gather(gradpart,ncalcs*ndim*natom,MPI_DOUBLE_PRECISION, gradall, ncalcs*ndim*natom,&
          MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
     deallocate(xpart,Vpart, gradpart)
@@ -444,7 +444,7 @@ contains
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
     allocate(hessall(n,ndim,natom,ndim,natom))
-    call MPI_Gather(hesspart,nalcs*ndof*ndof,MPI_DOUBLE_PRECISION, hessall, ncalcs*ndof*ndof,&
+    call MPI_Gather(hesspart,ncalcs*ndof*ndof,MPI_DOUBLE_PRECISION, hessall, ncalcs*ndof*ndof,&
          MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
     deallocate(xpart,hesspart)
 
