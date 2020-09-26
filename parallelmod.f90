@@ -14,7 +14,7 @@ contains
     double precision, intent(in), optional:: a(:,:),b(:,:)
     integer, intent(in)::            iproc, nproc
     integer::                        iprint, m, iflag, mp,idof, maxiter
-    integer::                        i, lp, count, iw, j,k
+    integer::                        i, lp, count, iw, j,k, ierr
     double precision::               xtol, gtol, stpmin, stpmax
     double precision::               f, xtemp(ndim,natom)
 
@@ -135,16 +135,9 @@ contains
 
 
     if (iproc .eq. 0) then
-       if (present(eigvecs)) then
-          jobz='V'
-          allocate(z(totdof,totdof))
-          lwork= 1 + 5*totdof + 2*totdof**2
-          liwork= 3 + 5*totdof
-       else
-          jobz='N'
-          lwork= 2*totdof
-          liwork= 1
-       end if
+       jobz='N'
+       lwork= 2*totdof
+       liwork= 1
        range='A'
        uplo='U'
        abstol=1.0d-8
@@ -162,13 +155,8 @@ contains
     write(*,*) "Hessian is cooked."
 
     if (iproc .eq. 0) then
-       if (present(eigvecs)) then
-          call DSBEVD(jobz, 'L', totdof, ndof, H, ndof+1, etasquared, z, totdof, work, lwork, iwork, liwork, info)
-          eigvecs=z
-          deallocate(z)
-       else
-          call DSBEVD(jobz, 'L', totdof, ndof, H, ndof+1, etasquared, z, 1, work, lwork, iwork, liwork, info)
-       end if
+       call DSBEVD(jobz, 'L', totdof, ndof, H, ndof+1, etasquared, z, 1, work, lwork, iwork,&
+            liwork, info)
        deallocate(work, iwork, H)
     end if
     return
@@ -188,7 +176,7 @@ contains
     integer::            i,j,k, ncalcs, ierr
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
-    UM=0.0d0
+    parallel_UM=0.0d0
 
     !Begin Parallel parts!
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
@@ -223,19 +211,19 @@ contains
     !Do easy bit
     if (iproc .eq. 0) then
        do i=1, N-1, 1
-          UM=UM + Vall(i)
+          parallel_UM=parallel_UM + Vall(i)
           do j=1, ndim
              do k=1, natom
-                UM=UM+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
+                parallel_UM=parallel_UM+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
              end do
           end do
        end do
-       UM=UM+ V(x(N,:,:))
+       parallel_UM=parallel_UM+ V(x(N,:,:))
        if (fixedends) then
           do j=1, ndim
              do k=1, natom
-                UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
-                UM=UM+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
+                parallel_UM=parallel_UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
+                parallel_UM=parallel_UM+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
              end do
           end do
        end if
@@ -334,12 +322,12 @@ contains
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
-    allocate(grad(ndim,natom))
     UM=0.0d0
     !Begin Parallel parts!
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
     allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
+    allocate(gradpart(ncalcs,ndim,natom))
     if (iproc .eq. 0) then
        !need to send x to all the procs
        do i=1,nproc-1
@@ -426,7 +414,7 @@ contains
     double precision, allocatable:: hess(:,:,:,:)
     double precision,allocatable:: hesspart(:,:,:,:,:), xpart(:,:,:), hessall(:,:,:,:,:)
     integer::            i, j1, k1, j2, k2, idof1, idof2
-    integer::            fulldof1, fulldof2, index
+    integer::            fulldof1, fulldof2, index,j,k, ncalcs, ierr
 
 
     answer=0.0d0
