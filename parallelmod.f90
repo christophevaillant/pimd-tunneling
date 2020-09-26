@@ -184,7 +184,7 @@ contains
     double precision,intent(in),optional:: a(:,:),b(:,:)
     integer, intent(in)::          iproc, nproc
     double precision, allocatable:: xpart(:,:,:), Vpart(:), Vall(:)
-    double precision:: UM, pot
+    double precision:: parallel_UM, pot
     integer::            i,j,k, ncalcs, ierr
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
@@ -206,7 +206,7 @@ contains
     else
        !need to receive x to all procs
        do i=1,ncalcs
-          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr))
+          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr)
        end do
     end if
     do i=1, ncalcs
@@ -274,7 +274,7 @@ contains
     else
        !need to receive x to all procs
        do i=1,ncalcs
-          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr))
+          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr)
        end do
     end if
     do i=1, ncalcs
@@ -321,7 +321,7 @@ contains
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
   !linear polymer force and energy
-  subroutine parallel_UMforceenergy(x, answer,UM,a,b)
+  subroutine parallel_UMforceenergy(x, iproc, nproc,answer,UM,a,b)
     implicit none
     double precision,intent(in)::   x(:,:,:)
     double precision,intent(in),optional:: a(:,:),b(:,:)
@@ -351,7 +351,7 @@ contains
     else
        !need to receive x to all procs
        do i=1,ncalcs
-          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr))
+          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr)
        end do
     end if
     do i=1, ncalcs
@@ -446,7 +446,7 @@ contains
     else
        !need to receive x to all procs
        do i=1,ncalcs
-          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr))
+          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr)
        end do
     end if
     do i=1, ncalcs
