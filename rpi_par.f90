@@ -5,7 +5,6 @@ program rpi
   use parallelmod
   implicit none
 
-  include 'mpif.h'
 
   double precision, allocatable::   theta(:),phi(:),xharm(:,:,:)
   double precision, allocatable::   weightstheta(:),weightsphi(:), origin(:)
