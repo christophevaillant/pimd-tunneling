@@ -204,7 +204,7 @@ contains
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
     allocate(Vall(n))
-    call MPI_Gather(Vpart,nalcs,MPI_DOUBLE_PRECISION, Vall, ncalcs, MPI_DOUBLE_PRECISION, 0, &
+    call MPI_Gather(Vpart,ncalcs,MPI_DOUBLE_PRECISION, Vall, ncalcs, MPI_DOUBLE_PRECISION, 0, &
          MPI_COMM_WORLD, ierr)
     deallocate(xpart,Vpart)
 
@@ -415,7 +415,7 @@ contains
     double precision,allocatable:: hesspart(:,:,:,:,:), xpart(:,:,:), hessall(:,:,:,:,:)
     integer::            i, j1, k1, j2, k2, idof1, idof2
     integer::            fulldof1, fulldof2, index,j,k, ncalcs, ierr
-
+    integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
     answer=0.0d0
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
