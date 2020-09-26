@@ -93,6 +93,9 @@ $(OBJDIR)/pimd_par.o: pimd_par.f90
 $(OBJDIR)/rpi_par.o: rpi_par.f90
 	$(MPIFC) $(INCLUDE) -c $(FFLAGS) $< -o $@
 
+$(OBJDIR)/parallelmod.o: parallelmod.f90
+	$(MPIFC) $(INCLUDE) -c $(FFLAGS) $< -o $@
+
 
 ###################################################################################
 #Rules for the final executables
@@ -187,8 +190,8 @@ pimd_watdim_ser: $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
 rpi_watdim_ser: $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
 	$(FC) $(FFLAGS) $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
-rpi_watdim_par: $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o
-	$(MPIFC) $(FFLAGS) $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
+rpi_watdim_par: $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o
+	$(MPIFC) $(FFLAGS) $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
 
 crossover_watdim: $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/crossover.o
 	$(FC) $(FFLAGS) $(WATDIMFILES) $(COMFILES)  $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
@@ -204,8 +207,8 @@ pimd_wattrim_ser: $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
 rpi_wattrim_ser: $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
 	$(FC) $(FFLAGS) $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
-rpi_wattrim_par: $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o
-	$(MPIFC) $(FFLAGS) $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
+rpi_wattrim_par: $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o
+	$(MPIFC) $(FFLAGS) $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
 
 crossover_wattrim: $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/crossover.o
 	$(FC) $(FFLAGS) $(WATTRIMFILES) $(COMFILES)  $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
@@ -221,8 +224,8 @@ pimd_wathex_ser: $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
 rpi_wathex_ser: $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
 	$(FC) $(FFLAGS) $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATDIMLIBS)
 
-rpi_wathex_par: $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o
-	$(MPIFC) $(FFLAGS) $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
+rpi_wathex_par: $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o
+	$(MPIFC) $(FFLAGS) $(WATHEXFILES) $(COMFILES)  $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATDIMLIBS)
 
 ################################
 #Clathrate
@@ -263,8 +266,8 @@ pimd_wathal_ser: $(WATHALFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
 rpi_wathal_ser: $(WATHALFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
 	$(FC) $(FFLAGS) $(WATHALFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATHALLIBS)
 
-rpi_wathal_par: $(WATHALFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o
-	$(MPIFC) $(FFLAGS) $(WATHALFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATHALLIBS)
+rpi_wathal_par: $(WATHALFILES) $(COMFILES)  $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o
+	$(MPIFC) $(FFLAGS) $(WATHALFILES) $(COMFILES)  $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR) $(WATHALLIBS)
 
 crossover_wathal: $(WATHALFILES) $(COMFILES)  $(OBJDIR)/crossover.o
 	$(FC) $(FFLAGS) $(WATHALFILES) $(COMFILES)  $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ) $(WATHALLIBS)
@@ -280,8 +283,8 @@ pimd_molpro_ser: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
 rpi_molpro_ser: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
 	$(FC) $(FFLAGS) $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
-rpi_molpro_par: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o
-	$(MPIFC) $(FFLAGS) $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+rpi_molpro_par: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o
+	$(MPIFC) $(FFLAGS) $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
 
 crossover_molpro: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/crossover.o
 	$(FC) $(FFLAGS) $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
