@@ -143,6 +143,7 @@ program rpi
   call MPI_Bcast(well2, ndof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(label, natom, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
 
+  write(*,*) "Starting instanton search..."
   call parallel_instanton(xtilde,iproc, nproc,well1,well2)
   write(*,*) "Found instanton."
   open(19, file="instanton.xyz")
