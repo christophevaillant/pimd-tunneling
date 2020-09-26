@@ -2,12 +2,12 @@ module parallelmod
   use instantonmod
   implicit none
   include 'mpif.h'
-  
+
 contains
 
-    !---------------------------------------------------------------------
-!---------------------------------------------------------------------
-!optimizes and returns the instanton
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  !optimizes and returns the instanton
   subroutine parallel_instanton(xtilde,iproc,nproc,a,b)
     implicit none
     double precision, intent(inout)::xtilde(:,:,:)
@@ -25,7 +25,7 @@ contains
     logical::                        lsave(4)
     character(len=60)::              task, csave
 
-    
+
     if (iproc .eq.0) then
        allocate(lb(totdof), ub(totdof),fprime(n,ndim,natom), nbd(totdof))
        allocate(fprimework(totdof), xwork(totdof))
@@ -47,7 +47,6 @@ contains
 
        !------------------------
        !perform minimization
-       task='START'
        m=8
        iprint=-1
        xtol= 1d-5
@@ -58,6 +57,7 @@ contains
        factr=1.0d6
        maxiter=40
     end if
+    task='START'
 
     if (fixedends) then
        if (potforcepresent) then
@@ -70,21 +70,28 @@ contains
        if (potforcepresent) then
           call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f)
        else
-          f= parallel_UM(xtildeiproc, nproc)
+          f= parallel_UM(xtilde,iproc, nproc)
           call parallel_UMprime(xtilde,iproc, nproc, fprime)
        end if
     end if
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     count=0
     do while( task(1:2).eq.'FG'.or.task.eq.'NEW_X'.or. &
          task.eq.'START')
-       count=count+1
-       xwork=reshape(xtilde,(/totdof/))
-       fprimework= reshape(fprime,(/totdof/))
-       call setulb(totdof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
-            ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
+       if (iproc .eq. 0) then
+          count=count+1
+          xwork=reshape(xtilde,(/totdof/))
+          fprimework= reshape(fprime,(/totdof/))
+          call setulb(totdof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
+               ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
+          call MPI_Barrier(MPI_COMM_WORLD,ierr)
+          call MPI_Bcast(task, 5, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
+       end if
        if (task(1:2) .eq. 'FG') then
-          write(*,*) "iteration", count
-          xtilde= reshape(xwork,(/n,ndim,natom/))
+          if (iproc .eq. 0) then
+             write(*,*) "iteration", count
+             xtilde= reshape(xwork,(/n,ndim,natom/))
+          end if
           if (fixedends) then
              if (potforcepresent) then
                 call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f,a,b)
@@ -107,11 +114,66 @@ contains
        write(*,*) task
     end if
 
-    deallocate(work, lb, ub, fprime, fprimework,xwork)
-    deallocate(iwork, nbd, isave, dsave)
-
+    if (iproc .eq. 0) then
+       deallocate(work, lb, ub, fprime, fprimework,xwork)
+       deallocate(iwork, nbd, isave, dsave)
+    end if
     return
   end subroutine parallel_instanton
+  !---------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  !returns the fluctuation prefactor
+  subroutine parallel_detJ(x, iproc, nproc,etasquared)
+    double precision,intent(in)::    x(:,:,:)
+    double precision,intent(inout)::  etasquared(:)
+    integer, intent(in)::            iproc, nproc
+    character::                      jobz, range, uplo
+    double precision::               vl, vu, abstol
+    integer::                        nout, ldz, lwork, liwork, info,i
+    integer,allocatable::            isuppz(:), iwork(:)
+    double precision, allocatable::  work(:), z(:,:), H(:,:)
+
+
+    if (iproc .eq. 0) then
+       if (present(eigvecs)) then
+          jobz='V'
+          allocate(z(totdof,totdof))
+          lwork= 1 + 5*totdof + 2*totdof**2
+          liwork= 3 + 5*totdof
+       else
+          jobz='N'
+          lwork= 2*totdof
+          liwork= 1
+       end if
+       range='A'
+       uplo='U'
+       abstol=1.0d-8
+       info=0
+       ldz=totdof
+       vl=0.0d0
+       vu=0.0d0
+       nout=0
+       allocate(work(lwork), iwork(liwork), H(ndof+1,totdof))
+       H=0.0d0
+       etasquared=0.0d0
+    end if
+
+    call parallel_UMhessian(x,iproc, nproc, H)
+    write(*,*) "Hessian is cooked."
+
+    if (iproc .eq. 0) then
+       if (present(eigvecs)) then
+          call DSBEVD(jobz, 'L', totdof, ndof, H, ndof+1, etasquared, z, totdof, work, lwork, iwork, liwork, info)
+          eigvecs=z
+          deallocate(z)
+       else
+          call DSBEVD(jobz, 'L', totdof, ndof, H, ndof+1, etasquared, z, 1, work, lwork, iwork, liwork, info)
+       end if
+       deallocate(work, iwork, H)
+    end if
+    return
+  end subroutine parallel_detJ
+
 
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
@@ -129,6 +191,7 @@ contains
     UM=0.0d0
 
     !Begin Parallel parts!
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
     allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
@@ -178,6 +241,7 @@ contains
        end if
     end if
     deallocate(Vall)
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     return
   end function PARALLEL_UM
 
@@ -195,6 +259,7 @@ contains
 
 
     !Begin Parallel parts!
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
     allocate(xpart(ncalcs,ndim,natom),gradpart(ncalcs,ndim,natom))
@@ -250,7 +315,7 @@ contains
        end do
     end do
     deallocate(gradall)
-
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     return
   end subroutine Parallel_UMprime
   !---------------------------------------------------------------------
@@ -258,7 +323,7 @@ contains
   !linear polymer force and energy
   subroutine parallel_UMforceenergy(x, answer,UM,a,b)
     implicit none
-        double precision,intent(in)::   x(:,:,:)
+    double precision,intent(in)::   x(:,:,:)
     double precision,intent(in),optional:: a(:,:),b(:,:)
     double precision, intent(out)::  answer(:,:,:), UM
     integer, intent(in)::          iproc, nproc
@@ -267,7 +332,8 @@ contains
     double precision:: energy
     integer::            i,j,k, ncalcs, ierr
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
-    
+
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     allocate(grad(ndim,natom))
     UM=0.0d0
     !Begin Parallel parts!
@@ -346,7 +412,7 @@ contains
     end if
 
     deallocate(gradall, Vall)
-
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     return
   end subroutine Parallel_UMforceenergy
 
@@ -364,7 +430,7 @@ contains
 
 
     answer=0.0d0
-
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !Begin Parallel parts!
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
@@ -394,36 +460,39 @@ contains
          MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
     deallocate(xpart,hesspart)
 
-    do i=1, n, 1
-       do j1=1,ndim
-          do k1=1,natom
-             do j2=1,ndim
-                do k2=1,natom
-                   !The DoF label for the individual bead
-                   idof1= (k1-1)*ndim + j1
-                   idof2= (k2-1)*ndim + j2
-                   !The DoF label for the whole matrix
-                   fulldof1=ndof*(i-1) + idof1
-                   fulldof2=ndof*(i-1) + idof2
+    if (iproc .eq. 0) then
+       do i=1, n, 1
+          do j1=1,ndim
+             do k1=1,natom
+                do j2=1,ndim
+                   do k2=1,natom
+                      !The DoF label for the individual bead
+                      idof1= (k1-1)*ndim + j1
+                      idof2= (k2-1)*ndim + j2
+                      !The DoF label for the whole matrix
+                      fulldof1=ndof*(i-1) + idof1
+                      fulldof2=ndof*(i-1) + idof2
 
-                   if (fulldof2 .lt. fulldof1) cycle
+                      if (fulldof2 .lt. fulldof1) cycle
 
-                   if (idof1.eq.idof2) then
-                      answer(1,fulldof1)= 2.0d0/betan**2&
-                           +hessall(i,j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
-                      if (i.gt.1) answer(ndof+1,fulldof1)=-1.0d0/betan**2
-                   else
-                      index=1 + fulldof2 -fulldof1
-                      if (index.lt.0) cycle
-                      answer(index,fulldof1)= &
-                        +hessall(i,j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
-                   end if
+                      if (idof1.eq.idof2) then
+                         answer(1,fulldof1)= 2.0d0/betan**2&
+                              +hessall(i,j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
+                         if (i.gt.1) answer(ndof+1,fulldof1)=-1.0d0/betan**2
+                      else
+                         index=1 + fulldof2 -fulldof1
+                         if (index.lt.0) cycle
+                         answer(index,fulldof1)= &
+                              +hessall(i,j2,k2,j1,k1)/sqrt(mass(k1)*mass(k2)) 
+                      end if
+                   end do
                 end do
              end do
           end do
        end do
-    end do
+    end if
     deallocate(hessall)
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     return
   end subroutine Parallel_UMhessian
 
