@@ -74,8 +74,9 @@ contains
           call parallel_UMprime(xtilde,iproc, nproc, fprime)
        end if
     end if
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+
     count=0
+    call MPI_Bcast(task, 5, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
     do while( task(1:2).eq.'FG'.or.task.eq.'NEW_X'.or. &
          task.eq.'START')
        if (iproc .eq. 0) then
