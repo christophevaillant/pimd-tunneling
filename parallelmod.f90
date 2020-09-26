@@ -80,7 +80,7 @@ contains
          task.eq.'START')
        if (iproc .eq. 0) then
           count=count+1
-          write(*,*) "Iteration ", count
+          write(*,*) "Iteration ", count, f
           xwork=reshape(xtilde,(/totdof/))
           fprimework= reshape(fprime,(/totdof/))
           call setulb(totdof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
