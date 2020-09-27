@@ -208,7 +208,7 @@ contains
                MPI_COMM_WORLD, rstatus, ierr)
        end do
     end if
-
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     do i=1, ncalcs
        !need to calculate the potential
        Vpart(i)= V(xpart(i,:,:))
@@ -234,7 +234,7 @@ contains
        end do
     end if
     deallocate(xpart,Vpart)
-
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !Do easy bit
     if (iproc .eq. 0) then
        do i=1, N-1, 1
@@ -320,8 +320,8 @@ contains
                MPI_COMM_WORLD, ierr)
        end do
     end if
-
     deallocate(xpart,gradpart)
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
 
     if (iproc .eq. 0) then
        do i=1, N
