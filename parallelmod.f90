@@ -325,7 +325,6 @@ contains
     integer, intent(in)::          iproc, nproc
     double precision, allocatable:: xpart(:,:,:), Vpart(:), Vall(:)
     double precision,allocatable:: gradpart(:,:,:), gradall(:,:,:)
-    double precision:: energy
     integer::            i,j,k, ncalcs, ierr
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
