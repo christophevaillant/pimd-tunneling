@@ -87,7 +87,6 @@ contains
           fprimework= reshape(fprime,(/totdof/))
           call setulb(totdof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
                ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
-          call MPI_Barrier(MPI_COMM_WORLD,ierr)
           call MPI_Bcast(task, 5, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
        end if
        if (task(1:2) .eq. 'FG') then
