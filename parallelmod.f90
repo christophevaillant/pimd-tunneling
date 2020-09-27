@@ -80,10 +80,9 @@ contains
     end if
 
     count=0
-    call MPI_Bcast(task, 5, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
+
     do while( task(1:2).eq.'FG'.or.task.eq.'NEW_X'.or. &
          task.eq.'START')
-       call MPI_Barrier(MPI_COMM_WORLD,ierr)
        if (iproc .eq. 0) then
           count=count+1
           write(*,*) "Iteration ", count, f, task
@@ -92,8 +91,8 @@ contains
           call setulb(totdof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
                ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
        end if
-       call MPI_Bcast(task, 5, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
        call MPI_Barrier(MPI_COMM_WORLD,ierr)
+       call MPI_Bcast(task, 5, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
        write(*,*) "iteration", count, task, iproc
        if (task(1:2) .eq. 'FG') then
           if (iproc .eq. 0) then
@@ -190,7 +189,6 @@ contains
     energy=0.0d0
     write(*,*) "iproc ", iproc, "starting potential calc."
     !Begin Parallel parts!
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
     allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
@@ -200,20 +198,17 @@ contains
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          do j=1, ncalcproc
-             call MPI_Send(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1,&
-                  MPI_COMM_WORLD, ierr)
-          end do
+          call MPI_Send(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
+               i, 1, MPI_COMM_WORLD, ierr)
           startind= startind+ ncalcproc
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
     else
        !need to receive x to all procs
-       do i=1,ncalcs
-          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1,&
-               MPI_COMM_WORLD, rstatus, ierr)
-       end do
+       call MPI_Recv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+            MPI_COMM_WORLD, rstatus, ierr)
     end if
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     do i=1, ncalcs
        !need to calculate the potential
        Vpart(i)= V(xpart(i,:,:))
@@ -289,17 +284,15 @@ contains
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          do j=1, ncalcs
-             call MPI_Send(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
-          end do
+          call MPI_Send(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
+               i, 1, MPI_COMM_WORLD, ierr)
           startind= startind+ ncalcproc
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
     else
        !need to receive x to all procs
-       do i=1,ncalcs
-          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr)
-       end do
+       call MPI_Recv(xpart(1:ncalcs,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD,&
+            rstatus, ierr)
     end if
     do i=1, ncalcs
        !need to calculate the potential
