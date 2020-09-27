@@ -83,6 +83,7 @@ contains
     call MPI_Bcast(task, 5, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
     do while( task(1:2).eq.'FG'.or.task.eq.'NEW_X'.or. &
          task.eq.'START')
+       call MPI_Barrier(MPI_COMM_WORLD,ierr)
        if (iproc .eq. 0) then
           count=count+1
           write(*,*) "Iteration ", count, f, task
@@ -93,9 +94,9 @@ contains
        end if
        call MPI_Bcast(task, 5, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
        call MPI_Barrier(MPI_COMM_WORLD,ierr)
+       write(*,*) "iteration", count, task, iproc
        if (task(1:2) .eq. 'FG') then
           if (iproc .eq. 0) then
-             write(*,*) "iteration", count, task
              xtilde= reshape(xwork,(/n,ndim,natom/))
           end if
           if (fixedends) then
@@ -118,7 +119,6 @@ contains
              end if
           end if
        end if
-       call MPI_Barrier(MPI_COMM_WORLD,ierr)
     end do
     if (task(1:5) .eq. "ERROR" .or. task(1:4) .eq. "ABNO") then
        write(*,*) "Error:"
@@ -214,12 +214,10 @@ contains
                MPI_COMM_WORLD, rstatus, ierr)
        end do
     end if
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     do i=1, ncalcs
        !need to calculate the potential
        Vpart(i)= V(xpart(i,:,:))
     end do
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
 
     !gather all the results
     if (iproc .eq. 0) then
@@ -240,7 +238,7 @@ contains
        end do
     end if
     deallocate(xpart,Vpart)
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+
     !Do easy bit
     if (iproc .eq. 0) then
        do i=1, N-1, 1
