@@ -246,7 +246,7 @@ contains
              end do
           end do
        end if
-       write(*,*) "iproc ", iproc, "finished".
+       write(*,*) "iproc ", iproc, "finished"
     end if
     deallocate(Vall)
     write(*,*) iproc, "reached the final barrier"
