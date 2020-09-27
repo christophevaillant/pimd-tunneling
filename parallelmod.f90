@@ -100,6 +100,7 @@ contains
                 call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f,a,b)
              else
                 call parallel_UM(xtilde,iproc, nproc,f, a,b)
+                call MPI_Barrier(MPI_COMM_WORLD,ierr)
                 call parallel_UMprime(xtilde,iproc, nproc, fprime,a,b)
              end if
           else
@@ -107,6 +108,7 @@ contains
                 call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f)
              else
                 call parallel_UM(xtilde,iproc, nproc,f)
+                call MPI_Barrier(MPI_COMM_WORLD,ierr)
                 call parallel_UMprime(xtilde,iproc, nproc, fprime)
              end if
           end if
