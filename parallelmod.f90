@@ -531,7 +531,7 @@ contains
     !gather all the results
     if (iproc .eq. 0) then
        allocate(hessall(n,ndim,natom,ndim,natom))
-       essall(1:ncalcs,:,:,:,:)= hesspart(:,:,:,:,:)
+       hessall(1:ncalcs,:,:,:,:)= hesspart(:,:,:,:,:)
        startind=1+ncalcs
        do i=1, nproc-1
           ncalcproc= N/nproc
