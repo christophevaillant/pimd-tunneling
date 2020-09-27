@@ -291,7 +291,7 @@ contains
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
     else
        !need to receive x to all procs
-       call MPI_Recv(xpart(1:ncalcs,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD,&
+       call MPI_Recv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD,&
             rstatus, ierr)
     end if
     do i=1, ncalcs
