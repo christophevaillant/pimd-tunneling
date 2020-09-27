@@ -63,7 +63,7 @@ contains
        if (potforcepresent) then
           call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f,a,b)
        else
-          f= parallel_UM(xtilde,iproc, nproc, a,b)
+          call parallel_UM(xtilde,iproc, nproc,f, a,b)
           call parallel_UMprime(xtilde,iproc, nproc, fprime,a,b)
        end if
     else
@@ -99,7 +99,7 @@ contains
              if (potforcepresent) then
                 call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f,a,b)
              else
-                call parallel_UM(xtilde,iproc, nproc, a,b, f)
+                call parallel_UM(xtilde,iproc, nproc,f, a,b)
                 call parallel_UMprime(xtilde,iproc, nproc, fprime,a,b)
              end if
           else
@@ -170,7 +170,7 @@ contains
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
   !linear polymer potential
-  subroutine parallel_UM(x,iproc, nproc,a,b, energy)
+  subroutine parallel_UM(x,iproc, nproc,energy,a,b)
     implicit none
     double precision,intent(in)::   x(:,:,:)
     double precision,intent(in),optional:: a(:,:),b(:,:)
