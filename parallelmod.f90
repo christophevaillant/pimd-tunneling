@@ -191,8 +191,8 @@ contains
        !need to send x to all the procs
        startind=1+ncalcs
        do i=1,nproc-1
-          ncalcproc= N/nprocn
-          if (i .lt. mod(N, nproc)) ncalcproc=ncalcprop+1
+          ncalcproc= N/nproc
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           write(*,*) "iproc ", iproc, "sending to ", i, ncalcproc, "slices of x"
           write(*,*) "starting from ", startind
           do j=1, ncalcproc
@@ -273,8 +273,8 @@ contains
        !need to send x to all the procs
        startind=1+ncalcs
        do i=1,nproc-1
-          ncalcproc= N/nprocn
-          if (i .lt. mod(N, nproc)) ncalcproc=ncalcprop+1
+          ncalcproc= N/nproc
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           do j=1, ncalcs
              call MPI_Send(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
@@ -353,8 +353,8 @@ contains
        !need to send x to all the procs
        startind=1+ncalcs
        do i=1,nproc-1
-          ncalcproc= N/nprocn
-          if (i .lt. mod(N, nproc)) ncalcproc=ncalcprop+1
+          ncalcproc= N/nproc
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           do j=1, ncalcs
              call MPI_Send(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
@@ -452,10 +452,10 @@ contains
        !need to send x to all the procs
        startind=1+ncalcs
        do i=1,nproc-1
-          ncalcproc= N/nprocn
-          if (i .lt. mod(N, nproc)) ncalcproc=ncalcprop+1
+          ncalcproc= N/nproc
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           do j=1, ncalcs
-             call MPI_Send(x(startind+j-1, ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
+             call MPI_Send(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
           startind= startind+ ncalcproc
        end do
