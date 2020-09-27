@@ -88,8 +88,8 @@ contains
           call setulb(totdof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
                ,iwork,task,iprint, csave,lsave,isave,dsave,maxiter)
        end if
-       call MPI_Barrier(MPI_COMM_WORLD,ierr)
        call MPI_Bcast(task, 5, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
+       call MPI_Barrier(MPI_COMM_WORLD,ierr)
        if (task(1:2) .eq. 'FG') then
           if (iproc .eq. 0) then
              write(*,*) "iteration", count
