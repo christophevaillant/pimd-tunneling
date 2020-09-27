@@ -85,7 +85,7 @@ contains
          task.eq.'START')
        if (iproc .eq. 0) then
           count=count+1
-          write(*,*) "Iteration ", count, f
+          write(*,*) "Iteration ", count, f, task
           xwork=reshape(xtilde,(/totdof/))
           fprimework= reshape(fprime,(/totdof/))
           call setulb(totdof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
@@ -95,7 +95,7 @@ contains
        call MPI_Barrier(MPI_COMM_WORLD,ierr)
        if (task(1:2) .eq. 'FG') then
           if (iproc .eq. 0) then
-             write(*,*) "iteration", count
+             write(*,*) "iteration", count, task
              xtilde= reshape(xwork,(/n,ndim,natom/))
           end if
           if (fixedends) then
