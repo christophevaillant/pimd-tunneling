@@ -70,6 +70,7 @@ contains
        if (potforcepresent) then
           call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f)
        else
+          write(*,*) "iproc ", iproc, "starting potential evaluation: l73"
           f= parallel_UM(xtilde,iproc, nproc)
           call parallel_UMprime(xtilde,iproc, nproc, fprime)
        end if
@@ -184,6 +185,7 @@ contains
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
+    write(*,*) "iproc ", iproc, "starting potential evaluation with ncalcs=", ncalcs
     allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
     if (iproc .eq. 0) then
        !need to send x to all the procs
@@ -199,15 +201,19 @@ contains
           call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr)
        end do
     end if
+    write(*,*) "iproc ", iproc, "received the x: l204"
+
     do i=1, ncalcs
        !need to calculate the potential
        Vpart(i)= V(xpart(i,:,:))
     end do
+    write(*,*) "iproc ", iproc, "finished calculating"
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
     allocate(Vall(n))
     call MPI_Gather(Vpart,ncalcs,MPI_DOUBLE_PRECISION, Vall, ncalcs, MPI_DOUBLE_PRECISION, 0, &
          MPI_COMM_WORLD, ierr)
+    write(*,*) "iproc ", iproc, "finished gathering"
     deallocate(xpart,Vpart)
 
     !Do easy bit
