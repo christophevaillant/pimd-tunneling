@@ -191,7 +191,7 @@ contains
        !need to send x to all the procs
        do i=1,nproc-1
           do j=1, ncalcs
-             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, j, 1, MPI_COMM_WORLD, ierr)
+             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
@@ -263,7 +263,7 @@ contains
        !need to send x to all the procs
        do i=1,nproc-1
           do j=1, ncalcs
-             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, j, 1, MPI_COMM_WORLD, ierr)
+             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
@@ -340,7 +340,7 @@ contains
        !need to send x to all the procs
        do i=1,nproc-1
           do j=1, ncalcs
-             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, j, 1, MPI_COMM_WORLD, ierr)
+             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
@@ -435,7 +435,7 @@ contains
        !need to send x to all the procs
        do i=1,nproc-1
           do j=1, ncalcs
-             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, j, 1, MPI_COMM_WORLD, ierr)
+             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
