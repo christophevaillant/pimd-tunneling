@@ -226,7 +226,7 @@ contains
              end do
           end do
        end do
-       parallel_UM=parallel_UM+ V(x(N,:,:))
+       parallel_UM=parallel_UM+ Vall(n)
        if (fixedends) then
           do j=1, ndim
              do k=1, natom
@@ -317,11 +317,11 @@ contains
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
   !linear polymer force and energy
-  subroutine parallel_UMforceenergy(x, iproc, nproc,answer,UM,a,b)
+  subroutine parallel_UMforceenergy(x, iproc, nproc,answer,energy,a,b)
     implicit none
     double precision,intent(in)::   x(:,:,:)
     double precision,intent(in),optional:: a(:,:),b(:,:)
-    double precision, intent(out)::  answer(:,:,:), UM
+    double precision, intent(out)::  answer(:,:,:), energy
     integer, intent(in)::          iproc, nproc
     double precision, allocatable:: xpart(:,:,:), Vpart(:), Vall(:)
     double precision,allocatable:: gradpart(:,:,:), gradall(:,:,:)
@@ -330,7 +330,7 @@ contains
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
-    UM=0.0d0
+    energy=0.0d0
     !Begin Parallel parts!
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
@@ -365,10 +365,10 @@ contains
     deallocate(xpart,Vpart, gradpart)
 
     do i=1, N, 1
-       UM=UM+ Vall(i)
+       energy=energy+ Vall(i)
        do j=1, ndim
           do k=1, natom
-             if (i .lt. N) UM=UM+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
+             if (i .lt. N) energy=energy+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
           end do
        end do
        do j=1,ndim
@@ -398,11 +398,11 @@ contains
     end do
 
     if (fixedends) then
-       ! UM=UM + V(a(:,:))+ V(b(:,:))
+       ! energy=energy + V(a(:,:))+ V(b(:,:))
        do j=1, ndim
           do k=1, natom
-             UM=UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
-             UM=UM+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
+             energy=energy+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
+             energy=energy+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
           end do
        end do
     end if
