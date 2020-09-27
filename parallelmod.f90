@@ -71,7 +71,7 @@ contains
           call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f)
        else
           write(*,*) "iproc ", iproc, "starting potential evaluation: l73"
-          f= parallel_UM(xtilde,iproc, nproc)
+          call parallel_UM(xtilde,iproc, nproc, f)
           call parallel_UMprime(xtilde,iproc, nproc, fprime)
        end if
     end if
@@ -99,14 +99,14 @@ contains
              if (potforcepresent) then
                 call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f,a,b)
              else
-                f= parallel_UM(xtilde,iproc, nproc, a,b)
+                call parallel_UM(xtilde,iproc, nproc, a,b, f)
                 call parallel_UMprime(xtilde,iproc, nproc, fprime,a,b)
              end if
           else
              if (potforcepresent) then
                 call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f)
              else
-                f= parallel_UM(xtilde,iproc, nproc)
+                call parallel_UM(xtilde,iproc, nproc,f)
                 call parallel_UMprime(xtilde,iproc, nproc, fprime)
              end if
           end if
@@ -170,17 +170,17 @@ contains
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
   !linear polymer potential
-  function parallel_UM(x,iproc, nproc,a,b)
+  subroutine parallel_UM(x,iproc, nproc,a,b, energy)
     implicit none
     double precision,intent(in)::   x(:,:,:)
     double precision,intent(in),optional:: a(:,:),b(:,:)
     integer, intent(in)::          iproc, nproc
+    double precision,intent(out):: energy
     double precision, allocatable:: xpart(:,:,:), Vpart(:), Vall(:)
-    double precision:: parallel_UM, pot
     integer::            i,j,k, ncalcs, ierr, startind, ncalcproc
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
-    parallel_UM=0.0d0
+    energy=0.0d0
 
     !Begin Parallel parts!
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
@@ -219,8 +219,8 @@ contains
     end do
     write(*,*) "iproc ", iproc, "finished calculating"
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
-    !gather all the results
 
+    !gather all the results
     if (iproc .eq. 0) then
        allocate(Vall(n))
        Vall(1:ncalcs)= Vpart(:)
@@ -245,20 +245,20 @@ contains
     if (iproc .eq. 0) then
        do i=1, N-1, 1
           write(*,*) "iproc ", iproc, "on i=", i
-          parallel_UM=parallel_UM + Vall(i)
+          energy=energy + Vall(i)
           do j=1, ndim
              do k=1, natom
-                parallel_UM=parallel_UM+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
+                energy=energy+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
              end do
           end do
        end do
        write(*,*) "iproc ", iproc, "finished, doing last Vall"
-       parallel_UM=parallel_UM+ Vall(n)
+       energy=energy+ Vall(n)
        if (fixedends) then
           do j=1, ndim
              do k=1, natom
-                parallel_UM=parallel_UM+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
-                parallel_UM=parallel_UM+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
+                energy=energy+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
+                energy=energy+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
              end do
           end do
        end if
@@ -268,7 +268,7 @@ contains
     write(*,*) iproc, "reached the final barrier"
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     return
-  end function PARALLEL_UM
+  end subroutine PARALLEL_UM
 
   !---------------------------------------------------------------------
   !linear polymer force
