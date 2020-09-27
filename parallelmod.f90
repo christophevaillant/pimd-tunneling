@@ -70,7 +70,6 @@ contains
        if (potforcepresent) then
           call parallel_UMforceenergy(xtilde,iproc, nproc, fprime,f)
        else
-          write(*,*) "iproc ", iproc, "starting potential evaluation: l73"
           call parallel_UM(xtilde,iproc, nproc, f)
           call parallel_UMprime(xtilde,iproc, nproc, fprime)
        end if
@@ -195,8 +194,6 @@ contains
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          write(*,*) "iproc ", iproc, "sending to ", i, ncalcproc, "slices of x"
-          write(*,*) "starting from ", startind
           do j=1, ncalcproc
              call MPI_Send(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1,&
                   MPI_COMM_WORLD, ierr)
@@ -241,7 +238,6 @@ contains
     !Do easy bit
     if (iproc .eq. 0) then
        do i=1, N-1, 1
-          write(*,*) "iproc ", iproc, "on i=", i
           energy=energy + Vall(i)
           do j=1, ndim
              do k=1, natom
