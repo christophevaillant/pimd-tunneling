@@ -176,7 +176,7 @@ contains
     integer, intent(in)::          iproc, nproc
     double precision, allocatable:: xpart(:,:,:), Vpart(:), Vall(:)
     double precision:: parallel_UM, pot
-    integer::            i,j,k, ncalcs, ierr
+    integer::            i,j,k, ncalcs, ierr, startind, ncalcproc
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
     parallel_UM=0.0d0
@@ -189,16 +189,25 @@ contains
     allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
     if (iproc .eq. 0) then
        !need to send x to all the procs
+       startind=1+ncalcs
        do i=1,nproc-1
-          do j=1, ncalcs
-             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
+          ncalcproc= N/nprocn
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcprop+1
+          write(*,*) "iproc ", iproc, "sending to ", i, ncalcproc, "slices of x"
+          write(*,*) "starting from ", startind
+          do j=1, ncalcproc
+             call MPI_Send(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1,&
+                  MPI_COMM_WORLD, ierr)
           end do
+          startind= startind+ ncalcproc
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
     else
        !need to receive x to all procs
+       write(*,*) "iproc ", iproc, "receiving ", ncalcs, "slices of x"
        do i=1,ncalcs
-          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr)
+          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+               MPI_COMM_WORLD, rstatus, ierr)
        end do
     end if
     write(*,*) "iproc ", iproc, "received the x: l204"
@@ -237,6 +246,7 @@ contains
        end if
     end if
     deallocate(Vall)
+    write(*,*) iproc, "reached the final barrier"
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     return
   end function PARALLEL_UM
@@ -250,7 +260,7 @@ contains
     double precision, intent(in), optional:: a(:,:),b(:,:)
     integer, intent(in)::          iproc, nproc
     double precision,allocatable:: gradpart(:,:,:), xpart(:,:,:), gradall(:,:,:)
-    integer::            i,j,k, ncalcs, ierr
+    integer::            i,j,k, ncalcs, ierr, startind, ncalcproc
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
 
@@ -261,10 +271,14 @@ contains
     allocate(xpart(ncalcs,ndim,natom),gradpart(ncalcs,ndim,natom))
     if (iproc .eq. 0) then
        !need to send x to all the procs
+       startind=1+ncalcs
        do i=1,nproc-1
+          ncalcproc= N/nprocn
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcprop+1
           do j=1, ncalcs
-             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
+             call MPI_Send(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
+          startind= startind+ ncalcproc
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
     else
@@ -325,7 +339,7 @@ contains
     integer, intent(in)::          iproc, nproc
     double precision, allocatable:: xpart(:,:,:), Vpart(:), Vall(:)
     double precision,allocatable:: gradpart(:,:,:), gradall(:,:,:)
-    integer::            i,j,k, ncalcs, ierr
+    integer::            i,j,k, ncalcs, ierr, startind, ncalcproc
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
@@ -337,10 +351,14 @@ contains
     allocate(gradpart(ncalcs,ndim,natom))
     if (iproc .eq. 0) then
        !need to send x to all the procs
+       startind=1+ncalcs
        do i=1,nproc-1
+          ncalcproc= N/nprocn
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcprop+1
           do j=1, ncalcs
-             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
+             call MPI_Send(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
+          startind= startind+ ncalcproc
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
     else
@@ -420,7 +438,7 @@ contains
     double precision, intent(out):: answer(:,:)
     double precision, allocatable:: hess(:,:,:,:)
     double precision,allocatable:: hesspart(:,:,:,:,:), xpart(:,:,:), hessall(:,:,:,:,:)
-    integer::            i, j1, k1, j2, k2, idof1, idof2
+    integer::            i, j1, k1, j2, k2, idof1, idof2, startind, ncalcproc
     integer::            fulldof1, fulldof2, index,j,k, ncalcs, ierr
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
@@ -432,10 +450,14 @@ contains
     allocate(xpart(ncalcs,ndim,natom),hesspart(ncalcs,ndim,natom,ndim,natom))
     if (iproc .eq. 0) then
        !need to send x to all the procs
+       startind=1+ncalcs
        do i=1,nproc-1
+          ncalcproc= N/nprocn
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcprop+1
           do j=1, ncalcs
-             call MPI_Send(x(ncalcs*i +j,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
+             call MPI_Send(x(startind+j-1, ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
+          startind= startind+ ncalcproc
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
     else
