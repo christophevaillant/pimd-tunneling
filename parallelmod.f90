@@ -209,8 +209,8 @@ contains
           call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1,&
                MPI_COMM_WORLD, rstatus, ierr)
        end do
+       write(*,*) "iproc ", iproc, "received the x: l204"
     end if
-    write(*,*) "iproc ", iproc, "received the x: l204"
 
     do i=1, ncalcs
        !need to calculate the potential
@@ -219,9 +219,24 @@ contains
     write(*,*) "iproc ", iproc, "finished calculating"
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
-    allocate(Vall(n))
-    call MPI_Gather(Vpart,ncalcs,MPI_DOUBLE_PRECISION, Vall, ncalcs, MPI_DOUBLE_PRECISION, 0, &
-         MPI_COMM_WORLD, ierr)
+
+    if (iproc .eq. 0) then
+       allocate(Vall(n))
+       Vall(1:ncalcs)= Vpart(:)
+       startind=1+ncalcs
+       do i=1, nproc-1
+          ncalcproc= N/nproc
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
+          call MPI_Recv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
+               MPI_COMM_WORLD, rstatus, ierr)
+          startind= startind+ ncalcproc
+       end do
+    else
+       do i=1, nproc-1
+          call MPI_Send(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
+               MPI_COMM_WORLD, ierr)
+       end do
+    end if
     write(*,*) "iproc ", iproc, "finished gathering"
     deallocate(xpart,Vpart)
 
@@ -247,8 +262,8 @@ contains
           end do
        end if
        write(*,*) "iproc ", iproc, "finished"
+       deallocate(Vall)
     end if
-    deallocate(Vall)
     write(*,*) iproc, "reached the final barrier"
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     return
@@ -296,38 +311,56 @@ contains
     end do
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
-    allocate(gradall(n,ndim,natom))
-    call MPI_Gather(gradpart,ncalcs*ndim*natom,MPI_DOUBLE_PRECISION, gradall, ncalcs*ndim*natom,&
-         MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+    if (iproc .eq. 0) then
+       allocate(gradall(n,ndim,natom))
+       gradall(1:ncalcs,:,:)= gradpart(:,:,:)
+       startind=1+ncalcs
+       do i=1, nproc-1
+          ncalcproc= N/nproc
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
+          call MPI_Recv(gradall(startind: startind+ncalcproc,:,:),ncalcproc*ndof, &
+               MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, rstatus, ierr)
+          startind= startind+ ncalcproc
+       end do
+    else
+       do i=1, nproc-1
+          call MPI_Send(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+               MPI_COMM_WORLD, ierr)
+       end do
+    end if
+
     deallocate(xpart,gradpart)
 
-    do i=1, N
-       do j=1,ndim
-          do k=1,natom
-             if (i.eq.1) then
-                if (fixedends) then
-                   answer(1,j,k)=mass(k)*(2.0*x(1,j,k) - a(j,k) - x(2,j,k))/betan**2
+    if (iproc .eq. 0) then
+       do i=1, N
+          do j=1,ndim
+             do k=1,natom
+                if (i.eq.1) then
+                   if (fixedends) then
+                      answer(1,j,k)=mass(k)*(2.0*x(1,j,k) - a(j,k) - x(2,j,k))/betan**2
+                   else
+                      answer(1,j,k)=mass(k)*(x(1,j,k) - x(2,j,k))/betan**2                   
+                   end if
+                else if (i.eq.N) then
+                   if (fixedends) then
+                      answer(N,j,k)=mass(k)*(2.0*x(N,j,k) - x(N-1,j,k) - b(j,k))/betan**2
+                   else
+                      answer(N,j,k)=mass(k)*(x(N,j,k) - x(N-1,j,k))/betan**2
+                   end if
                 else
-                   answer(1,j,k)=mass(k)*(x(1,j,k) - x(2,j,k))/betan**2                   
+                   answer(i,j,k)= mass(k)*(2.0*x(i,j,k) - x(i-1,j,k) - x(i+1,j,k))/betan**2
                 end if
-             else if (i.eq.N) then
-                if (fixedends) then
-                   answer(N,j,k)=mass(k)*(2.0*x(N,j,k) - x(N-1,j,k) - b(j,k))/betan**2
-                else
-                   answer(N,j,k)=mass(k)*(x(N,j,k) - x(N-1,j,k))/betan**2
-                end if
-             else
-                answer(i,j,k)= mass(k)*(2.0*x(i,j,k) - x(i-1,j,k) - x(i+1,j,k))/betan**2
-             end if
+             end do
+          end do
+          do j=1, ndim
+             do k=1, natom
+                answer(i,j,k)= answer(i,j,k)+ gradall(i,j,k)
+             end do
           end do
        end do
-       do j=1, ndim
-          do k=1, natom
-             answer(i,j,k)= answer(i,j,k)+ gradall(i,j,k)
-          end do
-       end do
-    end do
-    deallocate(gradall)
+       deallocate(gradall)
+    end if
+
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     return
   end subroutine Parallel_UMprime
@@ -377,57 +410,78 @@ contains
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
     allocate(Vall(n),gradall(n,ndim,natom))
-    call MPI_Gather(Vpart,ncalcs,MPI_DOUBLE_PRECISION, Vall, ncalcs, MPI_DOUBLE_PRECISION, 0, &
-         MPI_COMM_WORLD, ierr)
-    call MPI_Gather(gradpart,ncalcs*ndim*natom,MPI_DOUBLE_PRECISION, gradall, ncalcs*ndim*natom,&
-         MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-
-    deallocate(xpart,Vpart, gradpart)
-
-    do i=1, N, 1
-       energy=energy+ Vall(i)
-       do j=1, ndim
-          do k=1, natom
-             if (i .lt. N) energy=energy+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
-          end do
+    if (iproc .eq. 0) then
+       allocate(Vall(n))
+       Vall(1:ncalcs)= Vpart(:)
+       allocate(gradall(n,ndim,natom))
+       gradall(1:ncalcs,:,:)= gradpart(:,:,:)
+       startind=1+ncalcs
+       do i=1, nproc-1
+          ncalcproc= N/nproc
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
+          call MPI_Recv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
+               MPI_COMM_WORLD, rstatus, ierr)
+          call MPI_Recv(gradall(startind: startind+ncalcproc,:,:),ncalcproc*ndof, &
+               MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, rstatus, ierr)
+          startind= startind+ ncalcproc
        end do
-       do j=1,ndim
-          do k=1,natom
-             if (i.eq.1) then
-                if (fixedends) then
-                   answer(1,j,k)=mass(k)*(2.0*x(1,j,k) - a(j,k) - x(2,j,k))/betan**2
-                else
-                   answer(1,j,k)=mass(k)*(x(1,j,k) - x(2,j,k))/betan**2                   
-                end if
-             else if (i.eq.N) then
-                if (fixedends) then
-                   answer(N,j,k)=mass(k)*(2.0*x(N,j,k) - x(N-1,j,k) - b(j,k))/betan**2
-                else
-                   answer(N,j,k)=mass(k)*(x(N,j,k) - x(N-1,j,k))/betan**2
-                end if
-             else
-                answer(i,j,k)= mass(k)*(2.0*x(i,j,k) - x(i-1,j,k) - x(i+1,j,k))/betan**2
-             end if
-          end do
-       end do
-       do j=1, ndim
-          do k=1, natom
-             answer(i,j,k)= answer(i,j,k)+ gradall(i,j,k)
-          end do
-       end do
-    end do
-
-    if (fixedends) then
-       ! energy=energy + V(a(:,:))+ V(b(:,:))
-       do j=1, ndim
-          do k=1, natom
-             energy=energy+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
-             energy=energy+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
-          end do
+    else
+       do i=1, nproc-1
+          call MPI_Send(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
+               MPI_COMM_WORLD, ierr)
+          call MPI_Send(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+               MPI_COMM_WORLD, ierr)
        end do
     end if
 
-    deallocate(gradall, Vall)
+    deallocate(xpart,Vpart, gradpart)
+
+    if (iproc .eq. 0) then
+       do i=1, N, 1
+          energy=energy+ Vall(i)
+          do j=1, ndim
+             do k=1, natom
+                if (i .lt. N) energy=energy+ (0.5d0*mass(k)/betan**2)*(x(i+1,j,k)-x(i,j,k))**2
+             end do
+          end do
+          do j=1,ndim
+             do k=1,natom
+                if (i.eq.1) then
+                   if (fixedends) then
+                      answer(1,j,k)=mass(k)*(2.0*x(1,j,k) - a(j,k) - x(2,j,k))/betan**2
+                   else
+                      answer(1,j,k)=mass(k)*(x(1,j,k) - x(2,j,k))/betan**2                   
+                   end if
+                else if (i.eq.N) then
+                   if (fixedends) then
+                      answer(N,j,k)=mass(k)*(2.0*x(N,j,k) - x(N-1,j,k) - b(j,k))/betan**2
+                   else
+                      answer(N,j,k)=mass(k)*(x(N,j,k) - x(N-1,j,k))/betan**2
+                   end if
+                else
+                   answer(i,j,k)= mass(k)*(2.0*x(i,j,k) - x(i-1,j,k) - x(i+1,j,k))/betan**2
+                end if
+             end do
+          end do
+          do j=1, ndim
+             do k=1, natom
+                answer(i,j,k)= answer(i,j,k)+ gradall(i,j,k)
+             end do
+          end do
+       end do
+
+       if (fixedends) then
+          ! energy=energy + V(a(:,:))+ V(b(:,:))
+          do j=1, ndim
+             do k=1, natom
+                energy=energy+ (0.5d0*mass(k)/betan**2)*(x(1,j,k)-a(j,k))**2
+                energy=energy+ (0.5d0*mass(k)/betan**2)*(b(j,k)-x(N,j,k))**2
+             end do
+          end do
+       end if
+
+       deallocate(gradall, Vall)
+    end if
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     return
   end subroutine Parallel_UMforceenergy
@@ -475,9 +529,23 @@ contains
     end do
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
-    allocate(hessall(n,ndim,natom,ndim,natom))
-    call MPI_Gather(hesspart,ncalcs*ndof*ndof,MPI_DOUBLE_PRECISION, hessall, ncalcs*ndof*ndof,&
-         MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+    if (iproc .eq. 0) then
+       allocate(hessall(n,ndim,natom,ndim,natom))
+       essall(1:ncalcs,:,:,:,:)= hesspart(:,:,:,:,:)
+       startind=1+ncalcs
+       do i=1, nproc-1
+          ncalcproc= N/nproc
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
+          call MPI_Recv(hessall(startind: startind+ncalcproc,:,:,:,:),ncalcproc*ndof*ndof, &
+               MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, rstatus, ierr)
+          startind= startind+ ncalcproc
+       end do
+    else
+       do i=1, nproc-1
+          call MPI_Send(hesspart(:,:,:,:,:), ncalcs*ndof*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+               MPI_COMM_WORLD, ierr)
+       end do
+    end if
     deallocate(xpart,hesspart)
 
     if (iproc .eq. 0) then
@@ -510,8 +578,8 @@ contains
              end do
           end do
        end do
+       deallocate(hessall)
     end if
-    deallocate(hessall)
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     return
   end subroutine Parallel_UMhessian
