@@ -183,12 +183,11 @@ contains
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
     energy=0.0d0
-
+    write(*,*) "iproc ", iproc, "starting potential calc."
     !Begin Parallel parts!
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
-    write(*,*) "iproc ", iproc, "starting potential evaluation with ncalcs=", ncalcs
     allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
     if (iproc .eq. 0) then
        !need to send x to all the procs
@@ -207,19 +206,16 @@ contains
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
     else
        !need to receive x to all procs
-       write(*,*) "iproc ", iproc, "receiving ", ncalcs, "slices of x"
        do i=1,ncalcs
           call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1,&
                MPI_COMM_WORLD, rstatus, ierr)
        end do
-       write(*,*) "iproc ", iproc, "received the x: l204"
     end if
 
     do i=1, ncalcs
        !need to calculate the potential
        Vpart(i)= V(xpart(i,:,:))
     end do
-    write(*,*) "iproc ", iproc, "finished calculating"
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
 
     !gather all the results
@@ -240,7 +236,6 @@ contains
                MPI_COMM_WORLD, ierr)
        end do
     end if
-    write(*,*) "iproc ", iproc, "finished gathering"
     deallocate(xpart,Vpart)
 
     !Do easy bit
@@ -254,7 +249,6 @@ contains
              end do
           end do
        end do
-       write(*,*) "iproc ", iproc, "finished, doing last Vall"
        energy=energy+ Vall(n)
        if (fixedends) then
           do j=1, ndim
@@ -264,10 +258,9 @@ contains
              end do
           end do
        end if
-       write(*,*) "iproc ", iproc, "finished"
        deallocate(Vall)
     end if
-    write(*,*) iproc, "reached the final barrier"
+    write(*,*) "iproc ", iproc, "finishing potential calc."
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     return
   end subroutine PARALLEL_UM
@@ -284,7 +277,7 @@ contains
     integer::            i,j,k, ncalcs, ierr, startind, ncalcproc
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
-
+    write(*,*) "iproc ", iproc, "starting gradient calc."
     !Begin Parallel parts!
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     ncalcs= N/nproc
@@ -363,7 +356,7 @@ contains
        end do
        deallocate(gradall)
     end if
-
+    write(*,*) "iproc ", iproc, "finishing gradient calc."
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     return
   end subroutine Parallel_UMprime
