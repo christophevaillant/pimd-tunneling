@@ -228,6 +228,7 @@ contains
     !Do easy bit
     if (iproc .eq. 0) then
        do i=1, N-1, 1
+          write(*,*) "iproc ", iproc, "on i=", i
           parallel_UM=parallel_UM + Vall(i)
           do j=1, ndim
              do k=1, natom
@@ -235,6 +236,7 @@ contains
              end do
           end do
        end do
+       write(*,*) "iproc ", iproc, "finished, doing last Vall"
        parallel_UM=parallel_UM+ Vall(n)
        if (fixedends) then
           do j=1, ndim
@@ -244,6 +246,7 @@ contains
              end do
           end do
        end if
+       write(*,*) "iproc ", iproc, "finished".
     end if
     deallocate(Vall)
     write(*,*) iproc, "reached the final barrier"
