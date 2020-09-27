@@ -111,6 +111,7 @@ contains
              end if
           end if
        end if
+       call MPI_Barrier(MPI_COMM_WORLD,ierr)
     end do
     if (task(1:5) .eq. "ERROR" .or. task(1:4) .eq. "ABNO") then
        write(*,*) "Error:"
