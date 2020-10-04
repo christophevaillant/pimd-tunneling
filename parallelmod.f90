@@ -572,6 +572,7 @@ contains
                MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, rstatus, ierr)
           hessall(startind:startind+ncalcproc,:,:,:,:)=hesspart(:,:,:,:,:)
           startind= startind+ ncalcproc
+          deallocate(hesspart)
        end do
     else
        call MPI_Send(hesspart(:,:,:,:,:), ncalcs*ndof*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
