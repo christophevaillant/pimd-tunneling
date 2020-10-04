@@ -206,7 +206,7 @@ contains
           startind= startind+ ncalcproc
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
-       call MPI_Waitall(master_request, rstatus, ierr)
+       call MPI_Waitall(nproc-1,master_request, rstatus, ierr)
     else
        !need to receive x to all procs
        call MPI_IRecv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
@@ -232,11 +232,11 @@ contains
                MPI_COMM_WORLD, rstatus, master_request(i),ierr)
           startind= startind+ ncalcproc
        end do
+       call MPI_Waitall(nproc-1,master_request, rstatus, ierr)
     else
-       do i=1, nproc-1
-          call MPI_Isend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
-               MPI_COMM_WORLD, slave_request, ierr)
-       end do
+       call MPI_Isend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
+            MPI_COMM_WORLD, slave_request, ierr)
+       call MPI_Wait(slave_request, rstatus, ierr)
     end if
     deallocate(xpart,Vpart)
 
