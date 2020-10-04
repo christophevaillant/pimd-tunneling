@@ -312,7 +312,7 @@ program rpi
         gammetilde= exp(0.5d0*(lndetJ-lndetJ0))
      end if
      if (fixedends) then
-        call parallel_UM(xtilde, iproc,nproc,well1, well2, Skink)
+        call parallel_UM(xtilde, iproc,nproc, Skink,well1, well2)
         Skink= betan*Skink
      else
         call parallel_UM(xtilde,iproc,nproc,Skink)
