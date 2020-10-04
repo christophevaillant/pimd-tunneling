@@ -85,7 +85,6 @@ contains
          task.eq.'START')
        if (iproc .eq. 0) then
           count=count+1
-          write(*,*) "Iteration ", count, f, task
           xwork=reshape(xtilde,(/totdof/))
           fprimework= reshape(fprime,(/totdof/))
           call setulb(totdof,m,xwork,lb,ub,nbd,f,fprimework,factr,eps2,work&
@@ -93,7 +92,6 @@ contains
        end if
        call MPI_Barrier(MPI_COMM_WORLD,ierr)
        call MPI_Bcast(task, 5, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
-       write(*,*) "iteration", count, task, iproc
        if (task(1:2) .eq. 'FG') then
           if (iproc .eq. 0) then
              xtilde= reshape(xwork,(/n,ndim,natom/))
@@ -148,14 +146,7 @@ contains
        jobz='N'
        lwork= 2*totdof
        liwork= 1
-       range='A'
-       uplo='U'
-       abstol=1.0d-8
        info=0
-       ldz=totdof
-       vl=0.0d0
-       vu=0.0d0
-       nout=0
        allocate(work(lwork), iwork(liwork), H(ndof+1,totdof))
        H=0.0d0
        etasquared=0.0d0
@@ -560,6 +551,7 @@ contains
     !gather all the results
     if (iproc .eq. 0) then
        allocate(hessall(n,ndim,natom,ndim,natom))
+       hessall=0.0
        hessall(1:ncalcs,:,:,:,:)= hesspart(:,:,:,:,:)
        startind=1+ncalcs
        deallocate(hesspart)
