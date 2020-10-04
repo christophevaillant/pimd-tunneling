@@ -214,7 +214,7 @@ contains
        !need to calculate the potential
        Vpart(i)= V(xpart(i,:,:))
     end do
-
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
     if (iproc .eq. 0) then
        allocate(Vall(n))
@@ -257,7 +257,7 @@ contains
        deallocate(Vall)
     end if
     write(*,*) "iproc ", iproc, "finishing potential calc."
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+
     return
   end subroutine PARALLEL_UM
 
@@ -317,7 +317,7 @@ contains
             MPI_COMM_WORLD, ierr)
     end if
     deallocate(xpart,gradpart)
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+
 
     if (iproc .eq. 0) then
        do i=1, N
