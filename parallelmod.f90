@@ -210,7 +210,7 @@ contains
     else
        !need to receive x to all procs
        call MPI_IRecv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
-            MPI_COMM_WORLD, rstatus, slave_request, ierr)
+            MPI_COMM_WORLD, slave_request, ierr)
        call MPI_Wait(slave_request, rstatus, ierr)
     end if
     ! call MPI_Barrier(MPI_COMM_WORLD,ierr)
@@ -259,7 +259,7 @@ contains
              end do
           end do
        end if
-       deallocate(Vall)
+       deallocate(Vall, request)
     end if
     write(*,*) "iproc ", iproc, "reached end of potential calc."
 
