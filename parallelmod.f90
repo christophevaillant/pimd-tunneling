@@ -204,8 +204,8 @@ contains
           allocate(xpart(ncalcproc,ndim,natom))
 
           xpart(:,:,:)=x(startind:startind+ncalcproc,:,:)
-          call MPI_Isend(xpart, ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
-               i, 1, MPI_COMM_WORLD, master_request(i), ierr)
+          call MPI_Send(xpart, ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
+               i, 1, MPI_COMM_WORLD, ierr)
           deallocate(xpart)
 
           startind= startind+ ncalcproc
@@ -213,14 +213,14 @@ contains
        write(*,*) master_request
        allocate(xpart(ncalcs,ndim,natom))
        xpart(:,:,:) = x(1:ncalcs,:,:)
-       call MPI_Waitall(nproc-1,master_request, rstatus, ierr)
+       ! call MPI_Waitall(nproc-1,master_request, rstatus, ierr)
     else
        allocate(xpart(ncalcs,ndim,natom))
        !need to receive x to all procs
        write(*,*) "iproc ", iproc, "receiving xpart."
-       call MPI_IRecv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
-            MPI_COMM_WORLD, slave_request, ierr)
-       call MPI_Wait(slave_request, rstatus, ierr)
+       call MPI_Recv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+            MPI_COMM_WORLD,rstatus, ierr)
+       ! call MPI_Wait(slave_request, rstatus, ierr)
     end if
     allocate(Vpart(ncalcs))
     do i=1, ncalcs
@@ -238,16 +238,16 @@ contains
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           write(*,*) i, ncalcproc, startind
-          call MPI_IRecv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
-               MPI_COMM_WORLD, rstatus, master_request(i),ierr)
+          call MPI_Recv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
+               MPI_COMM_WORLD, rstatus, ierr) !master_request(i),
           startind= startind+ ncalcproc
        end do
-       call MPI_Waitall(nproc-1,master_request, rstatus, ierr)
+       ! call MPI_Waitall(nproc-1,master_request, rstatus, ierr)
     else
        write(*,*) "sending iproc ", iproc
-       call MPI_Isend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
-            MPI_COMM_WORLD, slave_request, ierr)
-       call MPI_Wait(slave_request, rstatus, ierr)
+       call MPI_Send(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
+            MPI_COMM_WORLD, ierr)!slave_request, 
+       ! call MPI_Wait(slave_request, rstatus, ierr)
     end if
     deallocate(xpart,Vpart)
 
