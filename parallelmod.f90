@@ -209,8 +209,9 @@ contains
 
           startind= startind+ ncalcproc
        end do
+       write(*,*) master_request
        allocate(xpart(ncalcs,ndim,natom))
-       xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
+       xpart(:,:,:) = x(1:ncalcs,:,:)
        call MPI_Waitall(nproc-1,master_request, rstatus, ierr)
     else
        allocate(xpart(ncalcs,ndim,natom))
