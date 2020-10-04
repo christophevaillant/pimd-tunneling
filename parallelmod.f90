@@ -183,7 +183,8 @@ contains
     integer, intent(in)::          iproc, nproc
     double precision,intent(out):: energy
     double precision, allocatable:: xpart(:,:,:), Vpart(:), Vall(:)
-    integer::            i,j,k, ncalcs, ierr, startind, ncalcproc
+    integer::            i,j,k, ncalcs, ierr, startind, ncalcproc, slave_request
+    integer, allocatable::  master_request(:)
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
     energy=0.0d0
@@ -192,6 +193,7 @@ contains
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
     allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
+    allocate(master_request(nproc-1))
     if (iproc .eq. 0) then
        !need to send x to all the procs
        startind=1+ncalcs
@@ -200,16 +202,18 @@ contains
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           write(*,*) i, ncalcproc, startind
           call MPI_Isend(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
-               i, 1, MPI_COMM_WORLD, ierr)
+               i, 1, MPI_COMM_WORLD, master_request(i), ierr)
           startind= startind+ ncalcproc
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
+       call MPI_Waitall(master_request, rstatus, ierr)
     else
        !need to receive x to all procs
        call MPI_IRecv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
-            MPI_COMM_WORLD, rstatus, ierr)
+            MPI_COMM_WORLD, rstatus, slave_request, ierr)
+       call MPI_Wait(slave_request, rstatus, ierr)
     end if
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+    ! call MPI_Barrier(MPI_COMM_WORLD,ierr)
     do i=1, ncalcs
        !need to calculate the potential
        Vpart(i)= V(xpart(i,:,:))
@@ -225,13 +229,13 @@ contains
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           call MPI_IRecv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
-               MPI_COMM_WORLD, rstatus, ierr)
+               MPI_COMM_WORLD, rstatus, master_request(i),ierr)
           startind= startind+ ncalcproc
        end do
     else
        do i=1, nproc-1
           call MPI_Isend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
-               MPI_COMM_WORLD, ierr)
+               MPI_COMM_WORLD, slave_request, ierr)
        end do
     end if
     deallocate(xpart,Vpart)
