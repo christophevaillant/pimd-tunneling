@@ -197,6 +197,7 @@ contains
        !need to send x to all the procs
        startind=1+ncalcs
        do i=1,nproc-1
+          write(*,*) "sending xpart to ", i
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           allocate(xpart(ncalcproc,ndim,natom))
@@ -214,6 +215,7 @@ contains
     else
        allocate(xpart(ncalcs,ndim,natom))
        !need to receive x to all procs
+       write(*,*) "iproc ", iproc, "receiving xpart."
        call MPI_IRecv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
             MPI_COMM_WORLD, slave_request, ierr)
        call MPI_Wait(slave_request, rstatus, ierr)
