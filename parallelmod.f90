@@ -200,7 +200,6 @@ contains
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          write(*,*) i, ncalcproc, startind
           call MPI_Isend(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
                i, 1, MPI_COMM_WORLD, master_request(i), ierr)
           startind= startind+ ncalcproc
@@ -218,8 +217,8 @@ contains
        !need to calculate the potential
        Vpart(i)= V(xpart(i,:,:))
     end do
-    write(*,*) "iproc ", iproc, "finished actual potential calcs."
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
+    write(*,*) "iproc ", iproc, "finished actual potential calcs."
     !gather all the results
     if (iproc .eq. 0) then
        allocate(Vall(n))
@@ -228,12 +227,14 @@ contains
        do i=1, nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
+          write(*,*) i, ncalcproc, startind
           call MPI_IRecv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
                MPI_COMM_WORLD, rstatus, master_request(i),ierr)
           startind= startind+ ncalcproc
        end do
        call MPI_Waitall(nproc-1,master_request, rstatus, ierr)
     else
+       write(*,*) "sending iproc ", iproc
        call MPI_Isend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
             MPI_COMM_WORLD, slave_request, ierr)
        call MPI_Wait(slave_request, rstatus, ierr)
