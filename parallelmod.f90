@@ -199,14 +199,14 @@ contains
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           write(*,*) i, ncalcproc, startind
-          call MPI_Bsend(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
+          call MPI_Isend(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
                i, 1, MPI_COMM_WORLD, ierr)
           startind= startind+ ncalcproc
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
     else
        !need to receive x to all procs
-       call MPI_Recv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+       call MPI_IRecv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
             MPI_COMM_WORLD, rstatus, ierr)
     end if
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
@@ -224,13 +224,13 @@ contains
        do i=1, nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          call MPI_Recv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
+          call MPI_IRecv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
                MPI_COMM_WORLD, rstatus, ierr)
           startind= startind+ ncalcproc
        end do
     else
        do i=1, nproc-1
-          call MPI_Bsend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
+          call MPI_Isend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
                MPI_COMM_WORLD, ierr)
        end do
     end if
@@ -286,14 +286,14 @@ contains
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          call MPI_Bsend(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
+          call MPI_Isend(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
                i, 1, MPI_COMM_WORLD, ierr)
           startind= startind+ ncalcproc
        end do
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
     else
        !need to receive x to all procs
-       call MPI_Recv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD,&
+       call MPI_IRecv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD,&
             rstatus, ierr)
     end if
     do i=1, ncalcs
@@ -309,12 +309,12 @@ contains
        do i=1, nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          call MPI_Recv(gradall(startind: startind+ncalcproc,:,:),ncalcproc*ndof, &
+          call MPI_IRecv(gradall(startind: startind+ncalcproc,:,:),ncalcproc*ndof, &
                MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, rstatus, ierr)
           startind= startind+ ncalcproc
        end do
     else
-       call MPI_Bsend(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+       call MPI_Isend(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
             MPI_COMM_WORLD, ierr)
     end if
     deallocate(xpart,gradpart)
@@ -381,7 +381,7 @@ contains
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           do j=1, ncalcs
-             call MPI_Bsend(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
+             call MPI_Isend(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
           startind= startind+ ncalcproc
        end do
@@ -389,7 +389,7 @@ contains
     else
        !need to receive x to all procs
        do i=1,ncalcs
-          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr)
+          call MPI_IRecv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr)
        end do
     end if
     do i=1, ncalcs
@@ -408,17 +408,17 @@ contains
        do i=1, nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          call MPI_Recv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
+          call MPI_IRecv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
                MPI_COMM_WORLD, rstatus, ierr)
-          call MPI_Recv(gradall(startind: startind+ncalcproc,:,:),ncalcproc*ndof, &
+          call MPI_IRecv(gradall(startind: startind+ncalcproc,:,:),ncalcproc*ndof, &
                MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, rstatus, ierr)
           startind= startind+ ncalcproc
        end do
     else
        do i=1, nproc-1
-          call MPI_Bsend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
+          call MPI_Isend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
                MPI_COMM_WORLD, ierr)
-          call MPI_Bsend(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+          call MPI_Isend(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
                MPI_COMM_WORLD, ierr)
        end do
     end if
@@ -501,7 +501,7 @@ contains
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           do j=1, ncalcs
-             call MPI_Bsend(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
+             call MPI_Isend(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
           startind= startind+ ncalcproc
        end do
@@ -509,7 +509,7 @@ contains
     else
        !need to receive x to all procs
        do i=1,ncalcs
-          call MPI_Recv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr)
+          call MPI_IRecv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr)
        end do
     end if
     do i=1, ncalcs
@@ -525,13 +525,13 @@ contains
        do i=1, nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          call MPI_Recv(hessall(startind: startind+ncalcproc,:,:,:,:),ncalcproc*ndof*ndof, &
+          call MPI_IRecv(hessall(startind: startind+ncalcproc,:,:,:,:),ncalcproc*ndof*ndof, &
                MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, rstatus, ierr)
           startind= startind+ ncalcproc
        end do
     else
        do i=1, nproc-1
-          call MPI_Bsend(hesspart(:,:,:,:,:), ncalcs*ndof*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+          call MPI_Isend(hesspart(:,:,:,:,:), ncalcs*ndof*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
                MPI_COMM_WORLD, ierr)
        end do
     end if
