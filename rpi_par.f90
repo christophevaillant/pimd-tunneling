@@ -312,9 +312,11 @@ program rpi
         gammetilde= exp(0.5d0*(lndetJ-lndetJ0))
      end if
      if (fixedends) then
-        Skink= betan*parallel_UM(xtilde, iproc,nproc,well1, well2)
+        call parallel_UM(xtilde, iproc,nproc,well1, well2, Skink)
+        Skink= betan*Skink
      else
-        Skink= betan*parallel_UM(xtilde,iproc,nproc)
+        call parallel_UM(xtilde,iproc,nproc,Skink)
+        Skink= betan*Skink
      end if
      if (iproc .eq. 0) then
         omega= betan*exp(-skink)*sqrt(skink/(2.0d0*pi))/gammetilde
