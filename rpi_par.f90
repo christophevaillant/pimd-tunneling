@@ -157,7 +157,7 @@ program rpi
      end do
      close(19)
   end if
-  call MPI_Bcast(xtilde, totdof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
+  ! call MPI_Bcast(xtilde, totdof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
 
   !------------------------------------
   !work out Q_0
