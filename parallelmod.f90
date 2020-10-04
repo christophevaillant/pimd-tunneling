@@ -259,7 +259,7 @@ contains
              end do
           end do
        end if
-       deallocate(Vall, request)
+       deallocate(Vall, master_request)
     end if
     write(*,*) "iproc ", iproc, "reached end of potential calc."
 
