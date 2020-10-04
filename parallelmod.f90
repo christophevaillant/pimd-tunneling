@@ -502,7 +502,7 @@ contains
     implicit none
     double precision, intent(in)::   x(:,:,:)
     integer, intent(in)::          iproc, nproc
-    double precision, intent(out):: answer(:,:)
+    double precision, intent(inout):: answer(:,:)
     double precision, allocatable:: hess(:,:,:,:)
     double precision,allocatable:: hesspart(:,:,:,:,:), xpart(:,:,:), hessall(:,:,:,:,:)
     integer::            i, j1, k1, j2, k2, idof1, idof2, startind, ncalcproc
