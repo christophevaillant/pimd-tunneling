@@ -188,7 +188,6 @@ contains
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
     energy=0.0d0
-    write(*,*) "iproc ", iproc, "starting potential calc."
     !Begin Parallel parts!
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
@@ -198,7 +197,6 @@ contains
        !need to send x to all the procs
        startind=1+ncalcs
        do i=1,nproc-1
-          write(*,*) "sending xpart to ", i
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           allocate(xpart(ncalcproc,ndim,natom))
@@ -212,14 +210,12 @@ contains
        end do
        allocate(xpart(ncalcs,ndim,natom))
        xpart(:,:,:) = x(1:ncalcs,:,:)
-       ! call MPI_Waitall(nproc-1,master_request, rstatus, ierr)
+
     else
        allocate(xpart(ncalcs,ndim,natom))
        !need to receive x to all procs
-       write(*,*) "iproc ", iproc, "receiving xpart."
        call MPI_Recv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
             MPI_COMM_WORLD,rstatus, ierr)
-       ! call MPI_Wait(slave_request, rstatus, ierr)
     end if
     allocate(Vpart(ncalcs))
     do i=1, ncalcs
@@ -227,7 +223,6 @@ contains
        Vpart(i)= V(xpart(i,:,:))
     end do
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
-    write(*,*) "iproc ", iproc, "finished actual potential calcs."
     !gather all the results
     if (iproc .eq. 0) then
        allocate(Vall(n))
@@ -236,14 +231,12 @@ contains
        do i=1, nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          write(*,*) i, ncalcproc, startind
           call MPI_Recv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
                MPI_COMM_WORLD, rstatus, ierr) !master_request(i),
           startind= startind+ ncalcproc
        end do
        ! call MPI_Waitall(nproc-1,master_request, rstatus, ierr)
     else
-       write(*,*) "sending iproc ", iproc
        call MPI_Send(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
             MPI_COMM_WORLD, ierr)!slave_request, 
        ! call MPI_Wait(slave_request, rstatus, ierr)
@@ -271,7 +264,6 @@ contains
        end if
        deallocate(Vall, master_request)
     end if
-    write(*,*) "iproc ", iproc, "reached end of potential calc."
 
     return
   end subroutine PARALLEL_UM
@@ -288,7 +280,6 @@ contains
     integer::            i,j,k, ncalcs, ierr, startind, ncalcproc
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
-    write(*,*) "iproc ", iproc, "starting gradient calc."
     !Begin Parallel parts!
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     ncalcs= N/nproc
@@ -318,6 +309,7 @@ contains
        call MPI_Recv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD,&
             rstatus, ierr)
     end if
+
     do i=1, ncalcs
        !need to calculate the potential
        call Vprime(xpart(i,:,:),gradpart(i,:,:))
@@ -379,7 +371,6 @@ contains
        end do
        deallocate(gradall)
     end if
-    write(*,*) "iproc ", iproc, "finishing gradient calc."
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     return
   end subroutine Parallel_UMprime
@@ -401,59 +392,68 @@ contains
     energy=0.0d0
     !Begin Parallel parts!
     ncalcs= N/nproc
-    if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
-    allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
-    allocate(gradpart(ncalcs,ndim,natom))
+
     if (iproc .eq. 0) then
        !need to send x to all the procs
        startind=1+ncalcs
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          do j=1, ncalcs
-             call MPI_Isend(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
-          end do
+          allocate(xpart(ncalcproc,ndim,natom))
+
+          xpart(:,:,:)=x(startind:startind+ncalcproc,:,:)
+          call MPI_Send(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
+               i, 1, MPI_COMM_WORLD, ierr)
+          deallocate(xpart)
+
           startind= startind+ ncalcproc
        end do
+       allocate(xpart(ncalcs,ndim,natom))
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
     else
        !need to receive x to all procs
-       do i=1,ncalcs
-          call MPI_IRecv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr)
-       end do
+       allocate(xpart(ncalcs,ndim,natom))
+       call MPI_Recv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD,&
+            rstatus, ierr)
     end if
+
+    allocate(gradpart(ncalcs,ndim,natom),Vpart(ncalcs))
     do i=1, ncalcs
        !need to calculate the potential
        call potforce(x(i,:,:),gradpart(i,:,:),Vpart(i))
     end do
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
+
     !gather all the results
-    allocate(Vall(n),gradall(n,ndim,natom))
     if (iproc .eq. 0) then
        allocate(Vall(n))
        Vall(1:ncalcs)= Vpart(:)
        allocate(gradall(n,ndim,natom))
        gradall(1:ncalcs,:,:)= gradpart(:,:,:)
        startind=1+ncalcs
+       deallocate(gradpart)
        do i=1, nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          call MPI_IRecv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
+          allocate(gradpart(ncalcproc,ndim,natom))
+          call MPI_Recv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
                MPI_COMM_WORLD, rstatus, ierr)
-          call MPI_IRecv(gradall(startind: startind+ncalcproc,:,:),ncalcproc*ndof, &
+          call MPI_Recv(gradpart,ncalcproc*ndof, &
                MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, rstatus, ierr)
+
+          gradall(startind:startind+ncalcproc,:,:)=gradpart(:,:,:)
+          deallocate(gradpart)
+
           startind= startind+ ncalcproc
        end do
     else
-       do i=1, nproc-1
-          call MPI_Isend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
+          call MPI_Send(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
                MPI_COMM_WORLD, ierr)
-          call MPI_Isend(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+          call MPI_Send(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
                MPI_COMM_WORLD, ierr)
-       end do
     end if
 
-    deallocate(xpart,Vpart, gradpart)
+    deallocate(xpart, Vpart)
 
     if (iproc .eq. 0) then
        do i=1, N, 1
@@ -523,49 +523,61 @@ contains
     !Begin Parallel parts!
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
-    allocate(xpart(ncalcs,ndim,natom),hesspart(ncalcs,ndim,natom,ndim,natom))
+    allocate(hesspart(ncalcs,ndim,natom,ndim,natom))
+
+    !TODO: This should be a separate function really, right now it's just copy pasta.
     if (iproc .eq. 0) then
        !need to send x to all the procs
        startind=1+ncalcs
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          do j=1, ncalcs
-             call MPI_Isend(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
-          end do
+          allocate(xpart(ncalcproc,ndim,natom))
+
+          xpart(:,:,:)=x(startind:startind+ncalcproc,:,:)
+          call MPI_Send(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
+               i, 1, MPI_COMM_WORLD, ierr)
+          deallocate(xpart)
+
           startind= startind+ ncalcproc
        end do
+       allocate(xpart(ncalcs,ndim,natom))
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
     else
        !need to receive x to all procs
-       do i=1,ncalcs
-          call MPI_IRecv(xpart(i,:,:),ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, rstatus, ierr)
-       end do
+       allocate(xpart(ncalcs,ndim,natom))
+       call MPI_Recv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD,&
+            rstatus, ierr)
     end if
+
     do i=1, ncalcs
        !need to calculate the potential
        call Vdoubleprime(xpart(i,:,:), hesspart(i,:,:,:,:))
     end do
+    deallocate(xpart)
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
+    
     !gather all the results
     if (iproc .eq. 0) then
        allocate(hessall(n,ndim,natom,ndim,natom))
        hessall(1:ncalcs,:,:,:,:)= hesspart(:,:,:,:,:)
        startind=1+ncalcs
+       deallocate(hesspart)
        do i=1, nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          call MPI_IRecv(hessall(startind: startind+ncalcproc,:,:,:,:),ncalcproc*ndof*ndof, &
+          allocate(hesspart(ncalcproc,ndim,natom,ndim,natom))
+          
+          call MPI_Recv(hesspart,ncalcproc*ndof*ndof, &
                MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, rstatus, ierr)
+          hessall(startind:startind+ncalcproc,:,:,:,:)=hesspart(:,:,:,:,:)
           startind= startind+ ncalcproc
        end do
     else
-       do i=1, nproc-1
-          call MPI_Isend(hesspart(:,:,:,:,:), ncalcs*ndof*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
-               MPI_COMM_WORLD, ierr)
-       end do
+       call MPI_Send(hesspart(:,:,:,:,:), ncalcs*ndof*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+            MPI_COMM_WORLD, ierr)
+       deallocate(hesspart)
     end if
-    deallocate(xpart,hesspart)
 
     if (iproc .eq. 0) then
        do i=1, n, 1
