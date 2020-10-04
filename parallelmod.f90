@@ -199,7 +199,7 @@ contains
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           write(*,*) i, ncalcproc, startind
-          call MPI_Ssend(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
+          call MPI_Bsend(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
                i, 1, MPI_COMM_WORLD, ierr)
           startind= startind+ ncalcproc
        end do
@@ -214,6 +214,7 @@ contains
        !need to calculate the potential
        Vpart(i)= V(xpart(i,:,:))
     end do
+    write(*,*) "iproc ", iproc, "finished actual potential calcs."
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     !gather all the results
     if (iproc .eq. 0) then
@@ -229,7 +230,7 @@ contains
        end do
     else
        do i=1, nproc-1
-          call MPI_Ssend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
+          call MPI_Bsend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
                MPI_COMM_WORLD, ierr)
        end do
     end if
@@ -256,7 +257,7 @@ contains
        end if
        deallocate(Vall)
     end if
-    write(*,*) "iproc ", iproc, "finishing potential calc."
+    write(*,*) "iproc ", iproc, "reached end of potential calc."
 
     return
   end subroutine PARALLEL_UM
@@ -285,7 +286,7 @@ contains
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          call MPI_Ssend(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
+          call MPI_Bsend(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
                i, 1, MPI_COMM_WORLD, ierr)
           startind= startind+ ncalcproc
        end do
@@ -313,7 +314,7 @@ contains
           startind= startind+ ncalcproc
        end do
     else
-       call MPI_Ssend(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+       call MPI_Bsend(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
             MPI_COMM_WORLD, ierr)
     end if
     deallocate(xpart,gradpart)
@@ -380,7 +381,7 @@ contains
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           do j=1, ncalcs
-             call MPI_Ssend(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
+             call MPI_Bsend(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
           startind= startind+ ncalcproc
        end do
@@ -415,9 +416,9 @@ contains
        end do
     else
        do i=1, nproc-1
-          call MPI_Ssend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
+          call MPI_Bsend(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
                MPI_COMM_WORLD, ierr)
-          call MPI_Ssend(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+          call MPI_Bsend(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
                MPI_COMM_WORLD, ierr)
        end do
     end if
@@ -500,7 +501,7 @@ contains
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           do j=1, ncalcs
-             call MPI_Ssend(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
+             call MPI_Bsend(x(startind+j-1,:,:), ndof, MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, ierr)
           end do
           startind= startind+ ncalcproc
        end do
@@ -530,7 +531,7 @@ contains
        end do
     else
        do i=1, nproc-1
-          call MPI_Ssend(hesspart(:,:,:,:,:), ncalcs*ndof*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+          call MPI_Bsend(hesspart(:,:,:,:,:), ncalcs*ndof*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
                MPI_COMM_WORLD, ierr)
        end do
     end if
