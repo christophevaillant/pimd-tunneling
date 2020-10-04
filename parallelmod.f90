@@ -192,7 +192,6 @@ contains
     !Begin Parallel parts!
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
-    allocate(xpart(ncalcs,ndim,natom),Vpart(ncalcs))
     allocate(master_request(nproc-1))
     if (iproc .eq. 0) then
        !need to send x to all the procs
@@ -200,19 +199,26 @@ contains
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          call MPI_Isend(x(startind:startind+ncalcproc,:,:), ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
+          allocate(xpart(ncalcproc,ndim,natom))
+
+          xpart(:,:,:)=x(startind:startind+ncalcproc,:,:)
+          call MPI_Isend(, ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
                i, 1, MPI_COMM_WORLD, master_request(i), ierr)
+          deallocate(xpart)
+
           startind= startind+ ncalcproc
        end do
+       allocate(xpart(ncalcs,ndim,natom))
        xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
        call MPI_Waitall(nproc-1,master_request, rstatus, ierr)
     else
+       allocate(xpart(ncalcs,ndim,natom))
        !need to receive x to all procs
        call MPI_IRecv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
             MPI_COMM_WORLD, slave_request, ierr)
        call MPI_Wait(slave_request, rstatus, ierr)
     end if
-    ! call MPI_Barrier(MPI_COMM_WORLD,ierr)
+    allocate(Vpart(ncalcs))
     do i=1, ncalcs
        !need to calculate the potential
        Vpart(i)= V(xpart(i,:,:))
