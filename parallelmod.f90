@@ -202,7 +202,7 @@ contains
           allocate(xpart(ncalcproc,ndim,natom))
 
           xpart(:,:,:)=x(startind:startind+ncalcproc,:,:)
-          call MPI_Isend(, ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
+          call MPI_Isend(xpart, ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
                i, 1, MPI_COMM_WORLD, master_request(i), ierr)
           deallocate(xpart)
 
