@@ -145,17 +145,18 @@ program rpi
 
   write(*,*) "Starting instanton search..."
   call parallel_instanton(xtilde,iproc, nproc,well1,well2)
-  write(*,*) "Found instanton."
-  open(19, file="instanton.xyz")
-  do i=1,n
-     write(19,*) natom
-     write(19,*) "Energy of minimum",i
-     do j=1, natom
-        write(19,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim)
+  if (iproc .eq. 0) then
+     write(*,*) "Found instanton."
+     open(19, file="instanton.xyz")
+     do i=1,n
+        write(19,*) natom
+        write(19,*) "Energy of minimum",i
+        do j=1, natom
+           write(19,*)  label(j), (xtilde(i,k,j)*0.529177d0, k=1,ndim)
+        end do
      end do
-  end do
-  close(19)
-
+     close(19)
+  end if
   call MPI_Bcast(xtilde, totdof, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
 
   !------------------------------------
