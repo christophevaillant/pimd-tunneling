@@ -193,6 +193,7 @@ contains
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
     allocate(master_request(nproc-1))
+    master_request(:)=0
     if (iproc .eq. 0) then
        !need to send x to all the procs
        startind=1+ncalcs
