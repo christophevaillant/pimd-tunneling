@@ -66,7 +66,9 @@ program rpi
         if (mod(npoints**3, nproc) .ne. 0) ncalcs=ncalcs+1
      end if
   end if
+  
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
+  call MPI_Bcast(angular, 1, MPI_LOGICAL, 0,MPI_COMM_WORLD, ierr)
   ierr=0
   if (angular) then
      call MPI_Bcast(ncalcs, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
@@ -75,14 +77,15 @@ program rpi
   call MPI_Bcast(atom1, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(atom2, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(atom3, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
-  call MPI_Barrier(MPI_COMM_WORLD,ierr)
-  write(*,*)"Before", iproc
-  call MPI_Bcast(basename, 20, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
-    write(*,*)"After", iproc
   call MPI_Bcast(N, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(ndim, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  
+  call MPI_Barrier(MPI_COMM_WORLD,ierr)
+  call MPI_Bcast(basename, 20, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(fixedends, 1, MPI_LOGICAL, 0,MPI_COMM_WORLD, ierr)
+  
+  call MPI_Barrier(MPI_COMM_WORLD,ierr)
   ndof=ndim*natom
   totdof= n*ndof
   if ((iproc.eq. nproc-1 .and. mod(npoints**3,nproc) > 0) .and. angular) then
