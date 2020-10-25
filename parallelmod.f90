@@ -184,7 +184,7 @@ contains
     write(*,*) iproc, nproc, N, ncalcs
     if (iproc .eq. 0) then
        !need to send x to all the procs
-       startind=ncalcs
+       startind=ncalcs+1
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i+1 .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
@@ -218,7 +218,7 @@ contains
        Vall(1:ncalcs)= Vpart(:)
        write(*,*) 1, 1, ncalcs
        write(*,*) 1, Vpart(:)
-       startind=ncalcs
+       startind=ncalcs+1
        do i=1, nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
