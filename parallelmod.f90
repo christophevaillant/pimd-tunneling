@@ -190,7 +190,7 @@ contains
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           allocate(xpart(ncalcproc,ndim,natom))
 
-          xpart(:,:,:)=x(startind:startind+ncalcproc,:,:)
+          xpart(:,:,:)=x(startind:startind+ncalcproc-1,:,:)
           call MPI_Send(xpart, ncalcproc*ndof, MPI_DOUBLE_PRECISION,&
                i, 1, MPI_COMM_WORLD, ierr)
           deallocate(xpart)
@@ -222,10 +222,10 @@ contains
        do i=1, nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          write(*,*) i, startind, startind+ncalcproc
-          call MPI_Recv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
+          write(*,*) i, startind, startind+ncalcproc-1
+          call MPI_Recv(Vall(startind: startind+ncalcproc-1),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
                MPI_COMM_WORLD, rstatus, ierr)
-          write(*,*) i, Vall(startind:startind+ncalcproc)
+          write(*,*) i, Vall(startind:startind+ncalcproc-1)
           startind= startind+ ncalcproc
        end do
 
