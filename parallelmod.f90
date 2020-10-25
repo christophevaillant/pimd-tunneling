@@ -180,14 +180,14 @@ contains
     energy=0.0d0
     !Begin Parallel parts!
     ncalcs= N/nproc
-    if (iproc+1 .lt. mod(N, nproc)) ncalcs=ncalcs+1
+    if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
     write(*,*) iproc, nproc, N, ncalcs
     if (iproc .eq. 0) then
        !need to send x to all the procs
        startind=ncalcs+1
        do i=1,nproc-1
           ncalcproc= N/nproc
-          if (i+1 .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           allocate(xpart(ncalcproc,ndim,natom))
 
           xpart(:,:,:)=x(startind:startind+ncalcproc-1,:,:)
