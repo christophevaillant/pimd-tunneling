@@ -75,7 +75,9 @@ program rpi
   call MPI_Bcast(atom1, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(atom2, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(atom3, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  write(*,*)"Before", iproc
   call MPI_Bcast(basename, 20, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
+    write(*,*)"After", iproc
   call MPI_Bcast(N, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(ndim, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
