@@ -183,7 +183,7 @@ contains
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
     if (iproc .eq. 0) then
        !need to send x to all the procs
-       startind=1+ncalcs
+       startind=ncalcs
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
@@ -216,7 +216,7 @@ contains
        allocate(Vall(n))
        Vall(1:ncalcs)= Vpart(:)
        write(*,*) 1, 1, 1+ncalcs
-       startind=1+ncalcs
+       startind=ncalcs
        do i=1, nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
@@ -278,7 +278,7 @@ contains
 
     if (iproc .eq. 0) then
        !need to send x to all the procs
-       startind=1+ncalcs
+       startind=ncalcs
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
@@ -312,7 +312,7 @@ contains
     if (iproc .eq. 0) then
        allocate(gradall(n,ndim,natom))
        gradall(1:ncalcs,:,:)= gradpart(:,:,:)
-       startind=1+ncalcs
+       startind=ncalcs
        deallocate(gradpart)
        do i=1, nproc-1
           ncalcproc= N/nproc
@@ -385,7 +385,7 @@ contains
 
     if (iproc .eq. 0) then
        !need to send x to all the procs
-       startind=1+ncalcs
+       startind=ncalcs
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
@@ -420,7 +420,7 @@ contains
        Vall(1:ncalcs)= Vpart(:)
        allocate(gradall(n,ndim,natom))
        gradall(1:ncalcs,:,:)= gradpart(:,:,:)
-       startind=1+ncalcs
+       startind=ncalcs
        deallocate(gradpart)
        do i=1, nproc-1
           ncalcproc= N/nproc
@@ -518,7 +518,7 @@ contains
     !TODO: This should be a separate function really, right now it's just copy pasta.
     if (iproc .eq. 0) then
        !need to send x to all the procs
-       startind=1+ncalcs
+       startind=ncalcs
        do i=1,nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
@@ -553,7 +553,7 @@ contains
        allocate(hessall(n,ndim,natom,ndim,natom))
        hessall=0.0
        hessall(1:ncalcs,:,:,:,:)= hesspart(:,:,:,:,:)
-       startind=1+ncalcs
+       startind=ncalcs
        deallocate(hesspart)
        do i=1, nproc-1
           ncalcproc= N/nproc
