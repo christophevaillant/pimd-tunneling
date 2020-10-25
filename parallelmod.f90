@@ -215,7 +215,8 @@ contains
     if (iproc .eq. 0) then
        allocate(Vall(n))
        Vall(1:ncalcs)= Vpart(:)
-       write(*,*) 1, 1, 1+ncalcs
+       write(*,*) 1, 1, ncalcs
+       write(*,*) 1, Vpart(:)
        startind=ncalcs
        do i=1, nproc-1
           ncalcproc= N/nproc
@@ -223,6 +224,7 @@ contains
           write(*,*) i, startind, startind+ncalcproc
           call MPI_Recv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
                MPI_COMM_WORLD, rstatus, ierr)
+          write(*,*) i, Vall(startind:startind:ncalcproc)
           startind= startind+ ncalcproc
        end do
 
