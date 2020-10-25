@@ -55,7 +55,6 @@ program rpi
   atom3=3
   basename=""
 
-  call V_init(iproc)
 
   if (iproc .eq. 0) then
      read(5, nml=RPIDATA)
@@ -73,6 +72,10 @@ program rpi
      call MPI_Bcast(ncalcs, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
      call MPI_Bcast(npoints, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   end if
+  call MPI_Bcast(atom1, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(atom2, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(atom3, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(basename, 20, MPI_CHARACTER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(N, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(ndim, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
   call MPI_Bcast(natom, 1, MPI_INTEGER, 0,MPI_COMM_WORLD, ierr)
@@ -82,8 +85,9 @@ program rpi
   if ((iproc.eq. nproc-1 .and. mod(npoints**3,nproc) > 0) .and. angular) then
      ncalcs= ncalcs-mod(npoints**3,nproc)
   end if
+  call V_init(iproc)
   
-    if (.not. angular) then
+  if (.not. angular) then
      ncalcs= N/nproc
      if (iproc+1 .lt. mod(N, nproc)) ncalcs=ncalcs+1
   end if
