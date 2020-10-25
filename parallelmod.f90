@@ -545,6 +545,7 @@ contains
        !need to calculate the potential
        call Vdoubleprime(xpart(i,:,:), hesspart(i,:,:,:,:))
     end do
+    
     deallocate(xpart)
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
     
@@ -571,7 +572,8 @@ contains
             MPI_COMM_WORLD, ierr)
        deallocate(hesspart)
     end if
-
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+    
     if (iproc .eq. 0) then
        do i=1, n, 1
           do j1=1,ndim

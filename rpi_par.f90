@@ -184,7 +184,7 @@ program rpi
      deallocate(xharm)
   end if
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
-  call MPI_Bcast(lndetj0, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
+  ! call MPI_Bcast(lndetj0, 1, MPI_DOUBLE_PRECISION, 0,MPI_COMM_WORLD, ierr)
   !put a barrier to make sure the procs are synced
 
   !------------------------------------
