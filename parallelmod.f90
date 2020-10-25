@@ -236,6 +236,7 @@ contains
     !Do easy bit
     if (iproc .eq. 0) then
        do i=1, N-1, 1
+          write(*,*) i, Vall(i)
           energy=energy + Vall(i)
           do j=1, ndim
              do k=1, natom
@@ -244,6 +245,7 @@ contains
           end do
        end do
        energy=energy+ Vall(n)
+       write(*,*)n,Vall(n)
        if (fixedends) then
           do j=1, ndim
              do k=1, natom
@@ -255,6 +257,8 @@ contains
        deallocate(Vall)
     end if
 
+
+    
     return
   end subroutine PARALLEL_UM
 
