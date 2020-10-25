@@ -25,7 +25,7 @@ program rpi
   logical::                        alignwell, angular
 
   namelist /RPIDATA/ n, beta, ndim, natom,npath,xunit, npoints, cutofftheta,cutoffphi, alignwell,&
-       fixedends, angular
+       fixedends, angular, basename, atom1, atom2, atom3
 
   !initialize MPI
   nproc=0
@@ -50,6 +50,10 @@ program rpi
   cutoffphi=3.2d0
   alignwell=.false.
   fixedends=.true.
+  atom1=1
+  atom2=2
+  atom3=3
+  basename=""
 
   call V_init(iproc)
 
@@ -81,7 +85,7 @@ program rpi
   
     if (.not. angular) then
      ncalcs= N/nproc
-     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
+     if (iproc+1 .lt. mod(N, nproc)) ncalcs=ncalcs+1
   end if
 
 
