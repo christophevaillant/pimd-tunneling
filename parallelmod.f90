@@ -174,16 +174,13 @@ contains
     integer, intent(in)::          iproc, nproc
     double precision,intent(out):: energy
     double precision, allocatable:: xpart(:,:,:), Vpart(:), Vall(:)
-    integer::            i,j,k, ncalcs, ierr, startind, ncalcproc, slave_request
-    integer, allocatable::  master_request(:)
+    integer::            i,j,k, ncalcs, ierr, startind, ncalcproc
     integer, dimension(MPI_STATUS_SIZE) :: rstatus
 
     energy=0.0d0
     !Begin Parallel parts!
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
-    allocate(master_request(nproc-1))
-    master_request(:)=0
     if (iproc .eq. 0) then
        !need to send x to all the procs
        startind=1+ncalcs
@@ -218,19 +215,21 @@ contains
     if (iproc .eq. 0) then
        allocate(Vall(n))
        Vall(1:ncalcs)= Vpart(:)
+       write(*,*) 1, 1, 1+ncalcs
        startind=1+ncalcs
        do i=1, nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
+          write(*,*) i, startind, startind+ncalcproc
           call MPI_Recv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
-               MPI_COMM_WORLD, rstatus, ierr) !master_request(i),
+               MPI_COMM_WORLD, rstatus, ierr)
           startind= startind+ ncalcproc
        end do
-       ! call MPI_Waitall(nproc-1,master_request, rstatus, ierr)
+
     else
        call MPI_Send(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
-            MPI_COMM_WORLD, ierr)!slave_request, 
-       ! call MPI_Wait(slave_request, rstatus, ierr)
+            MPI_COMM_WORLD, ierr)
+
     end if
     deallocate(xpart,Vpart)
 
@@ -253,7 +252,7 @@ contains
              end do
           end do
        end if
-       deallocate(Vall, master_request)
+       deallocate(Vall)
     end if
 
     return
