@@ -225,7 +225,7 @@ contains
           write(*,*) i, startind, startind+ncalcproc
           call MPI_Recv(Vall(startind: startind+ncalcproc),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
                MPI_COMM_WORLD, rstatus, ierr)
-          write(*,*) i, Vall(startind:startind:ncalcproc)
+          write(*,*) i, Vall(startind:startind+ncalcproc)
           startind= startind+ ncalcproc
        end do
 
