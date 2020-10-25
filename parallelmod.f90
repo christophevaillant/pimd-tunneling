@@ -181,7 +181,6 @@ contains
     !Begin Parallel parts!
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
-    write(*,*) iproc, nproc, N, ncalcs
     if (iproc .eq. 0) then
        !need to send x to all the procs
        startind=ncalcs+1
@@ -217,16 +216,12 @@ contains
     if (iproc .eq. 0) then
        allocate(Vall(n))
        Vall(1:ncalcs)= Vpart(:)
-       write(*,*) 1, 1, ncalcs
-       write(*,*) 1, Vpart(:)
        startind=ncalcs+1
        do i=1, nproc-1
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
-          write(*,*) i, startind, startind+ncalcproc-1
           call MPI_Recv(Vall(startind: startind+ncalcproc-1),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
                MPI_COMM_WORLD, rstatus, ierr)
-          write(*,*) i, Vall(startind:startind+ncalcproc-1)
           startind= startind+ ncalcproc
        end do
 
@@ -240,7 +235,6 @@ contains
     !Do easy bit
     if (iproc .eq. 0) then
        do i=1, N-1, 1
-          write(*,*) i, Vall(i)
           energy=energy + Vall(i)
           do j=1, ndim
              do k=1, natom
@@ -249,7 +243,6 @@ contains
           end do
        end do
        energy=energy+ Vall(n)
-       write(*,*)n,Vall(n)
        if (fixedends) then
           do j=1, ndim
              do k=1, natom
