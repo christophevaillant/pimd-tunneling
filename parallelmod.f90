@@ -181,6 +181,7 @@ contains
     !Begin Parallel parts!
     ncalcs= N/nproc
     if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
+    write(*,*) iproc, nproc, N, ncalcs
     if (iproc .eq. 0) then
        !need to send x to all the procs
        startind=ncalcs
