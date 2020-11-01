@@ -11,7 +11,7 @@ contains
 
   subroutine V_init(iproc)
     integer, intent(in):: iproc
-    potforcepresent=.false.
+    potforcepresent=.true.
     V0=0.0d0
     return
   end subroutine V_init

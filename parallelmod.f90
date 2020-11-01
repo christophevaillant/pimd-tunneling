@@ -408,14 +408,14 @@ contains
        call MPI_Recv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD,&
             rstatus, ierr)
     end if
-    deallocate(xpart)
     
     allocate(gradpart(ncalcs,ndim,natom),Vpart(ncalcs))
     do i=1, ncalcs
        !need to calculate the potential
-       call potforce(x(i,:,:),gradpart(i,:,:),Vpart(i))
+       call potforce(xpart(i,:,:),gradpart(i,:,:),Vpart(i))
     end do
     call MPI_Barrier(MPI_COMM_WORLD,ierr)
+    deallocate(xpart)
 
     !gather all the results
     if (iproc .eq. 0) then
