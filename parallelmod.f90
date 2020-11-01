@@ -383,7 +383,8 @@ contains
     energy=0.0d0
     !Begin Parallel parts!
     ncalcs= N/nproc
-
+    if (iproc .lt. mod(N, nproc)) ncalcs=ncalcs+1
+    
     if (iproc .eq. 0) then
        !need to send x to all the procs
        startind=ncalcs+1
@@ -400,14 +401,15 @@ contains
           startind= startind+ ncalcproc
        end do
        allocate(xpart(ncalcs,ndim,natom))
-       xpart(1:ncalcs,:,:) = x(1:ncalcs,:,:)
+       xpart(:,:,:) = x(1:ncalcs,:,:)
     else
        !need to receive x to all procs
        allocate(xpart(ncalcs,ndim,natom))
        call MPI_Recv(xpart(1:ncalcs,:,:),ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD,&
             rstatus, ierr)
     end if
-
+    deallocate(xpart)
+    
     allocate(gradpart(ncalcs,ndim,natom),Vpart(ncalcs))
     do i=1, ncalcs
        !need to calculate the potential
@@ -419,6 +421,24 @@ contains
     if (iproc .eq. 0) then
        allocate(Vall(n))
        Vall(1:ncalcs)= Vpart(:)
+       startind=ncalcs+1
+       do i=1, nproc-1
+          ncalcproc= N/nproc
+          if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
+          call MPI_Recv(Vall(startind: startind+ncalcproc-1),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
+               MPI_COMM_WORLD, rstatus, ierr)
+          startind= startind+ ncalcproc
+       end do
+
+    else
+       call MPI_Send(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
+            MPI_COMM_WORLD, ierr)
+
+    end if
+    deallocate(Vpart)
+    
+    !gather all the results
+    if (iproc .eq. 0) then
        allocate(gradall(n,ndim,natom))
        gradall(1:ncalcs,:,:)= gradpart(:,:,:)
        startind=ncalcs+1
@@ -427,24 +447,18 @@ contains
           ncalcproc= N/nproc
           if (i .lt. mod(N, nproc)) ncalcproc=ncalcproc+1
           allocate(gradpart(ncalcproc,ndim,natom))
-          call MPI_Recv(Vall(startind: startind+ncalcproc-1),ncalcproc, MPI_DOUBLE_PRECISION, i, 1,&
-               MPI_COMM_WORLD, rstatus, ierr)
+          
           call MPI_Recv(gradpart,ncalcproc*ndof, &
                MPI_DOUBLE_PRECISION, i, 1, MPI_COMM_WORLD, rstatus, ierr)
-
           gradall(startind:startind+ncalcproc-1,:,:)=gradpart(:,:,:)
           deallocate(gradpart)
-
           startind= startind+ ncalcproc
        end do
     else
-          call MPI_Send(Vpart, ncalcs, MPI_DOUBLE_PRECISION, 0, 1,&
-               MPI_COMM_WORLD, ierr)
-          call MPI_Send(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
-               MPI_COMM_WORLD, ierr)
+       call MPI_Send(gradpart(:,:,:), ncalcs*ndof, MPI_DOUBLE_PRECISION, 0, 1,&
+            MPI_COMM_WORLD, ierr)
+       deallocate(gradpart)
     end if
-
-    deallocate(xpart, Vpart)
 
     if (iproc .eq. 0) then
        do i=1, N, 1
