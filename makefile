@@ -14,7 +14,7 @@ MODDIR= ../build/modules
 #Define some variables with common files
 COMFILES= $(OBJDIR)/blas.o $(OBJDIR)/linpack.o $(OBJDIR)/timer.o \
 	$(OBJDIR)/lbfgsb.o $(OBJDIR)/nr_fft.o \
-	$(OBJDIR)/instantonmod.o $(OBJDIR)/verletmodule.o
+	$(OBJDIR)/instantonmod.o $(OBJDIR)/utils.o $(OBJDIR)/verletmodule.o
 
 #1D double well potential:
 1DFILES= $(OBJDIR)/mcmod_1d.o
@@ -52,6 +52,7 @@ WATHEXFILES= $(OBJDIR)/mcmod_waterhexamer.o
 
 #MOLPRO interface
 MOLPROFILES= $(OBJDIR)/mcmod_molpro.o
+rpi_molpro_par: FFLAGS+= -fpp -save-temps -DMOLPRO
 
 #Water dimer (HBB2):
 HBB2FILES= $(OBJDIR)/mcmod_waterdimer_hbb2.o
@@ -96,6 +97,8 @@ $(OBJDIR)/rpi_par.o: rpi_par.f90
 $(OBJDIR)/parallelmod.o: parallelmod.f90
 	$(MPIFC) $(INCLUDE) -c $(FFLAGS) $< -o $@
 
+$(OBJDIR)/mcmod_molpro.o: mcmod_molpro.f90
+	$(MPIFC) $(INCLUDE) -c $(FFLAGS) $< -o $@
 
 ###################################################################################
 #Rules for the final executables
@@ -283,8 +286,8 @@ pimd_molpro_ser: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/pimd_ser.o
 rpi_molpro_ser: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o
 	$(FC) $(FFLAGS) $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/rpi_ser.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)
 
-rpi_molpro_par: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o
-	$(MPIFC) $(FFLAGS) $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
+rpi_molpro_par: $(MOLPROFILES) $(COMFILES) $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o
+	$(MPIFC) $(FFLAGS) $(MOLPROFILES) $(COMFILES) $(OBJDIR)/parallelmod.o $(OBJDIR)/rpi_par.o -o $(BUILDDIR)/$@ $(FLIBS_PAR)
 
 crossover_molpro: $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/crossover.o
 	$(FC) $(FFLAGS) $(MOLPROFILES) $(COMFILES)  $(OBJDIR)/crossover.o -o $(BUILDDIR)/$@ $(FLIBS_SEQ)

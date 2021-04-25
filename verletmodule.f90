@@ -1,6 +1,7 @@
 include 'mkl_vsl.fi'
 module verletint
   use mcmod_mass
+  use utilsmod
   use MKL_VSL_TYPE
   use MKL_VSL
   use nr_fft, only : sinft

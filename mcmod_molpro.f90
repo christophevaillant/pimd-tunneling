@@ -1,5 +1,6 @@
 module mcmod_mass
   implicit none
+  include 'mpif.h'
   double precision::               V0, eps2=1.0d-5
   integer::                        atom1, atom2, atom3
   character(len=:), allocatable::  procdir, beaddir(:)
@@ -38,11 +39,13 @@ contains
     integer, intent(in):: iproc
     character(len=7)::  format_string
     character:: status
+    character(len=255):: cwd
+    character(len=50) :: cmd, args(7)
     logical::    ex
-    integer::  i,readstat, ierr
+    integer::  i,readstat, ierr, spawn_error, child
 
     potforcepresent= .true.
-
+    call getcwd(cwd)
     !-----------------------
     !format statement for reading in
     if (iproc .lt. 10) then
@@ -59,23 +62,34 @@ contains
     V0=0.0d0
     !-----------------------
     !make directory structure
-    inquire(file=procdir//"/geometry", exist=ex)
+    inquire(file=trim(cwd)//trim(procdir)//"/geometry", exist=ex)
     if (.not. ex) then
-       call EXECUTE_COMMAND_LINE("mkdir "//procdir)
-       call EXECUTE_COMMAND_LINE("mkfifo "//procdir//"/geometry")
-       call EXECUTE_COMMAND_LINE("mkfifo "//procdir//"/gradient")
-       call EXECUTE_COMMAND_LINE("mkfifo "//procdir//"/statusmol")
-       call EXECUTE_COMMAND_LINE("mkfifo "//procdir//"/statuspi")
-       call EXECUTE_COMMAND_LINE("cp " //trim(basename)// ".com "//trim(procdir))
-       call EXECUTE_COMMAND_LINE("cp geometry.xyz "//trim(procdir))
+       call EXECUTE_COMMAND_LINE("mkdir "//trim(cwd)//"/"//trim(procdir))
+       call EXECUTE_COMMAND_LINE("mkfifo "//trim(cwd)//"/"//trim(procdir)//"/geometry")
+       call EXECUTE_COMMAND_LINE("mkfifo "//trim(cwd)//"/"//trim(procdir)//"/gradient")
+       call EXECUTE_COMMAND_LINE("mkfifo "//trim(cwd)//"/"//trim(procdir)//"/statusmol")
+       call EXECUTE_COMMAND_LINE("mkfifo "//trim(cwd)//"/"//trim(procdir)//"/statuspi")
+       call EXECUTE_COMMAND_LINE("cp " //trim(basename)// ".com "//trim(cwd)//"/"//trim(procdir))
+       call EXECUTE_COMMAND_LINE("cp geometry.xyz "//trim(cwd)//"/"//trim(procdir))
     end if
     ! call CHDIR(procdir)
     open(1000, file=trim(procdir)//"/geometry",form="formatted", status="old")
     open(2000, file=trim(procdir)//"/gradient",form="formatted", status="old")
     open(3000, file=trim(procdir)//"/statusmol",form="formatted", status="old")
     open(4000, file=trim(procdir)//"/statuspi",form="formatted", status="old")
-    call EXECUTE_COMMAND_LINE("molpro -n 1 --no-xml-output --nouse-logfile --no-flush6 -d ./" // trim(procdir) &
-         //" -s ./"//trim(procdir) //"/" // trim(basename)//".com", wait=.false.) !
+    cmd = "molpro"
+    args(1) = " --no-xml-output "
+    args(2) = " --nouse-logfile "
+    args(3) = " --no-flush6 "
+    args(4) = " -d "//trim(cwd)//"/" // trim(procdir) // " "
+    args(5) = " -s "
+    args(6) = " -W "//trim(cwd)//"/"//trim(procdir) // " "
+    args(7) = " "//trim(cwd)//"/"//trim(procdir) //"/"//trim(basename)//".com "
+    call MPI_Comm_spawn(cmd, args, 1, MPI_INFO_NULL, 0, MPI_COMM_WORLD, child, spawn_error)
+    ! call EXECUTE_COMMAND_LINE("molpro -n 1 --no-xml-output --nouse-logfile --no-flush6 -d "//trim(cwd)//"/"&
+    !      // trim(procdir) //" -s -W "//trim(cwd)//"/"//trim(procdir)// " " &
+    !      //trim(cwd)//"/"//trim(procdir) //"/" // &
+    !      trim(basename)//".com", wait=.false.) !
     status=" "
     readstat=1
     

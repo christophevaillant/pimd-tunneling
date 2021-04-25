@@ -6,7 +6,7 @@ program pimd
   use instantonmod
   implicit none
 
-  include 'mpif.h'
+  ! include 'mpif.h'
   ! include 'mkl_service.fi'
   !general variables
   integer::                        i, j, irej, randind,count,k,l,jj, nrep

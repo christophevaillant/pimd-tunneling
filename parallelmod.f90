@@ -1,7 +1,9 @@
 module parallelmod
   use instantonmod
   implicit none
+#ifndef MOLPRO
   include 'mpif.h'
+#endif
 
 contains
 
