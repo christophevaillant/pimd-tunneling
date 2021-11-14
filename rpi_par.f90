@@ -91,7 +91,7 @@ program rpi
   if ((iproc.eq. nproc-1 .and. mod(npoints**3,nproc) > 0) .and. angular) then
      ncalcs= ncalcs-mod(npoints**3,nproc)
   end if
-  call V_init(iproc)
+  call V_init(iproc, nproc)
   
   if (.not. angular) then
      ncalcs= N/nproc

@@ -35,8 +35,8 @@ contains
   !   return
   ! end subroutine file_init
   
-  subroutine V_init(iproc)
-    integer, intent(in):: iproc
+  subroutine V_init(iproc, nproc)
+    integer, intent(in):: iproc, nproc
     character(len=7)::  format_string
     character:: status
     character(len=255):: cwd
@@ -78,14 +78,16 @@ contains
     open(3000, file=trim(procdir)//"/statusmol",form="formatted", status="old")
     open(4000, file=trim(procdir)//"/statuspi",form="formatted", status="old")
     cmd = "molpro"
-    args(1) = " --no-xml-output "
-    args(2) = " --nouse-logfile "
-    args(3) = " --no-flush6 "
-    args(4) = " -d "//trim(cwd)//"/" // trim(procdir) // " "
-    args(5) = " -s "
-    args(6) = " -W "//trim(cwd)//"/"//trim(procdir) // " "
-    args(7) = " "//trim(cwd)//"/"//trim(procdir) //"/"//trim(basename)//".com "
-    call MPI_Comm_spawn(cmd, args, 1, MPI_INFO_NULL, 0, MPI_COMM_WORLD, child, spawn_error)
+    args(1) = " -n 1 "
+    args(2) = " --no-xml-output "
+    args(3) = " --nouse-logfile "
+    args(4) = " --no-flush6 "
+    args(5) = " -d "//trim(cwd)//"/" // trim(procdir) // " "
+    args(6) = " -s "
+    args(7) = " -W "//trim(cwd)//"/"//trim(procdir) // " "
+    args(8) = " "//trim(cwd)//"/"//trim(procdir) //"/"//trim(basename)//".com "
+    args(9) = " "
+    call MPI_Comm_spawn(cmd, args, nproc, MPI_INFO_NULL, 0, MPI_COMM_WORLD, child, spawn_error)
     ! call EXECUTE_COMMAND_LINE("molpro -n 1 --no-xml-output --nouse-logfile --no-flush6 -d "//trim(cwd)//"/"&
     !      // trim(procdir) //" -s -W "//trim(cwd)//"/"//trim(procdir)// " " &
     !      //trim(cwd)//"/"//trim(procdir) //"/" // &
